@@ -1,0 +1,7 @@
+domain: mmlt.nl
+repo: github.com/mmlt/environment-operator
+resources:
+- group: clusterops
+  kind: Environment
+  version: v1
+version: "2"

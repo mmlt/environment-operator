@@ -1,0 +1,6 @@
+.profile
+*.tfvars
+*.tfstate
+*.tfstate.backup
+
+

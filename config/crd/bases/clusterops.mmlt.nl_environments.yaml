@@ -1,0 +1,295 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.4
+  creationTimestamp: null
+  name: environments.clusterops.mmlt.nl
+spec:
+  group: clusterops.mmlt.nl
+  names:
+    kind: Environment
+    listKind: EnvironmentList
+    plural: environments
+    singular: environment
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      description: Environment is the Schema for the environments API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: EnvironmentSpec defines the desired state of an Environment.
+          properties:
+            clusters:
+              description: Clusters are the ClusterSpec's for each cluster instance.
+              items:
+                properties:
+                  addons:
+                    properties:
+                      jobs:
+                        description: Jobs is an array of paths to job files in the
+                          source tree.
+                        items:
+                          type: string
+                        type: array
+                      source:
+                        description: Source is the repository that contains Terraform
+                          infrastructure code.
+                        properties:
+                          ref:
+                            description: Ref is the reference to the content to get.
+                              For type=git it can be 'master', 'refs/heads/my-branch'
+                              etc, see 'git reference' doc.
+                            type: string
+                          token:
+                            description: Token is used to authenticate with the remote
+                              server. For Type=git; - Token or ~/.ssh key should be
+                              specified (azure devops requires the token to be prefixed
+                              with 'x:')
+                            type: string
+                          type:
+                            description: 'Type is the type of repository to use as
+                              a source. Valid values are: - "git" (default): GIT repository.
+                              - "local": local filesystem.'
+                            enum:
+                            - git
+                            - local
+                            type: string
+                          url:
+                            description: URL is the URL of the repo. When Token is
+                              specified the URL is expected to start with 'https://'.
+                            minLength: 2
+                            type: string
+                        required:
+                        - url
+                        type: object
+                      values:
+                        additionalProperties:
+                          type: string
+                        description: Values are key-value pairs that are passed as
+                          values to the job.
+                        type: object
+                    type: object
+                  infrastructure:
+                    properties:
+                      main:
+                        description: Main is the path in the source tree to main.tf.
+                        type: string
+                      source:
+                        description: Source is the repository that contains Terraform
+                          infrastructure code.
+                        properties:
+                          ref:
+                            description: Ref is the reference to the content to get.
+                              For type=git it can be 'master', 'refs/heads/my-branch'
+                              etc, see 'git reference' doc.
+                            type: string
+                          token:
+                            description: Token is used to authenticate with the remote
+                              server. For Type=git; - Token or ~/.ssh key should be
+                              specified (azure devops requires the token to be prefixed
+                              with 'x:')
+                            type: string
+                          type:
+                            description: 'Type is the type of repository to use as
+                              a source. Valid values are: - "git" (default): GIT repository.
+                              - "local": local filesystem.'
+                            enum:
+                            - git
+                            - local
+                            type: string
+                          url:
+                            description: URL is the URL of the repo. When Token is
+                              specified the URL is expected to start with 'https://'.
+                            minLength: 2
+                            type: string
+                        required:
+                        - url
+                        type: object
+                      values:
+                        additionalProperties:
+                          type: string
+                        description: Values are key-value pairs that are passed as
+                          tfvars to Terraform.
+                        type: object
+                    type: object
+                  name:
+                    type: string
+                  test:
+                    type: object
+                type: object
+              type: array
+            defaults:
+              description: Defaults are the ClusterSpec's defaults.
+              properties:
+                addons:
+                  properties:
+                    jobs:
+                      description: Jobs is an array of paths to job files in the source
+                        tree.
+                      items:
+                        type: string
+                      type: array
+                    source:
+                      description: Source is the repository that contains Terraform
+                        infrastructure code.
+                      properties:
+                        ref:
+                          description: Ref is the reference to the content to get.
+                            For type=git it can be 'master', 'refs/heads/my-branch'
+                            etc, see 'git reference' doc.
+                          type: string
+                        token:
+                          description: Token is used to authenticate with the remote
+                            server. For Type=git; - Token or ~/.ssh key should be
+                            specified (azure devops requires the token to be prefixed
+                            with 'x:')
+                          type: string
+                        type:
+                          description: 'Type is the type of repository to use as a
+                            source. Valid values are: - "git" (default): GIT repository.
+                            - "local": local filesystem.'
+                          enum:
+                          - git
+                          - local
+                          type: string
+                        url:
+                          description: URL is the URL of the repo. When Token is specified
+                            the URL is expected to start with 'https://'.
+                          minLength: 2
+                          type: string
+                      required:
+                      - url
+                      type: object
+                    values:
+                      additionalProperties:
+                        type: string
+                      description: Values are key-value pairs that are passed as values
+                        to the job.
+                      type: object
+                  type: object
+                infrastructure:
+                  properties:
+                    main:
+                      description: Main is the path in the source tree to main.tf.
+                      type: string
+                    source:
+                      description: Source is the repository that contains Terraform
+                        infrastructure code.
+                      properties:
+                        ref:
+                          description: Ref is the reference to the content to get.
+                            For type=git it can be 'master', 'refs/heads/my-branch'
+                            etc, see 'git reference' doc.
+                          type: string
+                        token:
+                          description: Token is used to authenticate with the remote
+                            server. For Type=git; - Token or ~/.ssh key should be
+                            specified (azure devops requires the token to be prefixed
+                            with 'x:')
+                          type: string
+                        type:
+                          description: 'Type is the type of repository to use as a
+                            source. Valid values are: - "git" (default): GIT repository.
+                            - "local": local filesystem.'
+                          enum:
+                          - git
+                          - local
+                          type: string
+                        url:
+                          description: URL is the URL of the repo. When Token is specified
+                            the URL is expected to start with 'https://'.
+                          minLength: 2
+                          type: string
+                      required:
+                      - url
+                      type: object
+                    values:
+                      additionalProperties:
+                        type: string
+                      description: Values are key-value pairs that are passed as tfvars
+                        to Terraform.
+                      type: object
+                  type: object
+                name:
+                  type: string
+                test:
+                  type: object
+              type: object
+            policy:
+              description: 'Policy specifies what operator behavior is allowed. Valid
+                values are: - "AllowAll" (default): allows create, update and delete
+                of environment and clusters; - "DenyDelete": forbids deletion of a
+                cluster; - "DenyUpdate": forbids update/delete of a cluster.'
+              enum:
+              - AllowAll
+              - DenyDelete
+              - DenyUpdate
+              type: string
+          type: object
+        status:
+          description: EnvironmentStatus defines the observed state of an Environment.
+          properties:
+            clusters:
+              additionalProperties:
+                properties:
+                  certificate-authority-data:
+                    type: string
+                  server:
+                    type: string
+                  user:
+                    properties:
+                      aoSHA:
+                        type: string
+                      client-key:
+                        type: string
+                      password:
+                        type: string
+                      string client-certificate:
+                        type: string
+                      username:
+                        type: string
+                    type: object
+                type: object
+              description: Clusters is the state of the clusters.
+              type: object
+            conditions:
+              description: Conditions are the latest available observations of the
+                environments state.
+              items:
+                type: object
+              type: array
+            tfSHA:
+              description: TFSHA is the source repo SHA of the last successfully applied
+                Terraform code.
+              type: string
+            tfState:
+              description: TFState is the Terraform state.
+              type: string
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
