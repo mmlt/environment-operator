@@ -3,23 +3,24 @@ package controllers
 import (
 	"context"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-
+	"github.com/mmlt/environment-operator/pkg/infra"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"time"
 )
 
 var _ = ginkgo.Describe("Infrastructure dry-run", func() {
+	testTimeout := 30 * time.Second
+	if debugging {
+		testTimeout = time.Hour
+	}
 
-	const timeout = time.Second * 10
-	const interval = time.Second * 1
-
-	// CRNN is the namespace/name of the custom resource.
-	crNN := types.NamespacedName{
-		Name:      "testenv",
+	// namespace/name of the resource used for testing.
+	nsn := types.NamespacedName{
+		Name:      "env314",
 		Namespace: "default",
 	}
 
@@ -42,69 +43,34 @@ var _ = ginkgo.Describe("Infrastructure dry-run", func() {
 
 	ginkgo.Context("Happy path", func() {
 		ginkgo.It("Should ...", func() {
-			toCreate := crLocal(crNN)
+			toCreate := testEnvironmentCR(nsn, testSpec1())
 
-			ginkgo.By("Creating CR")
+			ginkgo.By("Creating kind Environment and waiting for reconcile completion")
 			Expect(k8sClient.Create(context.Background(), toCreate)).Should(Succeed())
-			//time.Sleep(time.Second * 5) //TODO
 
 			fetched := &v1.Environment{}
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), crNN, fetched)
-				return fetched.Status.Peek != v1.PeekUnknown
-			}, timeout, interval).Should(BeTrue())
+				k8sClient.Get(context.Background(), nsn, fetched)
+				//TODO return fetched.Status.Synced != v1.SyncedUnknown
+				return fetched.Status.Synced == v1.SyncedReady && len(fetched.Status.Conditions) >= 3
+			}, testTimeout, time.Second).Should(BeTrue())
 
-			//ginkgo.By("Checking CR Status")
-			//Expect(len(fetched.Status.Conditions)).To(BeNumerically("==", 3))
-			//Expect(fetched.Status.Conditions[0].Message).To(BeEmpty())
-			//Expect(fetched.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-			//Expect(fetched.Status.Conditions[1].Message).To(BeEmpty())
-			//Expect(fetched.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-			//Expect(fetched.Status.Conditions[2].Message).To(BeEmpty())
-			//Expect(fetched.Status.Conditions[2].Status).To(Equal(metav1.ConditionTrue))
-			//Expect(fetched.Status.Synced).To(Equal(metav1.ConditionTrue))
+			ginkgo.By("Check hat the reconcile doesn't continue (no more steps are started)")
+			c := testutil.ToFloat64(infra.MetricSteps)
+			time.Sleep(time.Second)
+			Expect(testutil.ToFloat64(infra.MetricSteps) - c).To(Equal(0.0))
+
+			ginkgo.By("Checking CR Status")
+			Expect(len(fetched.Status.Conditions)).To(BeNumerically("==", 3))
+			Expect(fetched.Status.Conditions[0].Type).To(Equal("InfraInit"))
+			Expect(fetched.Status.Conditions[0].Reason).To(Equal(v1.ReasonReady))
+			Expect(fetched.Status.Conditions[0].Message).To(Equal("terraform init errors=0 warnings=0"))
+			Expect(fetched.Status.Conditions[1].Type).To(Equal("InfraPlan"))
+			Expect(fetched.Status.Conditions[1].Reason).To(Equal(v1.ReasonReady))
+			Expect(fetched.Status.Conditions[1].Message).To(Equal("terraform plan errors=0 warnings=0 added=1 changed=2 deleted=1"))
+			Expect(fetched.Status.Conditions[2].Type).To(Equal("InfraApply"))
+			Expect(fetched.Status.Conditions[2].Reason).To(Equal(v1.ReasonReady))
+			Expect(fetched.Status.Conditions[2].Message).To(Equal("terraform apply errors=0 added=1 changed=2 deleted=1"))
 		})
 	})
 })
-
-func crLocal(nn types.NamespacedName) *v1.Environment {
-	spec := v1.EnvironmentSpec{
-		Defaults: v1.ClusterSpec{
-			Infrastructure: v1.InfrastructureSpec{
-				Source: v1.SourceSpec{
-					Type: "local",
-					URL:  "../config/samples/terraform", // relative to dir containing this _test.go file.
-				},
-				Main: "main.tf.tmplt",
-				Values: map[string]string{
-					"first": "default",
-				},
-			},
-		},
-		Clusters: []v1.ClusterSpec{
-			{
-				Name: "cpe",
-				Infrastructure: v1.InfrastructureSpec{
-					Values: map[string]string{
-						"first": "cluster",
-					},
-				},
-			}, {
-				Name: "second",
-				Infrastructure: v1.InfrastructureSpec{
-					Values: map[string]string{
-						"first": "cluster",
-					},
-				},
-			},
-		},
-	}
-
-	return &v1.Environment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      nn.Name,
-			Namespace: nn.Namespace,
-		},
-		Spec: spec,
-	}
-}

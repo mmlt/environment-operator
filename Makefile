@@ -78,3 +78,10 @@ CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
+
+# Install tools
+install-tools:
+	grep _ tools.go | cut -d'"' -f2 | xargs go install
+
+gogenerate:
+	go generate

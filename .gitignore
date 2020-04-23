@@ -1,5 +1,9 @@
 _*
 _*/
+.kube
+.azure
+.terraform
+.terraform.d
 
 # Binaries for programs and plugins
 *.exe

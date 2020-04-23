@@ -8,6 +8,10 @@ metadata:
   creationTimestamp: null
   name: environments.clusterops.mmlt.nl
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.synced
+    name: Synced
+    type: string
   group: clusterops.mmlt.nl
   names:
     kind: Environment
@@ -15,6 +19,8 @@ spec:
     plural: environments
     singular: environment
   scope: Namespaced
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       description: Environment is the Schema for the environments API
@@ -47,8 +53,8 @@ spec:
                           type: string
                         type: array
                       source:
-                        description: Source is the repository that contains Terraform
-                          infrastructure code.
+                        description: Source is the repository that contains the k8s
+                          addons resources.
                         properties:
                           ref:
                             description: Ref is the reference to the content to get.
@@ -72,10 +78,7 @@ spec:
                           url:
                             description: URL is the URL of the repo. When Token is
                               specified the URL is expected to start with 'https://'.
-                            minLength: 2
                             type: string
-                        required:
-                        - url
                         type: object
                       values:
                         additionalProperties:
@@ -86,6 +89,46 @@ spec:
                     type: object
                   infrastructure:
                     properties:
+                      aad:
+                        description: Azure AD.
+                        properties:
+                          clientAppID:
+                            type: string
+                          serverAppID:
+                            type: string
+                          serverAppSecret:
+                            type: string
+                          tenantID:
+                            type: string
+                        type: object
+                      aks:
+                        description: AKS values.
+                        properties:
+                          envDomain:
+                            type: string
+                          pools:
+                            additionalProperties:
+                              properties:
+                                subnetNewbits:
+                                  description: Type of VM.
+                                  type: string
+                              type: object
+                            description: Cluster worker pools. A 'default' pool is
+                              required.
+                            type: object
+                          resourceGroup:
+                            type: string
+                          subnetNewbits:
+                            description: Cluster ordinal number.
+                            type: integer
+                          subscription:
+                            type: string
+                          version:
+                            description: Kubernetes version.
+                            type: string
+                          vnetCIDR:
+                            type: string
+                        type: object
                       main:
                         description: Main is the path in the source tree to main.tf.
                         type: string
@@ -115,19 +158,17 @@ spec:
                           url:
                             description: URL is the URL of the repo. When Token is
                               specified the URL is expected to start with 'https://'.
-                            minLength: 2
                             type: string
-                        required:
-                        - url
                         type: object
-                      values:
+                      x:
                         additionalProperties:
                           type: string
-                        description: Values are key-value pairs that are passed as
-                          tfvars to Terraform.
+                        description: X are extension values (when regular values don't
+                          fit the need)
                         type: object
                     type: object
                   name:
+                    description: Name is the cluster name.
                     type: string
                   test:
                     type: object
@@ -145,8 +186,8 @@ spec:
                         type: string
                       type: array
                     source:
-                      description: Source is the repository that contains Terraform
-                        infrastructure code.
+                      description: Source is the repository that contains the k8s
+                        addons resources.
                       properties:
                         ref:
                           description: Ref is the reference to the content to get.
@@ -170,10 +211,7 @@ spec:
                         url:
                           description: URL is the URL of the repo. When Token is specified
                             the URL is expected to start with 'https://'.
-                          minLength: 2
                           type: string
-                      required:
-                      - url
                       type: object
                     values:
                       additionalProperties:
@@ -184,6 +222,45 @@ spec:
                   type: object
                 infrastructure:
                   properties:
+                    aad:
+                      description: Azure AD.
+                      properties:
+                        clientAppID:
+                          type: string
+                        serverAppID:
+                          type: string
+                        serverAppSecret:
+                          type: string
+                        tenantID:
+                          type: string
+                      type: object
+                    aks:
+                      description: AKS values.
+                      properties:
+                        envDomain:
+                          type: string
+                        pools:
+                          additionalProperties:
+                            properties:
+                              subnetNewbits:
+                                description: Type of VM.
+                                type: string
+                            type: object
+                          description: Cluster worker pools. A 'default' pool is required.
+                          type: object
+                        resourceGroup:
+                          type: string
+                        subnetNewbits:
+                          description: Cluster ordinal number.
+                          type: integer
+                        subscription:
+                          type: string
+                        version:
+                          description: Kubernetes version.
+                          type: string
+                        vnetCIDR:
+                          type: string
+                      type: object
                     main:
                       description: Main is the path in the source tree to main.tf.
                       type: string
@@ -213,19 +290,17 @@ spec:
                         url:
                           description: URL is the URL of the repo. When Token is specified
                             the URL is expected to start with 'https://'.
-                          minLength: 2
                           type: string
-                      required:
-                      - url
                       type: object
-                    values:
+                    x:
                       additionalProperties:
                         type: string
-                      description: Values are key-value pairs that are passed as tfvars
-                        to Terraform.
+                      description: X are extension values (when regular values don't
+                        fit the need)
                       type: object
                   type: object
                 name:
+                  description: Name is the cluster name.
                   type: string
                 test:
                   type: object
@@ -248,13 +323,20 @@ spec:
               additionalProperties:
                 properties:
                   certificate-authority-data:
+                    description: Result values provided to access a cluster.
+                    type: string
+                  hash:
+                    description: Hash is an unique value for the (addons) source and
+                      parameters being deployed. Hash includes infra.hash to express
+                      the dependency of clusters on infra. (controller internal state,
+                      do not use)
                     type: string
                   server:
                     type: string
                   user:
+                    description: UserCredentials are the result values to authenticate
+                      with a cluster.
                     properties:
-                      aoSHA:
-                        type: string
                       client-key:
                         type: string
                       password:
@@ -265,20 +347,88 @@ spec:
                         type: string
                     type: object
                 type: object
-              description: Clusters is the state of the clusters.
+              description: Clusters contains the deployment state of the clusters
+                and optional result values.
               type: object
             conditions:
               description: Conditions are the latest available observations of the
-                environments state.
+                Environment's fitness.
               items:
+                description: 'EnvironmentCondition shows what the operator is doing
+                  or has done. Infra condition types: InfraTmplt, InfraInit, InfraPlan,
+                  InfraApply Cluster condition types: ClusterAddon<ClusterName> ClusterTest<ClusterName>
+                  See KEP sig-api-machinery/1623-standardize-conditions is going to
+                  introduce it as k8s.io/apimachinery/pkg/apis/meta/v1'
+                properties:
+                  lastTransitionTime:
+                    description: Last time the condition transitioned from one status
+                      to another. This should be when the underlying condition changed.  If
+                      that is not known, then using the time when the API field changed
+                      is acceptable.
+                    format: date-time
+                    type: string
+                  message:
+                    description: A human readable message indicating details about
+                      the transition.
+                    type: string
+                  reason:
+                    description: The reason for the condition's last transition in
+                      CamelCase.
+                    type: string
+                  status:
+                    description: Status of the condition, one of True, False, Unknown.
+                    type: string
+                  type:
+                    description: Type of condition in CamelCase.
+                    type: string
+                required:
+                - lastTransitionTime
+                - reason
+                - status
+                - type
                 type: object
               type: array
-            tfSHA:
-              description: TFSHA is the source repo SHA of the last successfully applied
-                Terraform code.
-              type: string
-            tfState:
-              description: TFState is the Terraform state.
+            infra:
+              description: 'Infra contains the deployment state of the infra and optional
+                result values. Note: cluster specific result values are in Clusters.'
+              properties:
+                Hash:
+                  description: Hash is an unique value for the (terraform) source
+                    and parameters being deployed. (controller internal state, do
+                    not use)
+                  type: string
+                added:
+                  description: Added is the number of infrastructure objects added
+                    on last apply.
+                  type: integer
+                changed:
+                  description: Changed is the number of infrastructure objects changed
+                    on last apply.
+                  type: integer
+                deleted:
+                  description: Added is the number of infrastructure objects deleted
+                    on last apply.
+                  type: integer
+                pAdded:
+                  description: PAdded is the number of infrastructure objects planned
+                    to being added on apply.
+                  type: integer
+                pChanged:
+                  description: PChanged is the number of infrastructure objects planned
+                    to being changed on apply.
+                  type: integer
+                pDeleted:
+                  description: PAdded is the number of infrastructure objects planned
+                    to being deleted on apply.
+                  type: integer
+                zTFState:
+                  description: TFState is the Terraform state. (controller internal
+                    state, do not use)
+                  type: string
+              type: object
+            synced:
+              description: Synced is a single word describing the Environment's fitness.
+                Check conditions for more details. TODO consider renaming to summary
               type: string
           type: object
       type: object

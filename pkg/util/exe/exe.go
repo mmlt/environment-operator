@@ -2,6 +2,7 @@ package exe
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/go-logr/logr"
 	"io"
@@ -18,7 +19,7 @@ type Opt struct {
 
 // Run executes 'cmd' with 'stdin', 'args' and (optional) 'options'.
 // Return stdout and stderr upon completion.
-func Run(log logr.Logger, options *Opt, stdin string, cmd string, args ...string) (stdout string, stderr string, err error) {
+func Run(log logr.Logger, options *Opt, stdin string, cmd string, args ...string) (stdout, stderr string, err error) {
 	log.V(2).Info("Run", "cmd", cmd, "args", args)
 
 	c := exec.Command(cmd, args...)
@@ -51,4 +52,21 @@ func Run(log logr.Logger, options *Opt, stdin string, cmd string, args ...string
 	}
 
 	return
+}
+
+// Start starts a command and returns without waiting for completion.
+// Use the returned object to Wait() for completion and clean-up.
+func Start(ctx context.Context, log logr.Logger, options *Opt, stdin string, cmd string, args ...string) (*exec.Cmd, error) {
+	log.V(2).Info("Start", "cmd", cmd, "args", args)
+
+	c := exec.Command(cmd, args...)
+
+	if options != nil {
+		c.Env = options.Env
+		c.Dir = options.Dir
+	}
+
+	err := c.Start()
+
+	return c, err
 }

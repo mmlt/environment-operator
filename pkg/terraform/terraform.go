@@ -1,201 +1,271 @@
 package terraform
 
 import (
-	"bytes"
+	"bufio"
+	"context"
 	"encoding/json"
 	"github.com/go-logr/logr"
-	"github.com/hashicorp/hcl/hcl/printer"
-	"github.com/hashicorp/hcl/json/parser"
-	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/util/exe"
-	"github.com/mmlt/kubectl-tmplt/pkg/expand"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+	"io"
+	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
-type T struct {
-	log logr.Logger
+// Terraform provisions infrastructure.
+type Terraform struct {
+	Log logr.Logger
 }
 
-/*
-Provision(plan)
-# Repo has changed and/or values (overrides) have changed.
-- Use plan.clusters to write tfvars file
-- Use values to expand main.tf
-- Read tfstate from status.tfState
-- Run terraform init
-- Run terraform plan
-If > N changes abort (with condition message)
-- Run terraform apply
-- Write tfstate back to status.tfState
-- Write source SHA to status.tfSHA (optional)
-- Read tf variables and update status.cluster and status.cluster.user fields
-*/
-
-func (t *T) Execute(plan *plan.Plan) error {
-	//goal: not use plan outside this method
-
-	// Get infrastructure source file(s).
-	src, err := plan.InfrastructureSource()
-	if err != nil {
-		return err
-	}
-	err = src.Update()
-	if err != nil {
-		return err
-	}
-
-	// Write tfvars file containing default values to repo dir.
-	b, err := interface2hcl(plan.InfrastructureValues().Defaults)
-	if err != nil {
-		return err
-	}
-	ioutil.WriteFile(filepath.Join(src.RepoDir(), "main.tfvars"), b, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Expand main.tf.tmplt into main.tf
-	in := filepath.Join(src.RepoDir(), plan.CR.Spec.Defaults.Infrastructure.Main)
-	err = t.ExpandTmplt(in, plan.InfrastructureValues())
-	if err != nil {
-		return err
-	}
-
-	// Write tfstate file to infrastructure source repo dir.
-	b, err = plan.GetTFState()
-	if err != nil {
-		return err
-	}
-	ioutil.WriteFile(filepath.Join(src.RepoDir(), "terraform.tfstate"), b, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Terraform init
-	err = t.TerraformInit(src.RepoDir())
-	if err != nil {
-		return err
-	}
-
-	//TODO
-	// terraform plan (if changes > N changes abort)
-	// terraform apply
-
-	// Save tfstate.
-	b, err = ioutil.ReadFile(filepath.Join(src.RepoDir(), "terraform.tfstate"))
-	if err != nil {
-		return err
-	}
-	plan.PutTFState(b)
-
-	return nil
+// Terraformer is able to provision infrastructure.
+type Terraformer interface {
+	// Init resolves (downloads) dependencies for the terraform configuration files in dir.
+	Init(dir string) *TFResult
+	// Plan creates an execution plan for the terraform configuration files in dir.
+	Plan(dir string) *TFResult
+	// StartApply applies the plan in dir without waiting for the result.
+	// If a Cmd is returned cmd.Wait() should be called wait for completion and clean-up.
+	StartApply(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error)
+	// Output retrieves the output variables of the applied plan.
+	Output(dir string) (interface{}, error)
 }
 
-// ExpandTmplt applies text/template when file name ends in ".tmplt".
-// The output is written to a file in the same dir without ".tmplt" suffix.
-func (t *T) ExpandTmplt(name string, values *plan.Values) error {
-	const suffix = ".tmplt"
+// TFResults is the condensed output of a terraform command.
+type TFResult struct {
+	// Info > 0 means command successful.
+	Info int
+	// Warnings > 0 means command successful but something unexpected happened.
+	Warnings int
+	// Errors > 0 means the command failed.
+	Errors int
 
-	if !strings.HasSuffix(name, suffix) {
+	PlanAdded   int
+	PlanChanged int
+	PlanDeleted int
+}
+
+// TFApplyResult
+type TFApplyResult struct {
+	// Running count of the number of objects that have started creating, modifying and destroying.
+	Creating, Modifying, Destroying int
+
+	// Errors is a list of error messages.
+	Errors []string
+
+	// Number of object added, changed, destroyed upon completion.
+	// The numbers are non-zero when terraform completed successfully.
+	TotalAdded, TotalChanged, TotalDestroyed int
+
+	// Most recently logged terraform object name.
+	Object string
+	// Most recently logged action being performed; creating (creation), modifying (modification), destroying (destruction).
+	// *ing means in-progress, *tion means completed. TODO consider normalizing *tion to *ed
+	Action string
+	// Most recently logged elapsed time reported by terraform.
+	Elapsed string
+}
+
+func (t *Terraform) Init(dir string) *TFResult {
+	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir}, "", "terraform", "init", "-input=false", "-no-color")
+
+	return parseInitResponse(o, err)
+}
+
+func parseInitResponse(text string, err error) *TFResult {
+	r := &TFResult{}
+	ire := regexp.MustCompile("Terraform has been successfully initialized!")
+	r.Info = len(ire.FindAllStringIndex(text, -1))
+	wre := regexp.MustCompile("\nWarning: ")
+	r.Warnings = len(wre.FindAllStringIndex(text, -1))
+	ere := regexp.MustCompile(" errors |Terraform initialized in an empty directory!")
+	r.Errors = len(ere.FindAllStringIndex(text, -1))
+
+	if err != nil {
+		r.Errors++
+	}
+
+	return r
+}
+
+func (t *Terraform) Plan(dir string) *TFResult {
+	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir}, "", "terraform", "plan",
+		"-out=newplan", "-var-file=main.tfvars", "-detailed-exitcode", "-input=false", "-no-color")
+	return parsePlanResponse(o, err)
+}
+
+// ParsePlanResponse parses terraform stdout text and err and returns
+// Expect detailed exit codes as provided by 'terraform plan -detailed-exitcode'.
+//	0 = Succeeded with empty diff (no changes)
+//  1 = Error
+//  2 = Succeeded with non-empty diff (changes present)
+func parsePlanResponse(text string, err error) *TFResult {
+	r := &TFResult{}
+
+	pre := regexp.MustCompile(`Plan: (\d+) to add, (\d+) to change, (\d+) to destroy.`)
+	ps := pre.FindAllStringSubmatch(text, -1)
+	if len(ps) == 1 && len(ps[0]) == 4 {
+		var ea, ec, ed error
+		r.PlanAdded, ea = strconv.Atoi(ps[0][1])
+		r.PlanChanged, ec = strconv.Atoi(ps[0][2])
+		r.PlanDeleted, ed = strconv.Atoi(ps[0][3])
+		if ea == nil && ec == nil && ed == nil {
+			// only if all conditions are met we call it a success.
+			r.Info = 1
+		}
+	}
+
+	wre := regexp.MustCompile("\nWarning: ")
+	r.Warnings = len(wre.FindAllStringIndex(text, -1))
+	ere := regexp.MustCompile("\nError: ")
+	r.Errors = len(ere.FindAllStringIndex(text, -1))
+
+	if ee, ok := err.(*exec.ExitError); ok {
+		if ee.ExitCode() == 1 {
+			r.Errors++
+			r.Info = 0
+		}
+
+		return r
+	}
+
+	if err != nil {
+		// any other error then ExitError
+		r.Errors++
+	}
+
+	return r
+}
+
+// StartApply runs terraform apply concurrently and returns a channel of TFResults.
+// The channel will be closed when terraform exits.
+func (t *Terraform) StartApply(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error) {
+	cmd, err := exe.Start(ctx, t.Log, &exe.Opt{Dir: dir}, "", "terraform", "apply",
+		"-auto-approve", "-input=false", "-no-color", "newplan")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	o, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ch := t.parseAsyncApplyResponse(o)
+
+	return cmd, ch, nil
+}
+
+// ParseAsyncApplyResponse parses in and returns results when interesting input is encountered.
+// Close in to release the go func.
+func (t *Terraform) parseAsyncApplyResponse(in io.ReadCloser) chan TFApplyResult {
+	out := make(chan TFApplyResult)
+
+	// hold running totals.
+	result := &TFApplyResult{}
+
+	go func() {
+		sc := bufio.NewScanner(in)
+		for sc.Scan() {
+			r := parseApplyResponseLine(result, sc.Text())
+			if r != nil {
+				out <- *r
+			}
+		}
+		if err := sc.Err(); err != nil {
+			t.Log.Error(err, "parseAsyncApplyResponse")
+		}
+
+		close(out)
+	}()
+
+	return out
+}
+
+// ParseApplyResponseLine parses a line.
+// If content can be extracted from line it returns an updated shallow copy of in, otherwise it returns nil.
+// It increments in running counters.
+func parseApplyResponseLine(in *TFApplyResult, line string) *TFApplyResult {
+	ss := strings.Split(line, " ")
+	if len(ss) < 2 {
+		// not interesting.
 		return nil
 	}
 
-	ib, err := ioutil.ReadFile(name)
-	if err != nil {
-		return err
+	r := *in
+
+	if ss[0] == "Error:" {
+		r.Errors = append(r.Errors, line[len("Error: "):])
+		return &r
 	}
 
-	ob, err := expand.Run(os.Environ(), "", ib, values2yamlx(values))
-	if err != nil {
-		return err
+	if strings.HasSuffix(ss[0], ":") {
+		r.Object = ss[0][:len(ss[0])-1]
+
+		if strings.HasSuffix(ss[1], "...") {
+			// xyz.this: Creating...
+			a := normalizeAction(ss[1])
+			switch a {
+			case "creating":
+				in.Creating++
+			case "modifying":
+				in.Modifying++
+			case "destroying":
+				in.Destroying++
+			}
+			// 'in' is modified, make a new shallow copy.
+			o := r.Object
+			r = *in
+			r.Object = o
+			r.Action = a
+			return &r
+		}
+
+		if len(ss) > 3 {
+			if ss[1] == "Still" && strings.HasSuffix(ss[2], "...") {
+				// xyz.this: Still creating... [10s elapsed]
+				r.Action = normalizeAction(ss[2])
+				r.Elapsed = ss[len(ss)-2]
+				return &r
+			}
+
+			if ss[2] == "complete" {
+				// xyz.this: Creation complete after 6m22s [id=/subscriptions/.../x]
+				r.Action = normalizeAction(ss[1])
+				r.Elapsed = ss[4]
+				return &r
+			}
+		}
 	}
 
-	return ioutil.WriteFile(strings.TrimSuffix(name, suffix), ob, 0664)
-}
-
-// TerraformInit
-func (t *T) TerraformInit(dir string) error {
-	_, _, err := exe.Run(t.log, &exe.Opt{Dir: dir}, "", "terraform", "init", "-input=false", "-no-color")
-	if err != nil {
-		return err
+	if ss[0] == "Apply" {
+		rre := regexp.MustCompile(`Apply complete! Resources: (\d+) added, (\d+) changed, (\d+) destroyed.`)
+		rs := rre.FindAllStringSubmatch(line, -1)
+		if len(rs) == 1 && len(rs[0]) == 4 {
+			// errors ignored TODO
+			r.TotalAdded, _ = strconv.Atoi(rs[0][1])
+			r.TotalChanged, _ = strconv.Atoi(rs[0][2])
+			r.TotalDestroyed, _ = strconv.Atoi(rs[0][3])
+			return &r
+		}
 	}
-	//TODO parse output
 
 	return nil
 }
 
-// TerraformPlan
-func (t *T) TerraformPlan(dir string) error {
-	_, _, err := exe.Run(t.log, &exe.Opt{Dir: dir}, "", "terraform", "plan",
-		"-out=newplan", "-var-file=main.tfvars", "-detailed-exitcode", "-input=false", "-no-color")
-	// -detailed-exitcode
-	//	0 = Succeeded with empty diff (no changes)
-	//	1 = Error
-	//	2 = Succeeded with non-empty diff (changes present)
-	if err != nil {
-		return err
+func normalizeAction(s string) string {
+	if strings.HasSuffix(s, "...") {
+		s = s[:len(s)-3]
 	}
-
-	//TODO parse std-out
-
-	return nil
+	return strings.ToLower(s)
 }
 
-// TerraformApply
-func (t *T) TerraformApply(dir string) error {
-	_, _, err := exe.Run(t.log, &exe.Opt{Dir: dir}, "", "terraform", "apply",
-		"-auto-approve", "-input=false", "-no-color", "newplan")
-	if err != nil {
-		return err
-	}
-	//TODO parse output
-
-	return nil
-}
-
-func values2yamlx(in *plan.Values) map[string]interface{} {
-	r := map[string]interface{}{}
-	r["defaults"] = mss2msi(in.Defaults)
-	r["clusters"] = smss2smsi(in.Clusters)
-	return r
-}
-
-func smss2smsi(in []map[string]string) []map[string]interface{} {
-	r := []map[string]interface{}{}
-	for _, m := range in {
-		r = append(r, mss2msi(m))
-	}
-	return r
-}
-
-func mss2msi(in map[string]string) map[string]interface{} {
-	r := map[string]interface{}{}
-	for k, v := range in {
-		r[k] = v
-	}
-	return r
-}
-
-// Interface2HCL takes any structure and returns the HCL formatted form.
-func interface2hcl(data interface{}) ([]byte, error) {
-	b, err := json.Marshal(data)
+func (t *Terraform) Output(dir string) (interface{}, error) {
+	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir}, "", "terraform", "output", "-json", "-no-color")
 	if err != nil {
 		return nil, err
 	}
-	return json2hcl(b)
-}
-
-// JSON2HCL takes a JSON formatted text and returns the HCL formatted equivalent.
-func json2hcl(json []byte) ([]byte, error) {
-	ast, err := parser.Parse(json)
-	if err != nil {
-		return nil, err
-	}
-	var bb bytes.Buffer
-	err = printer.Fprint(&bb, ast)
-
-	return bb.Bytes(), err
+	m := map[string]interface{}{}
+	err = json.Unmarshal([]byte(o), &m)
+	return m, err
 }

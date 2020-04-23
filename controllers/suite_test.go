@@ -16,28 +16,40 @@ limitations under the License.
 package controllers
 
 import (
-	"path/filepath"
-	"testing"
-
+	"github.com/go-logr/stdr"
+	"github.com/mmlt/environment-operator/pkg/infra"
+	"github.com/mmlt/environment-operator/pkg/plan"
+	"github.com/mmlt/environment-operator/pkg/source"
+	"github.com/mmlt/environment-operator/pkg/terraform"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"log"
+	"os"
+	"path/filepath"
+	ctrl "sigs.k8s.io/controller-runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"testing"
 
 	clusteropsv1 "github.com/mmlt/environment-operator/api/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
 )
 
-// These tests use Ginkgo (BDD-style Go testing framework). Refer to
-// http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
+// Debugging is a switch to increase time-outs and always show log output.
+const debugging = true
+
+// Vars accessible from test cases.
 
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
+
+// TestReconciler is the reconciler under test.
+var testReconciler *EnvironmentReconciler
 
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -48,9 +60,15 @@ func TestE2E(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+	if debugging {
+		// Always show log output
+		logf.SetLogger(stdr.New(log.New(os.Stdout, "", log.Lshortfile|log.Ltime)))
+		stdr.SetVerbosity(5)
+	} else {
+		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+	}
 
-	By("bootstrapping test environment")
+	By("starting testenv")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
 	}
@@ -69,11 +87,53 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
+	// Setup controller (similar to main.go)
+
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme.Scheme,
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	// Create reconciler and all it's dependencies.
+	testReconciler = &EnvironmentReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("EnvironmentReconciler"),
+		Scheme: mgr.GetScheme(),
+		//TODO Selector: *selector,
+	}
+	testReconciler.Sources = &source.Sources{
+		BasePath: filepath.Join(os.TempDir(), "envrecon"),
+		Log:      testReconciler.Log.WithName("source"),
+	}
+	testReconciler.Plan = &plan.Plan{
+		Log: testReconciler.Log.WithName("plan"),
+	}
+	tf := &terraform.TerraformFake{
+		Log: testReconciler.Log.WithName("tffake"),
+	}
+	tf.SetupFakeResults()
+	testReconciler.Executor = &infra.Executor{
+		UpdateSink: testReconciler,
+		EventSink:  testReconciler,
+		Terraform:  tf,
+		Log:        testReconciler.Log.WithName("executor"),
+	}
+
+	// Add reconciler to manager.
+	err = testReconciler.SetupWithManager(mgr)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Start manager.
+	go func() {
+		err = mgr.Start(ctrl.SetupSignalHandler())
+		Expect(err).ToNot(HaveOccurred())
+	}()
+
 	close(done)
-}, 60)
+}, 600) //TODO back to low value after debugging
 
 var _ = AfterSuite(func() {
-	By("tearing down the test environment")
+	By("tearing down testenv")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 })

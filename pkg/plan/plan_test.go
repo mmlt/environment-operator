@@ -6,22 +6,28 @@ import (
 	"testing"
 )
 
-func TestGetTFState(t *testing.T) {
-	// It can read an empty state.
-	plan := New(&v1.Environment{})
-	got, err := plan.GetTFState()
-	assert.NoError(t, err)
-	assert.Empty(t, got)
-}
+func TestConditions_After(t *testing.T) {
+	data := &conditions{
+		inner: []v1.EnvironmentCondition{
+			{Type: "new", LastTransitionTime: toTime(3)},
+			{Type: "older", LastTransitionTime: toTime(2)},
+			{Type: "oldest", LastTransitionTime: toTime(1)},
+		},
+	}
 
-func TestSetTFState(t *testing.T) {
-	// It can write a state and read it back.
-	const want = "the quick brown fox jumped over the lazy dog"
-	plan := New(&v1.Environment{})
-	err := plan.PutTFState([]byte(want))
-	assert.NoError(t, err)
+	tsts := []struct {
+		in   []string
+		want bool
+	}{
+		{in: []string{"new", "older", "oldest"}, want: true},
+		{in: []string{"new", "oldest"}, want: true},
+		{in: []string{"oldest"}, want: true},
+		{in: []string{"oldest", "older"}, want: false},
+		{in: []string{"oldest", "older", "oldest"}, want: false},
+	}
 
-	got, err := plan.GetTFState()
-	assert.NoError(t, err)
-	assert.Equal(t, want, string(got))
+	for _, tst := range tsts {
+		got := data.after(tst.in...)
+		assert.Equal(t, tst.want, got, tst.in)
+	}
 }
