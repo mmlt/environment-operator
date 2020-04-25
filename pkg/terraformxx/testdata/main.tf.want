@@ -1,6 +1,0 @@
-module "cpe" {
-    name = "cpe"
-}
-module "second" {
-    name = "second"
-}

@@ -12,14 +12,14 @@ import (
 type ApplyStep struct {
 	StepMeta
 
-	// Parameters
+	/* Parameters */
 
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
-	// Hash is for pass-trough only.
+	// Hash is an opaque value passed to Update.
 	Hash string
 
-	// Results
+	/* Results */
 
 	// The number of objects added, changed and deleted (destroyed) on terraform apply completion.
 	Added, Changed, Deleted int
@@ -73,7 +73,7 @@ func (st *ApplyStep) execute(ctx context.Context, isink Infoer, usink Updater, t
 	}
 
 	if cmd != nil {
-		// not a fake cmd.
+		// real cmd (fakes are nil).
 		cmd.Wait()
 	}
 

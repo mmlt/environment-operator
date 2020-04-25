@@ -1,5 +1,0 @@
-{{- range .Values.clusters -}}
-module "{{ .name }}" {
-    name = "{{ .name }}"
-}
-{{ end }}

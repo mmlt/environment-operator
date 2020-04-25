@@ -68,18 +68,14 @@ func (p *Plan) nsInfraChanged(nsn types.NamespacedName, src source.Getter, spec 
 	// InitStep
 	if cond.unknown("Infra") {
 		// day1
-		return &infra.InitStep{
-			SourcePath: path,
-		}, nil
+		return infraInitStep(path, hash, spec), nil
 	}
 	if t, tsr := cond.matches("Infra", metav1.ConditionFalse, v1.ReasonReady); t == tsr &&
 		t >= 3 &&
 		cond.after("InfraApply", "InfraPlan", "InfraInit") {
-		// All Infra steps have ConditionFalse/ReasonReady and
+		// All 3 Infra steps have ConditionFalse/ReasonReady and
 		// ApplyStep is newer than PlanStep, PlanStep is newer then InitStep.
-		return &infra.InitStep{
-			SourcePath: path,
-		}, nil
+		return infraInitStep(path, hash, spec), nil
 	}
 
 	// PlanStep
@@ -115,6 +111,27 @@ func (p *Plan) nsInfraUnchanged(source source.Getter, spec []v1.ClusterSpec, sta
 
 	return nil, nil
 }*/
+
+//
+func infraInitStep(path string, hash hash.Hash, spec []v1.ClusterSpec) infra.Step {
+	if len(spec) == 0 {
+		// TODO feedback to user that at least one cluster needs to be defined before the operator starts doing things.
+		return nil
+	}
+
+	//TODO calc hash over parameters
+
+	return &infra.InitStep{
+		Values: infra.InfraValues{
+			AAD: spec[0].Infrastructure.AAD,
+			AKS: spec[0].Infrastructure.AKS,
+			X: spec[0].Infrastructure.X,
+		},
+		SourcePath: path,
+		Hash: hashAsString(hash),
+	}
+}
+
 
 // HashAsString returns the base64 representation of h.
 func hashAsString(h hash.Hash) string {

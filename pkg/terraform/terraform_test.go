@@ -434,7 +434,7 @@ func TestParseAsyncApplyResponse(t *testing.T) {
 		// read output
 		rs := []TFApplyResult{}
 		for r := range ch {
-			rs = append(rs, *r)
+			rs = append(rs, r)
 		}
 
 		assert.Equal(t, tst.want, rs, "It %s.", tst.it)

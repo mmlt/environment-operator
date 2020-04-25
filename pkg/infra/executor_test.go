@@ -8,54 +8,20 @@ import (
 )
 
 func TestExecutor_Accept(t *testing.T) {
-	updates := &updaterFake{}
-	infos := &infoerFake{}
 	tf := &terraform.TerraformFake{Log: testr.New(t).WithName("tf")}
 	tf.SetupFakeResults()
-
-	ex := NewExecutor(updates, infos, tf, testr.New(t))
-
-	plan := planWithSteps("init")
-	ok, err := ex.Accept(plan)
+	ex := Executor{
+		UpdateSink: &updaterFake{},
+		EventSink:  &infoerFake{},
+		Terraform:  tf,
+		Log:        testr.New(t),
+	}
+	step := &InitStep{}
+	ok, err := ex.Accept(step)
 	assert.NoError(t, err)
 	assert.Equal(t, true, ok)
 
-	//TODO wait for assert
-}
-
-// PlanWithSteps returns a Plan for testing.
-func planWithSteps(names ...string) Plan {
-	p := Plan{
-		Namespace: "default",
-		Name:      "xyz",
-	}
-
-	for _, n := range names {
-		var st Step
-		switch n {
-		/*		case "source":
-					st = &SourceStep{
-						StepMeta: StepMeta{},
-					}
-				case "init":
-					st = &InitStep{
-						StepMeta: StepMeta{},
-					}
-				case "plan":
-					st = &PlanStep{
-						StepMeta: StepMeta{},
-					}*/
-		case "apply":
-			st = &ApplyStep{
-				StepMeta: StepMeta{},
-			}
-
-		default:
-			panic("unknown step name: " + n)
-		}
-		p.Steps = append(p.Steps, st)
-	}
-	return p
+	//TODO wait for completion
 }
 
 // UpdaterFake records plan changes.

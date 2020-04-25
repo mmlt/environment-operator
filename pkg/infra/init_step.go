@@ -4,17 +4,30 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
+	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/terraform"
+	"github.com/mmlt/environment-operator/pkg/tmplt"
 )
 
 // InitStep performs a terraform init
 type InitStep struct {
 	StepMeta
 
-	// Parameters
+	/* Parameters */
 
+	// Values to use for terraform input variables.
+	Values InfraValues
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
+	// Hash is an opaque value passed to Update.
+	Hash string
+}
+
+// InfraValues hold the Specs that are available during template expansion.
+type InfraValues struct {
+	AAD v1.AADSpec
+	AKS v1.AKSSpec
+	X map[string]string
 }
 
 // Meta returns a reference to the meta data this Step.
@@ -44,6 +57,13 @@ func (st *InitStep) execute(ctx context.Context, isink Infoer, usink Updater, tf
 	// Run.
 	st.State = StepStateRunning
 	usink.Update(st)
+
+	err := tmplt.ExpandAll(st.SourcePath, ".tmplt", st.Values)
+	if err != nil {
+		st.State = StepStateError
+		st.Msg = fmt.Sprintf("expand: %v", err)
+		return false
+	}
 
 	tfr := tf.Init(st.SourcePath)
 

@@ -11,12 +11,14 @@ import (
 type PlanStep struct {
 	StepMeta
 
-	// Parameters
+	/* Parameters */
 
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
+	// Hash is an opaque value passed to Update.
+	Hash string
 
-	// Results
+	/* Results */
 
 	// Added, Changed, Deleted are then number of infrastructure objects affected when applying the plan.
 	Added, Changed, Deleted int
