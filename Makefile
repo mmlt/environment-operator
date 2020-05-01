@@ -79,9 +79,11 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-# Install tools
+# Install developer tools.
 install-tools:
 	grep _ tools.go | cut -d'"' -f2 | xargs go install
 
 gogenerate:
 	go generate
+
+

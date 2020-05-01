@@ -21,7 +21,7 @@ type Step interface {
 	// TODO consider moving this to Plan
 	ord() StepOrd
 	// Execute a step, return true on success.
-	execute(context.Context, Infoer, Updater, terraform.Terraformer, logr.Logger) bool
+	execute(context.Context, Infoer, Updater, terraform.Terraformer, logr.Logger) bool //TODO move terraformer to StepInit,Plan,Apply structs (planner is responsible for setting)
 }
 
 // StepMeta provides the fields common to all step types.

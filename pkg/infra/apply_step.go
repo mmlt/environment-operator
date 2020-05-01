@@ -74,7 +74,10 @@ func (st *ApplyStep) execute(ctx context.Context, isink Infoer, usink Updater, t
 
 	if cmd != nil {
 		// real cmd (fakes are nil).
-		cmd.Wait()
+		err := cmd.Wait()
+		if err != nil {
+			log.Error(err, "wait terraform apply")
+		}
 	}
 
 	// Return results.

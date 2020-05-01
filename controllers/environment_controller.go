@@ -23,9 +23,11 @@ import (
 	"github.com/mmlt/environment-operator/pkg/infra"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sync"
@@ -38,10 +40,13 @@ import (
 type EnvironmentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Recorder record.EventRecorder
 	Log    logr.Logger
 
 	// TODO Selector is a label=value string that selects the CR's that are handled by this instance.
 	Selector string
+
+
 
 	// Sources fetches tf or yaml source code.
 	Sources *source.Sources
@@ -55,6 +60,7 @@ type EnvironmentReconciler struct {
 	updateMutex sync.Mutex
 
 	updateTally int // For debugging
+	x types.UID
 }
 
 // +kubebuilder:rbac:groups=clusterops.mmlt.nl,resources=environments,verbs=get;list;watch;create;update;patch;delete
@@ -77,28 +83,28 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		log.V(1).Info("Unable to get kind Environment", "err", err)
 		return ctrl.Result{}, ignoreNotFound(err)
 	}
-
-	// Flatten and validate Environment.Spec
-	spec, err := processSpec(cr.Spec)
+r.x = cr.ObjectMeta.UID //TODO
+	// Get ClusterSpecs with defaults.
+	cspec, err := flattenedClusterSpec(cr.Spec)
 	if err != nil {
 		// Spec contains error (needs user to fix it first so do noy retry).  TODO warn user via webhook
 		return ctrl.Result{}, fmt.Errorf("Spec: %w", err)
 	}
 
-	if len(spec) == 0 {
-		log.V(1).Info("Nothing to do (no clusters in spec)")
-		return ctrl.Result{}, nil
-	}
-
 	// Register sources.
-	err = r.registerSources(req.NamespacedName, spec)
+	err = r.Sources.Register(req.NamespacedName, source.Ninfra, cr.Spec.Infra.Source)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, fmt.Errorf("register sources: %w", err)
+		return ctrl.Result{Requeue: true}, fmt.Errorf("register infra source: %w", err)
+	}
+	for _, sp := range cspec {
+		err := r.Sources.Register(req.NamespacedName, sp.Name, sp.Addons.Source)
+		if err != nil {
+			return ctrl.Result{Requeue: true}, fmt.Errorf("register cluster source: %w", err)
+		}
 	}
 
 	// Plan next step.
-	step, err := r.Plan.NextStep(req.NamespacedName, r.Sources, spec, cr.Status)
-	//step, err := r.Plan.NextStep(r.Sources, cr)
+	step, err := r.Plan.NextStep(req.NamespacedName, r.Sources, cr.Spec.Infra, cspec, cr.Status)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, fmt.Errorf("plan next step: %w", err)
 	}
@@ -189,13 +195,23 @@ func (r *EnvironmentReconciler) Update(step infra.Step) {
 }
 
 func (r *EnvironmentReconciler) Info(id infra.StepID, msg string) error {
-	r.Log.V(2).Info("Info", "id", id, "msg", msg)
-	//TODO implement EventRecorder Info
+	//r.Log.V(2).Info("Event", "type", "Normal", "id", id, "msg", msg)
+	//TODO use gvk := obj.GetObjectKind().GroupVersionKind() to replace hardcoded values?
+	// With UID the events show with the Object.
+	// Pass UID around? OR pass Object around (instead of nsn)?
+	o := &corev1.ObjectReference{
+		Kind:            "Environment",
+		Namespace:       id.Namespace,
+		Name:            id.Name,
+		//UID:             r.x,
+		APIVersion:      "clusterops.mmlt.nl/v1",
+	}
+	r.Recorder.Event(o, "Normal", id.Type, msg)
 	return nil
 }
 
 func (r *EnvironmentReconciler) Warning(id infra.StepID, msg string) error {
-	r.Log.V(2).Info("Warning", "id", id, "msg", msg)
+	r.Log.V(2).Info("Event", "type", "Warning", "id", id, "msg", msg)
 	//TODO implement EventRecorder Warning
 	return nil
 }
@@ -205,26 +221,6 @@ func (r *EnvironmentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.Environment{}).
 		Complete(r)
-}
-
-// RegisterSources updates to local copies of all sources in spec.
-func (r *EnvironmentReconciler) registerSources(nsn types.NamespacedName, spec []v1.ClusterSpec) error {
-	for i, sp := range spec {
-		if i == 0 {
-			// infra is fetched once as it is common to all clusters.
-			err := r.Sources.Register(nsn, source.Ninfra, sp.Infrastructure.Source)
-			if err != nil {
-				return err
-			}
-		}
-		err := r.Sources.Register(nsn, sp.Name, sp.Addons.Source)
-		if err != nil {
-			return err
-		}
-
-		//TODO r.ource.Register(sp.Test.Sources)
-	}
-	return nil
 }
 
 // IgnoreNotFound makes NotFound errors disappear.
@@ -238,11 +234,10 @@ func ignoreNotFound(err error) error {
 	return err
 }
 
-// ProcessSpec returns Environment.Spec in a flattened and validate form.
-func processSpec(in v1.EnvironmentSpec) ([]v1.ClusterSpec, error) {
+// FlattenedClusterSpec returns []ClusterSpec merged with default values.
+func flattenedClusterSpec(in v1.EnvironmentSpec) ([]v1.ClusterSpec, error) {
 	var r []v1.ClusterSpec
 	for _, c := range in.Clusters {
-		//TODO check for values that should not be set a cluster level (should no override the default value)
 		cs := in.Defaults.DeepCopy()
 		mergo.Merge(cs, c, mergo.WithOverride)
 		//TODO assert that required values are set and valid.

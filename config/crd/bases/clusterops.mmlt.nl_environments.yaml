@@ -23,7 +23,8 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: Environment is the Schema for the environments API
+      description: Environment is an environment at a cloud-provider with one or more
+        Kubernetes clusters, addons, conformance tested.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -41,10 +42,14 @@ spec:
           description: EnvironmentSpec defines the desired state of an Environment.
           properties:
             clusters:
-              description: Clusters are the ClusterSpec's for each cluster instance.
+              description: Clusters defines the values specific for each cluster instance.
               items:
+                description: ClusterSpec defines cluster specific infra, K8s resources
+                  and tests.
                 properties:
                   addons:
+                    description: ClusterAddonSpec defines the Kubernetes resources
+                      to deploy to have a functioning cluster.
                     properties:
                       jobs:
                         description: Jobs is an array of paths to job files in the
@@ -80,86 +85,38 @@ spec:
                               specified the URL is expected to start with 'https://'.
                             type: string
                         type: object
-                      values:
+                      x:
                         additionalProperties:
                           type: string
-                        description: Values are key-value pairs that are passed as
-                          values to the job.
+                        description: X are extension values (when regular values don't
+                          fit the need)
                         type: object
                     type: object
-                  infrastructure:
+                  infra:
+                    description: Infra defines cluster specific infrastructure.
                     properties:
-                      aad:
-                        description: Azure AD.
-                        properties:
-                          clientAppID:
-                            type: string
-                          serverAppID:
-                            type: string
-                          serverAppSecret:
-                            type: string
-                          tenantID:
-                            type: string
+                      pools:
+                        additionalProperties:
+                          description: NodepoolSpec defines a cluster worker node
+                            pool.
+                          properties:
+                            scale:
+                              description: Number of VM's.
+                              type: integer
+                            vmSize:
+                              description: Type of VM's.
+                              type: string
+                          type: object
+                        description: Cluster worker pools. NB. For AKS a pool named
+                          'default' must be defined.
                         type: object
-                      aks:
-                        description: AKS values.
-                        properties:
-                          envDomain:
-                            type: string
-                          pools:
-                            additionalProperties:
-                              properties:
-                                subnetNewbits:
-                                  description: Type of VM.
-                                  type: string
-                              type: object
-                            description: Cluster worker pools. A 'default' pool is
-                              required.
-                            type: object
-                          resourceGroup:
-                            type: string
-                          subnetNewbits:
-                            description: Cluster ordinal number.
-                            type: integer
-                          subscription:
-                            type: string
-                          version:
-                            description: Kubernetes version.
-                            type: string
-                          vnetCIDR:
-                            type: string
-                        type: object
-                      main:
-                        description: Main is the path in the source tree to main.tf.
+                      subnetNum:
+                        description: Cluster ordinal number starting at 1. (max 2^subnetNewbits-1)
+                        minimum: 1
+                        type: integer
+                      version:
+                        description: Kubernetes version.
                         type: string
-                      source:
-                        description: Source is the repository that contains Terraform
-                          infrastructure code.
-                        properties:
-                          ref:
-                            description: Ref is the reference to the content to get.
-                              For type=git it can be 'master', 'refs/heads/my-branch'
-                              etc, see 'git reference' doc.
-                            type: string
-                          token:
-                            description: Token is used to authenticate with the remote
-                              server. For Type=git; - Token or ~/.ssh key should be
-                              specified (azure devops requires the token to be prefixed
-                              with 'x:')
-                            type: string
-                          type:
-                            description: 'Type is the type of repository to use as
-                              a source. Valid values are: - "git" (default): GIT repository.
-                              - "local": local filesystem.'
-                            enum:
-                            - git
-                            - local
-                            type: string
-                          url:
-                            description: URL is the URL of the repo. When Token is
-                              specified the URL is expected to start with 'https://'.
-                            type: string
-                        type: object
                       x:
                         additionalProperties:
                           type: string
@@ -171,13 +128,17 @@ spec:
                     description: Name is the cluster name.
                     type: string
                   test:
+                    description: ClusterAddonSpec defines what conformance test to
+                      run.
                     type: object
                 type: object
               type: array
             defaults:
-              description: Defaults are the ClusterSpec's defaults.
+              description: Defaults defines the values common to all Clusters.
               properties:
                 addons:
+                  description: ClusterAddonSpec defines the Kubernetes resources to
+                    deploy to have a functioning cluster.
                   properties:
                     jobs:
                       description: Jobs is an array of paths to job files in the source
@@ -213,85 +174,37 @@ spec:
                             the URL is expected to start with 'https://'.
                           type: string
                       type: object
-                    values:
+                    x:
                       additionalProperties:
                         type: string
-                      description: Values are key-value pairs that are passed as values
-                        to the job.
+                      description: X are extension values (when regular values don't
+                        fit the need)
                       type: object
                   type: object
-                infrastructure:
+                infra:
+                  description: Infra defines cluster specific infrastructure.
                   properties:
-                    aad:
-                      description: Azure AD.
-                      properties:
-                        clientAppID:
-                          type: string
-                        serverAppID:
-                          type: string
-                        serverAppSecret:
-                          type: string
-                        tenantID:
-                          type: string
+                    pools:
+                      additionalProperties:
+                        description: NodepoolSpec defines a cluster worker node pool.
+                        properties:
+                          scale:
+                            description: Number of VM's.
+                            type: integer
+                          vmSize:
+                            description: Type of VM's.
+                            type: string
+                        type: object
+                      description: Cluster worker pools. NB. For AKS a pool named
+                        'default' must be defined.
                       type: object
-                    aks:
-                      description: AKS values.
-                      properties:
-                        envDomain:
-                          type: string
-                        pools:
-                          additionalProperties:
-                            properties:
-                              subnetNewbits:
-                                description: Type of VM.
-                                type: string
-                            type: object
-                          description: Cluster worker pools. A 'default' pool is required.
-                          type: object
-                        resourceGroup:
-                          type: string
-                        subnetNewbits:
-                          description: Cluster ordinal number.
-                          type: integer
-                        subscription:
-                          type: string
-                        version:
-                          description: Kubernetes version.
-                          type: string
-                        vnetCIDR:
-                          type: string
-                      type: object
-                    main:
-                      description: Main is the path in the source tree to main.tf.
+                    subnetNum:
+                      description: Cluster ordinal number starting at 1. (max 2^subnetNewbits-1)
+                      minimum: 1
+                      type: integer
+                    version:
+                      description: Kubernetes version.
                       type: string
-                    source:
-                      description: Source is the repository that contains Terraform
-                        infrastructure code.
-                      properties:
-                        ref:
-                          description: Ref is the reference to the content to get.
-                            For type=git it can be 'master', 'refs/heads/my-branch'
-                            etc, see 'git reference' doc.
-                          type: string
-                        token:
-                          description: Token is used to authenticate with the remote
-                            server. For Type=git; - Token or ~/.ssh key should be
-                            specified (azure devops requires the token to be prefixed
-                            with 'x:')
-                          type: string
-                        type:
-                          description: 'Type is the type of repository to use as a
-                            source. Valid values are: - "git" (default): GIT repository.
-                            - "local": local filesystem.'
-                          enum:
-                          - git
-                          - local
-                          type: string
-                        url:
-                          description: URL is the URL of the repo. When Token is specified
-                            the URL is expected to start with 'https://'.
-                          type: string
-                      type: object
                     x:
                       additionalProperties:
                         type: string
@@ -303,6 +216,89 @@ spec:
                   description: Name is the cluster name.
                   type: string
                 test:
+                  description: ClusterAddonSpec defines what conformance test to run.
+                  type: object
+              type: object
+            infra:
+              description: Infra defines infrastructure that much exist before clusters
+                can be created.
+              properties:
+                aad:
+                  description: AAD is the Azure Active Directory that is queried when
+                    a k8s user authorization is checked.
+                  properties:
+                    clientAppID:
+                      type: string
+                    serverAppID:
+                      type: string
+                    serverAppSecret:
+                      type: string
+                    tenantID:
+                      type: string
+                  type: object
+                az:
+                  description: AZ values.
+                  properties:
+                    resourceGroup:
+                      description: ResourceGroup
+                      type: string
+                    subnetNewbits:
+                      description: Subnet newbits is the number of bits to add to
+                        the VNet address mask to produce the subnet mask. IOW 2^subnetNewbits-1
+                        is the max number of clusters in the VNet. For example given
+                        a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
+                      type: integer
+                    subscription:
+                      description: Subscription
+                      type: string
+                    vnetCIDR:
+                      description: The VNet CIDR that connects one or more clusters.
+                      type: string
+                    x:
+                      additionalProperties:
+                        type: string
+                      description: X are extension values (when regular values don't
+                        fit the need)
+                      type: object
+                  type: object
+                envDomain:
+                  description: EnvDomain is the most significant part of the domain
+                    name for this environment. For example; example.com
+                  type: string
+                envName:
+                  description: EnvName is the name of this environment. Typically
+                    a concatenation of region, cloud provider and environment type
+                    (test, production).
+                  type: string
+                main:
+                  description: Main is the path in the source tree to main.tf.
+                  type: string
+                source:
+                  description: Source is the repository that contains Terraform infrastructure
+                    code.
+                  properties:
+                    ref:
+                      description: Ref is the reference to the content to get. For
+                        type=git it can be 'master', 'refs/heads/my-branch' etc, see
+                        'git reference' doc.
+                      type: string
+                    token:
+                      description: Token is used to authenticate with the remote server.
+                        For Type=git; - Token or ~/.ssh key should be specified (azure
+                        devops requires the token to be prefixed with 'x:')
+                      type: string
+                    type:
+                      description: 'Type is the type of repository to use as a source.
+                        Valid values are: - "git" (default): GIT repository. - "local":
+                        local filesystem.'
+                      enum:
+                      - git
+                      - local
+                      type: string
+                    url:
+                      description: URL is the URL of the repo. When Token is specified
+                        the URL is expected to start with 'https://'.
+                      type: string
                   type: object
               type: object
             policy:
@@ -392,11 +388,6 @@ spec:
               description: 'Infra contains the deployment state of the infra and optional
                 result values. Note: cluster specific result values are in Clusters.'
               properties:
-                Hash:
-                  description: Hash is an unique value for the (terraform) source
-                    and parameters being deployed. (controller internal state, do
-                    not use)
-                  type: string
                 added:
                   description: Added is the number of infrastructure objects added
                     on last apply.
@@ -409,6 +400,11 @@ spec:
                   description: Added is the number of infrastructure objects deleted
                     on last apply.
                   type: integer
+                hash:
+                  description: Hash is an unique value for the (terraform) source
+                    and parameters being deployed. (controller internal state, do
+                    not use)
+                  type: string
                 pAdded:
                   description: PAdded is the number of infrastructure objects planned
                     to being added on apply.

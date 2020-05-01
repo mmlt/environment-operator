@@ -17,9 +17,14 @@ package main
 
 import (
 	"flag"
+	"github.com/mmlt/environment-operator/pkg/infra"
+	"github.com/mmlt/environment-operator/pkg/plan"
+	"github.com/mmlt/environment-operator/pkg/source"
+	"github.com/mmlt/environment-operator/pkg/terraform"
 	"k8s.io/klog"
 	"k8s.io/klog/klogr"
 	"os"
+	"path/filepath"
 
 	clusteropsv1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/controllers"
@@ -63,6 +68,8 @@ func main() {
 	//	o.Development = true
 	//}))
 
+	// Setup manager.
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: *metricsAddr,
@@ -75,12 +82,31 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create environment reconciler and all it's dependencies.
 	r := &controllers.EnvironmentReconciler{
 		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("Environment"),
 		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("envctrl"),
+		Log:      ctrl.Log.WithName("envctrl"),
 		Selector: *selector,
 	}
+	r.Sources = &source.Sources{
+		BasePath: filepath.Join(os.TempDir(), "envrecon"),
+		Log:      r.Log.WithName("source"),
+	}
+	r.Plan = &plan.Plan{
+		Log: r.Log.WithName("plan"),
+	}
+	tf := &terraform.Terraform{
+		Log: r.Log.WithName("tf"),
+	}
+	r.Executor = &infra.Executor{
+		UpdateSink: r,
+		EventSink:  r,
+		Terraform:  tf,
+		Log:        r.Log.WithName("executor"),
+	}
+
 	err = r.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Environment")

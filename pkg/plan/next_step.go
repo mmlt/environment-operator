@@ -12,8 +12,8 @@ import (
 
 // NextStep takes kind Environment as an input and decides what Step should be executed next.
 // Current state is stored as hashes of source code and parameters in the Environment kind.
-func (p *Plan) NextStep(nsn types.NamespacedName, src source.Getter, spec []v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
-	st, err := p.nextStep(nsn, src, spec, status)
+func (p *Plan) NextStep(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
+	st, err := p.nextStep(nsn, src, ispec, cspec, status)
 
 	if st != nil {
 		// set the fields common to all steps.
@@ -27,14 +27,14 @@ func (p *Plan) NextStep(nsn types.NamespacedName, src source.Getter, spec []v1.C
 }
 
 // See NextStep
-func (p *Plan) nextStep(nsn types.NamespacedName, src source.Getter, spec []v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
+func (p *Plan) nextStep(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
 	h, err := src.Hash(nsn, source.Ninfra)
 	if err != nil {
 		return nil, err
 	}
 
 	if hashAsString(h) != status.Infra.Hash {
-		return p.nsInfraChanged(nsn, src, spec, status)
+		return p.nsInfraChanged(nsn, src, ispec, cspec, status)
 	}
 
 	// no changes
@@ -44,7 +44,7 @@ func (p *Plan) nextStep(nsn types.NamespacedName, src source.Getter, spec []v1.C
 // InfraChanged predicate.
 // Return steps to provisions infra structure.
 // - hash is the desired state hash.
-func (p *Plan) nsInfraChanged(nsn types.NamespacedName, src source.Getter, spec []v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
+func (p *Plan) nsInfraChanged(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
 	// wrap status.Conditions for read only access.
 	cond := &conditions{inner: status.Conditions}
 
@@ -68,14 +68,14 @@ func (p *Plan) nsInfraChanged(nsn types.NamespacedName, src source.Getter, spec 
 	// InitStep
 	if cond.unknown("Infra") {
 		// day1
-		return infraInitStep(path, hash, spec), nil
+		return infraInitStep(path, hash, ispec, cspec), nil
 	}
 	if t, tsr := cond.matches("Infra", metav1.ConditionFalse, v1.ReasonReady); t == tsr &&
 		t >= 3 &&
 		cond.after("InfraApply", "InfraPlan", "InfraInit") {
 		// All 3 Infra steps have ConditionFalse/ReasonReady and
 		// ApplyStep is newer than PlanStep, PlanStep is newer then InitStep.
-		return infraInitStep(path, hash, spec), nil
+		return infraInitStep(path, hash, ispec, cspec), nil
 	}
 
 	// PlanStep
@@ -102,30 +102,14 @@ func (p *Plan) nsInfraChanged(nsn types.NamespacedName, src source.Getter, spec 
 	return nil, nil
 }
 
-/*// InfraUnchanged predicate.
-// Check if Addons have changed.
-// Return steps to deploy cluster addons and test the cluster.
-func (p *Plan) nsInfraUnchanged(source source.Getter, spec []v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
-
-	//TODO implement
-
-	return nil, nil
-}*/
-
-//
-func infraInitStep(path string, hash hash.Hash, spec []v1.ClusterSpec) infra.Step {
-	if len(spec) == 0 {
-		// TODO feedback to user that at least one cluster needs to be defined before the operator starts doing things.
-		return nil
-	}
-
+// InfraInitStep returns a new infra InitStep
+func infraInitStep(path string, hash hash.Hash, ispec v1.InfraSpec, cspec []v1.ClusterSpec,) infra.Step {
 	//TODO calc hash over parameters
 
 	return &infra.InitStep{
 		Values: infra.InfraValues{
-			AAD: spec[0].Infrastructure.AAD,
-			AKS: spec[0].Infrastructure.AKS,
-			X: spec[0].Infrastructure.X,
+			Infra: ispec,
+			Clusters: cspec,
 		},
 		SourcePath: path,
 		Hash: hashAsString(hash),

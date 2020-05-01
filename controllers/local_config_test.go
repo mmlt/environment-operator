@@ -12,12 +12,7 @@ import (
 	"time"
 )
 
-var _ = ginkgo.Describe("Infrastructure dry-run", func() {
-	testTimeout := 30 * time.Second
-	if debugging {
-		testTimeout = time.Hour
-	}
-
+var _ = ginkgo.Describe("Happy path tests", func() {
 	// namespace/name of the resource used for testing.
 	nsn := types.NamespacedName{
 		Name:      "env314",
@@ -41,9 +36,9 @@ var _ = ginkgo.Describe("Infrastructure dry-run", func() {
 	// Avoid adding tests for vanilla CRUD operations because they would
 	// test Kubernetes API server, which isn't the goal here.
 
-	ginkgo.Context("Happy path", func() {
-		ginkgo.It("Should ...", func() {
-			toCreate := testEnvironmentCR(nsn, testSpec1())
+	//ginkgo.Context("Happy path", func() {
+		ginkgo.It("Should provision infra", func() {
+			toCreate := testEnvironmentCR(nsn, testSpecPlayground())
 
 			ginkgo.By("Creating kind Environment and waiting for reconcile completion")
 			Expect(k8sClient.Create(context.Background(), toCreate)).Should(Succeed())
@@ -53,7 +48,7 @@ var _ = ginkgo.Describe("Infrastructure dry-run", func() {
 				k8sClient.Get(context.Background(), nsn, fetched)
 				//TODO return fetched.Status.Synced != v1.SyncedUnknown
 				return fetched.Status.Synced == v1.SyncedReady && len(fetched.Status.Conditions) >= 3
-			}, testTimeout, time.Second).Should(BeTrue())
+			}, testTimeoutSec, time.Second).Should(BeTrue())
 
 			ginkgo.By("Check hat the reconcile doesn't continue (no more steps are started)")
 			c := testutil.ToFloat64(infra.MetricSteps)
@@ -72,5 +67,5 @@ var _ = ginkgo.Describe("Infrastructure dry-run", func() {
 			Expect(fetched.Status.Conditions[2].Reason).To(Equal(v1.ReasonReady))
 			Expect(fetched.Status.Conditions[2].Message).To(Equal("terraform apply errors=0 added=1 changed=2 deleted=1"))
 		})
-	})
+	//})
 })

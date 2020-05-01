@@ -23,11 +23,10 @@ type InitStep struct {
 	Hash string
 }
 
-// InfraValues hold the Specs that are available during template expansion.
+// InfraValues hold the Specs that are needed during template expansion.
 type InfraValues struct {
-	AAD v1.AADSpec
-	AKS v1.AKSSpec
-	X map[string]string
+	Infra v1.InfraSpec
+	Clusters []v1.ClusterSpec
 }
 
 // Meta returns a reference to the meta data this Step.
@@ -61,7 +60,8 @@ func (st *InitStep) execute(ctx context.Context, isink Infoer, usink Updater, tf
 	err := tmplt.ExpandAll(st.SourcePath, ".tmplt", st.Values)
 	if err != nil {
 		st.State = StepStateError
-		st.Msg = fmt.Sprintf("expand: %v", err)
+		st.Msg = err.Error()
+		usink.Update(st)
 		return false
 	}
 

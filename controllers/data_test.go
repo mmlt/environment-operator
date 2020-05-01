@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// This file contains test data.
+// This file contains data used by multiple tests.
 
 func testEnvironmentCR(nn types.NamespacedName, spec *v1.EnvironmentSpec) *v1.Environment {
 	return &v1.Environment{
@@ -18,15 +18,18 @@ func testEnvironmentCR(nn types.NamespacedName, spec *v1.EnvironmentSpec) *v1.En
 	}
 }
 
+// TestSpec1 for testing value overrides.
 func testSpec1() *v1.EnvironmentSpec {
 	return &v1.EnvironmentSpec{
+		Infra: v1.InfraSpec{
+			Source: v1.SourceSpec{
+				Type: "local",
+				URL:  "../config/samples/terraform", // relative to dir containing this _test.go file.
+			},
+			Main: "main.tf",
+		},
 		Defaults: v1.ClusterSpec{
-			Infrastructure: v1.InfrastructureSpec{
-				Source: v1.SourceSpec{
-					Type: "local",
-					URL:  "../config/samples/terraform", // relative to dir containing this _test.go file.
-				},
-				Main: "main.tf.tmplt",
+			Infra: v1.ClusterInfraSpec{
 				X: map[string]string{
 					"overridden":    "default",
 					"notOverridden": "default",
@@ -36,14 +39,14 @@ func testSpec1() *v1.EnvironmentSpec {
 		Clusters: []v1.ClusterSpec{
 			{
 				Name: "cpe",
-				Infrastructure: v1.InfrastructureSpec{
+				Infra: v1.ClusterInfraSpec{
 					X: map[string]string{
 						"overridden": "cpe-cluster",
 					},
 				},
 			}, {
 				Name: "second",
-				Infrastructure: v1.InfrastructureSpec{
+				Infra: v1.ClusterInfraSpec{
 					X: map[string]string{
 						"overridden": "second-cluster",
 					},

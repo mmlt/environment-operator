@@ -18,8 +18,8 @@ type TerraformFake struct {
 	// Result that is played back by the fake implementation of StartApply.
 	ApplyResult []TFApplyResult
 
-	// OutputResult is the parse JSON output of terraform output.
-	OutputResult interface{}
+	// OutputResult is the parsed JSON output of terraform output.
+	OutputResult map[string]interface{}
 
 	// Log
 	Log logr.Logger
@@ -58,16 +58,19 @@ func NewFake(log logr.Logger) *TerraformFake {
 	}
 }
 
+// Init implements Terraformer.
 func (t *TerraformFake) Init(dir string) *TFResult {
 	t.InitTally++
 	return &t.InitResult
 }
 
+// Plan implements Terraformer.
 func (t *TerraformFake) Plan(dir string) *TFResult {
 	t.PlanTally++
 	return &t.PlanResult
 }
 
+// StartApply implements Terraformer.
 func (t *TerraformFake) StartApply(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error) {
 	t.ApplyTally++
 
@@ -89,7 +92,8 @@ func (t *TerraformFake) StartApply(ctx context.Context, dir string) (*exec.Cmd, 
 	return nil, out, nil
 }
 
-func (t *TerraformFake) Output(dir string) (interface{}, error) {
+// Output implements Terraformer.
+func (t *TerraformFake) Output(dir string) (map[string]interface{}, error) {
 	t.OutputTally++
 	return t.OutputResult, nil
 }
@@ -129,4 +133,19 @@ func (t *TerraformFake) SetupFakeResults() {
 		{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creating", Elapsed: "[30s"},
 		{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creation", Elapsed: "6m22s"},
 		{Creating: 1, Modifying: 2, Destroying: 1, TotalAdded: 1, TotalChanged: 2, TotalDestroyed: 1, Object: "", Action: "", Elapsed: ""}}
+
+	t.OutputResult = map[string]interface{}{
+		"clusters": map[string]interface{}{
+			"value": map[string]interface{}{
+				"clustername": map[string]interface{}{
+						"client_certificate": "LS0tLS1Cclientcert",
+						"client_key": "LS0tLS1CRclientkey",
+						"cluster_ca_certificate": "LS0tLS1CRcacert",
+						"host": "https://xy-clustername-123a.hcp.westeurope.azmk8s.io:443",
+						"password": "4ee5bb2",
+						"username": "clusterAdmin_aaa-rg_xy-clustername",
+					},
+				},
+			},
+	}
 }

@@ -205,7 +205,7 @@ Terraform will perform the following actions:
       + homepage                   = (known after apply)
       + id                         = (known after apply)
       + identifier_uris            = (known after apply)
-      + name                       = "eu41tp-vnet-sp"
+      + name                       = "yyy-vnet-sp"
       + reply_urls                 = (known after apply)
     }
 
@@ -284,53 +284,6 @@ To perform exactly these actions, run the following command to apply:
 	}
 }
 
-/*TODO remove
-func TestParseApplyResponse(t *testing.T) {
-	tsts := []struct {
-		it    string
-		in    string
-		inErr error
-		want  TFResult
-	}{
-		{
-			it: "must error when not authorized",
-			in: `
-azuread_application.vnet-sp: Creating...
-azuread_application.vnet-sp: Creation complete after 0s [id=23...]
-azurerm_route_table.env: Creating...
-azurerm_virtual_network.env: Creating...
-
-Error: Error Creating/Updating Route Table "routetable" (Resource Group "test-rg"): network.RouteTablesClient#CreateOrUpdate: Failure sending request: StatusCode=403 -- Original Error: Code="AuthorizationFailed" Message="The client 'xyz@example.com' with object id '79..' does not have authorization to perform action 'Microsoft.Network/routeTables/write' over scope '/subscriptions/ea../resourceGroups/test-rg/providers/Microsoft.Network/routeTables/test-routetable' or the scope is invalid. If access was recently granted, please refresh your credentials."
-
-  on main.tf line 20, in resource "azurerm_route_table" "env":
-  20: resource "azurerm_route_table" "env" {
-
-`,
-			inErr: newExitError(1),
-			want: TFResult{
-				Info: 1,
-			},
-		}, {
-			it:    "it must error when terraform apply exits with non-zero code",
-			in:    ``,
-			inErr: newExitError(1),
-			want: TFResult{
-				Errors: 1,
-			},
-		}, {
-			it:    "must handle empty input",
-			in:    ``,
-			inErr: nil,
-			want:  TFResult{},
-		},
-	}
-
-	for _, tst := range tsts {
-		got := parseApplyResponse(tst.in, tst.inErr)
-		assert.Equal(t, tst.want, *got, "It %s.", tst.it)
-	}
-}*/
-
 func TestParseAsyncApplyResponse(t *testing.T) {
 	tsts := []struct {
 		it   string
@@ -359,28 +312,45 @@ func TestParseAsyncApplyResponse(t *testing.T) {
 				},
 			},
 		}, {
+			it: "must error on Error: msg input",
+			in: []string{
+				"module.aks1.azurerm_kubernetes_cluster.this: Creating...\n",
+				"\n",
+				"Error: A resource with the ID \"/subscriptions/ea365/resourcegroups/xxx-rg/providers/Microsoft.ContainerService/managedClusters/yyy-cpe\" already exists - to be managed via Terraform this resource needs to be imported into the State. Please see the resource documentation for \"azurerm_kubernetes_cluster\" for more information.\n",
+				"\n",
+				"  on modules/aks/main.tf line 16, in resource \"azurerm_kubernetes_cluster\" \"this\":\n",
+				"  16: resource \"azurerm_kubernetes_cluster\" \"this\" {\n",
+				"\n",
+			},
+			want: []TFApplyResult{
+				{Creating: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creating"},
+				{Creating: 1,
+					Errors: []string{"A resource with the ID \"/subscriptions/ea365/resourcegroups/xxx-rg/providers/Microsoft.ContainerService/managedClusters/yyy-cpe\" already exists - to be managed via Terraform this resource needs to be imported into the State. Please see the resource documentation for \"azurerm_kubernetes_cluster\" for more information."},
+				},
+			},
+		},	{
 			it: "must parse a succesful apply",
 			in: []string{
-				"azurerm_route_table.env: Modifying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-5ecf451ae495/resourceGroups/srgr001cpe-playground-rg/providers/Microsoft.Network/routeTables/eu41tp-routetable]\n",
-				"module.aks1.azurerm_kubernetes_cluster.this: Destroying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-5ecf451ae495/resourcegroups/srgr001cpe-playground-rg/providers/Microsoft.ContainerService/managedClusters/eu41tp-cpe]\n",
-				"azurerm_route_table.env: Modifications complete after 1s [id=/subscriptions/ea363b8e-ceb3-40ab-9662-5ecf451ae495/resourceGroups/srgr001cpe-playground-rg/providers/Microsoft.Network/routeTables/eu41tp-routetable]\n",
-				"module.aks1.azurerm_subnet.this: Modifying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-5ecf451ae495/resourceGroups/srgr001cpe-playground-rg/providers/Microsoft.Network/virtualNetworks/eu41tp-vnet/subnets/cpe]\n",
-				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...inerService/managedClusters/eu41tp-cpe, 10s elapsed]\n",
-				"module.aks1.azurerm_subnet.this: Still modifying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...irtualNetworks/eu41tp-vnet/subnets/cpe, 10s elapsed]\n",
-				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...inerService/managedClusters/eu41tp-cpe, 20s elapsed]\n",
-				"module.aks1.azurerm_subnet.this: Still modifying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...irtualNetworks/eu41tp-vnet/subnets/cpe, 20s elapsed]\n",
-				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...inerService/managedClusters/eu41tp-cpe, 30s elapsed]\n",
-				"module.aks1.azurerm_subnet.this: Still modifying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...irtualNetworks/eu41tp-vnet/subnets/cpe, 30s elapsed]\n",
-				"module.aks1.azurerm_subnet.this: Modifications complete after 32s [id=/subscriptions/ea363b8e-ceb3-40ab-9662-5ecf451ae495/resourceGroups/srgr001cpe-playground-rg/providers/Microsoft.Network/virtualNetworks/eu41tp-vnet/subnets/cpe]\n",
-				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...inerService/managedClusters/eu41tp-cpe, 40s elapsed]\n",
-				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...inerService/managedClusters/eu41tp-cpe, 50s elapsed]\n",
-				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...inerService/managedClusters/eu41tp-cpe, 1m0s elapsed]\n",
+				"azurerm_route_table.env: Modifying... [id=/subscriptions/ea363b8e/resourceGroups/xxx-rg/providers/Microsoft.Network/routeTables/yyy-routetable]\n",
+				"module.aks1.azurerm_kubernetes_cluster.this: Destroying... [id=/subscriptions/ea363b8e/resourcegroups/xxx-rg/providers/Microsoft.ContainerService/managedClusters/yyy-cpe]\n",
+				"azurerm_route_table.env: Modifications complete after 1s [id=/subscriptions/ea363b8e/resourceGroups/xxx-rg/providers/Microsoft.Network/routeTables/yyy-routetable]\n",
+				"module.aks1.azurerm_subnet.this: Modifying... [id=/subscriptions/ea363b8e/resourceGroups/xxx-rg/providers/Microsoft.Network/virtualNetworks/yyy-vnet/subnets/cpe]\n",
+				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-...inerService/managedClusters/yyy-cpe, 10s elapsed]\n",
+				"module.aks1.azurerm_subnet.this: Still modifying... [id=/subscriptions/ea363b8e-ceb3-40ab-9662-...irtualNetworks/yyy-vnet/subnets/cpe, 10s elapsed]\n",
+				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-...inerService/managedClusters/yyy-cpe, 20s elapsed]\n",
+				"module.aks1.azurerm_subnet.this: Still modifying... [id=/subscriptions/ea363b8e-...irtualNetworks/yyy-vnet/subnets/cpe, 20s elapsed]\n",
+				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-...inerService/managedClusters/yyy-cpe, 30s elapsed]\n",
+				"module.aks1.azurerm_subnet.this: Still modifying... [id=/subscriptions/ea363b8e-...irtualNetworks/yyy-vnet/subnets/cpe, 30s elapsed]\n",
+				"module.aks1.azurerm_subnet.this: Modifications complete after 32s [id=/subscriptions/ea363b8e/resourceGroups/xxx-rg/providers/Microsoft.Network/virtualNetworks/yyy-vnet/subnets/cpe]\n",
+				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-...inerService/managedClusters/yyy-cpe, 40s elapsed]\n",
+				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-...inerService/managedClusters/yyy-cpe, 50s elapsed]\n",
+				"module.aks1.azurerm_kubernetes_cluster.this: Still destroying... [id=/subscriptions/ea363b8e-...inerService/managedClusters/yyy-cpe, 1m0s elapsed]\n",
 				"module.aks1.azurerm_kubernetes_cluster.this: Destruction complete after 1m8s\n",
 				"module.aks1.azurerm_kubernetes_cluster.this: Creating...\n",
 				"module.aks1.azurerm_kubernetes_cluster.this: Still creating... [10s elapsed]\n",
 				"module.aks1.azurerm_kubernetes_cluster.this: Still creating... [20s elapsed]\n",
 				"module.aks1.azurerm_kubernetes_cluster.this: Still creating... [30s elapsed]\n",
-				"module.aks1.azurerm_kubernetes_cluster.this: Creation complete after 6m22s [id=/subscriptions/ea363b8e-ceb3-40ab-9662-5ecf451ae495/resourcegroups/srgr001cpe-playground-rg/providers/Microsoft.ContainerService/managedClusters/eu41tp-cpe]\n",
+				"module.aks1.azurerm_kubernetes_cluster.this: Creation complete after 6m22s [id=/subscriptions/ea363b8e/resourcegroups/xxx-rg/providers/Microsoft.ContainerService/managedClusters/yyy-cpe]\n",
 				"\nApply complete! Resources: 1 added, 2 changed, 1 destroyed.\n",
 				"The state of your infrastructure has been saved to the path\nbelow. This state is required to modify and destroy your\ninfrastructure, so keep it safe. To inspect the complete state\nuse the `terraform show` command.\n				\n",
 				"State path: terraform.tfstate\n"},

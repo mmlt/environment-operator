@@ -29,13 +29,16 @@ type EnvironmentSpec struct {
 	// +optional
 	Policy EnvironmentPolicy `json:"policy,omitempty"`
 
-	// Defaults are the ClusterSpec's defaults.
+	// Infra defines infrastructure that much exist before clusters can be created.
+	Infra  InfraSpec `json:"infra,omitempty"`
+
+	// Defaults defines the values common to all Clusters.
 	Defaults ClusterSpec `json:"defaults,omitempty"`
 
-	// Clusters are the ClusterSpec's for each cluster instance.
+	// Clusters defines the values specific for each cluster instance.
 	Clusters []ClusterSpec `json:"clusters,omitempty"`
 
-	//TODO implement Test
+	//TODO implement Tests
 }
 
 // EnvironmentPolicy describes how the environment will be updated or deleted.
@@ -55,35 +58,46 @@ const (
 	DenyUpdate EnvironmentPolicy = "DenyUpdate"
 )
 
-type ClusterSpec struct {
-	// Name is the cluster name.
-	Name           string             `json:"name,omitempty"`
-	Infrastructure InfrastructureSpec `json:"infrastructure,omitempty"`
-	Addons         AddonSpec          `json:"addons,omitempty"`
-	Test           TestSpec           `json:"test,omitempty"`
-}
-
-type InfrastructureSpec struct {
+// InfraSpec defines the infrastructure that the clusters depend on.
+type InfraSpec struct {
 	// Source is the repository that contains Terraform infrastructure code.
 	Source SourceSpec `json:"source,omitempty"`
 
 	// Main is the path in the source tree to main.tf.
 	Main string `json:"main,omitempty"`
 
-	// Azure AD.
+	// EnvDomain is the most significant part of the domain name for this environment.
+	// For example; example.com
+	EnvDomain     string `json:"envDomain,omitempty"`
+
+	// EnvName is the name of this environment.
+	// Typically a concatenation of region, cloud provider and environment type (test, production).
+	EnvName string `json:"envName,omitempty"`
+
+	// AAD is the Azure Active Directory that is queried when a k8s user authorization is checked.
 	AAD AADSpec `json:"aad,omitempty"`
 
-	// AKS values.
+	// AZ values.
 	// +optional
-	AKS AKSSpec `json:"aks,omitempty"`
-
-	// X are extension values (when regular values don't fit the need)
-	// +optional
-	X map[string]string `json:"x,omitempty"`
-	//TODO alternative is to use json.RawMessage see https://github.com/kubernetes-sigs/controller-tools/issues/294
+	AZ AZSpec `json:"az,omitempty"`
 }
 
-// SourceSpec contains the data to fetch content from a remote source.
+// ClusterSpec defines cluster specific infra, K8s resources and tests.
+type ClusterSpec struct {
+	// Name is the cluster name.
+	Name   string           `json:"name,omitempty"`
+
+	// Infra defines cluster specific infrastructure.
+	Infra  ClusterInfraSpec `json:"infra,omitempty"`
+
+	// ClusterAddonSpec defines the Kubernetes resources to deploy to have a functioning cluster.
+	Addons ClusterAddonSpec `json:"addons,omitempty"`
+
+	// ClusterAddonSpec defines what conformance test to run.
+	Test ClusterTestSpec  `json:"test,omitempty"`
+}
+
+// SourceSpec defines the location to fetch content like configuration scripts and tests from.
 type SourceSpec struct {
 	// Name is used to refer to this target when providing feedback to the user.
 	//TODO not needed Name string `json:"name,omitempty"`
@@ -134,47 +148,70 @@ type AADSpec struct {
 	ClientAppID     string `json:"clientAppID,omitempty"`
 }
 
-type AKSSpec struct {
-	/* Azure common values */
-
+// AZSpec defines Azure specific infra structure settings.
+type AZSpec struct {
+	// Subscription
 	Subscription  string `json:"subscription,omitempty"`
+
+	// ResourceGroup
 	ResourceGroup string `json:"resourceGroup,omitempty"`
-	EnvDomain     string `json:"envDomain,omitempty"`
+
+	// The VNet CIDR that connects one or more clusters.
 	VNetCIDR      string `json:"vnetCIDR,omitempty"`
+
+	// Subnet newbits is the number of bits to add to the VNet address mask to produce the subnet mask.
+	// IOW 2^subnetNewbits-1 is the max number of clusters in the VNet.
+	// For example given a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
 	SubnetNewbits int    `json:"subnetNewbits,omitempty"`
 
-	/* AKS Cluster values */
+	// X are extension values (when regular values don't fit the need)
+	// +optional
+	X map[string]string `json:"x,omitempty"`
+}
 
-	// Cluster ordinal number.
-	SubnetNum int `json:"subnetNewbits,omitempty"`
+// ClusterInfraSpec defines cluster specific infrastructure.
+type ClusterInfraSpec struct {
+	// Cluster ordinal number starting at 1.
+	// (max 2^subnetNewbits-1)
+	// +kubebuilder:validation:Minimum=1
+	SubnetNum int `json:"subnetNum,omitempty"`
+
 	// Kubernetes version.
 	Version string `json:"version,omitempty"`
+
 	// Cluster worker pools.
-	// A 'default' pool is required.
-	Pools map[string]AKSNodepoolSpec `json:"pools,omitempty"`
+	// NB. For AKS a pool named 'default' must be defined.
+	Pools map[string]NodepoolSpec `json:"pools,omitempty"`
+
+	// X are extension values (when regular values don't fit the need)
+	// +optional
+	X map[string]string `json:"x,omitempty"`
 }
 
-type AKSNodepoolSpec struct {
+// NodepoolSpec defines a cluster worker node pool.
+type NodepoolSpec struct {
 	// Number of VM's.
-	Scale int `json:"subnetNewbits,omitempty"`
-	// Type of VM.
-	VMSize string `json:"subnetNewbits,omitempty"`
+	Scale int `json:"scale,omitempty"`
+
+	// Type of VM's.
+	VMSize string `json:"vmSize,omitempty"`
 }
 
-type AddonSpec struct {
+// ClusterAddonSpec defines what K8s resources needs to be deployed in a cluster after creation.
+type ClusterAddonSpec struct {
 	// Source is the repository that contains the k8s addons resources.
 	Source SourceSpec `json:"source,omitempty"`
 
 	// Jobs is an array of paths to job files in the source tree.
 	Jobs []string `json:"jobs,omitempty"`
 
-	// Values are key-value pairs that are passed as values to the job.
+	// X are extension values (when regular values don't fit the need)
 	// +optional
-	Values map[string]string `json:"values,omitempty"`
+	X map[string]string `json:"x,omitempty"`
 }
 
-type TestSpec struct {
-	//TODO implement TestSpec
+type ClusterTestSpec struct {
+	//TODO implement ClusterTestSpec
 }
 
 // EnvironmentStatus defines the observed state of an Environment.
@@ -241,7 +278,7 @@ type InfraStatus struct {
 	// Hash is an unique value for the (terraform) source and parameters being deployed.
 	// (controller internal state, do not use)
 	// +optional
-	Hash string `json:"Hash,omitempty"`
+	Hash string `json:"hash,omitempty"`
 
 	// TFState is the Terraform state.
 	// (controller internal state, do not use)
@@ -270,39 +307,6 @@ type UserCredentials struct {
 	Username          string `json:"username,omitempty"`
 	//TODO needed? AOSHA             string `json:"aoSHA,omitempty"`
 }
-
-/*TODO remove
-// EnvironmentCondition
-type EnvironmentCondition struct {
-	// Type is the name of the condition.
-	Type EnvironmentConditionType `json:"type,omitempty"`
-
-	// Status of the condition, one of True, False, Unknown.
-	Status metav1.ConditionStatus `json:"status,omitempty"`
-
-	// Last time the condition status has changed.
-	// +optional
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-
-	// Reason for last transition in a single word.
-	// +optional
-	Reason string `json:"reason,omitempty"`
-
-	// Human readable message indicating details about last transition.
-	// Mandatory when Status goes False.
-	// +optional
-	Message string `json:"message,omitempty"`
-}
-
-type EnvironmentConditionType string
-const (
-	EnvironmentIniting EnvironmentConditionType = "initing"
-	EnvironmentInited EnvironmentConditionType = "inited"
-	EnvironmentPlanning EnvironmentConditionType = "planning"
-	EnvironmentPlanned EnvironmentConditionType = "planned"
-	EnvironmentApplying EnvironmentConditionType = "applying"
-	EnvironmentApplied EnvironmentConditionType = "applied"
-)*/
 
 // EnvironmentCondition shows what the operator is doing or has done.
 // Infra condition types: InfraTmplt, InfraInit, InfraPlan, InfraApply
@@ -340,7 +344,7 @@ const (
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.synced`
 // +kubebuilder:subresource:status
 
-// Environment is the Schema for the environments API
+// Environment is an environment at a cloud-provider with one or more Kubernetes clusters, addons, conformance tested.
 type Environment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -351,7 +355,7 @@ type Environment struct {
 
 // +kubebuilder:object:root=true
 
-// EnvironmentList contains a list of Environment
+// EnvironmentList contains a list of Environments.
 type EnvironmentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

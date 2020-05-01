@@ -41,15 +41,17 @@ import (
 
 // Debugging is a switch to increase time-outs and always show log output.
 const debugging = true
+const testTimeoutSec = 600
 
 // Vars accessible from test cases.
+var (
+	cfg *rest.Config
+	k8sClient client.Client
+	testEnv *envtest.Environment
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
-
-// TestReconciler is the reconciler under test.
-var testReconciler *EnvironmentReconciler
+	// TestReconciler is the reconciler under test.
+	testReconciler *EnvironmentReconciler
+)
 
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -78,6 +80,10 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
 
+	if debugging {
+		ctrl.Log.Info("API Server", "host", cfg.Host)
+	}
+
 	err = clusteropsv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -87,18 +93,19 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
-	// Setup controller (similar to main.go)
+	// Setup manager (similar to main.go)
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	// Create reconciler and all it's dependencies.
+	// Create environment reconciler and all it's dependencies.
 	testReconciler = &EnvironmentReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("EnvironmentReconciler"),
 		Scheme: mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("envctrl"),
+		Log:    ctrl.Log.WithName("EnvironmentReconciler"),
 		//TODO Selector: *selector,
 	}
 	testReconciler.Sources = &source.Sources{
@@ -130,7 +137,7 @@ var _ = BeforeSuite(func(done Done) {
 	}()
 
 	close(done)
-}, 600) //TODO back to low value after debugging
+}, testTimeoutSec)
 
 var _ = AfterSuite(func() {
 	By("tearing down testenv")

@@ -29,7 +29,8 @@ func TestNextStep_InfraChanged(t *testing.T) {
 	tests := []struct {
 		it     string
 		src    fakeSource
-		spec   []v1.ClusterSpec
+		ispec v1.InfraSpec
+		cspec  []v1.ClusterSpec
 		status v1.EnvironmentStatus
 		want   infra.Step
 	}{
@@ -71,16 +72,16 @@ func TestNextStep_InfraChanged(t *testing.T) {
 
 		// It should return a next step.
 		{
-			it:  "should_return_an_InitStep_on_day1",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
-			spec: []v1.ClusterSpec{{}},  // at least one cluster because it contains infra values.
+			it:    "should_return_an_InitStep_on_day1",
+			src:   fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			//TODO cspec: []v1.ClusterSpec{{}}, // at least one cluster because it contains infra values.
 			want: &infra.InitStep{
 				SourcePath: "path/to/infra/src", Hash: toHashString(12),
 			},
 		}, {
-			it:  "should_return_a_InitStep_on_day2",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
-			spec: []v1.ClusterSpec{{}},
+			it:    "should_return_a_InitStep_on_day2",
+			src:   fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			//TODO cspec: []v1.ClusterSpec{{}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
 					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(100)},
@@ -150,7 +151,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 
 	for _, tst := range tests {
 		t.Run(tst.it, func(t *testing.T) {
-			got, err := plan.nextStep(nsn, tst.src, tst.spec, tst.status)
+			got, err := plan.nextStep(nsn, tst.src, tst.ispec, tst.cspec, tst.status)
 			assert.NoError(t, err)
 			assert.Equal(t, tst.want, got)
 		})

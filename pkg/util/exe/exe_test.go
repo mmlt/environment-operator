@@ -7,7 +7,8 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	var tests = map[string]struct {
+	var tests = []struct {
+		it string
 		options    *Opt
 		cmd        string
 		args       []string
@@ -16,30 +17,32 @@ func TestRun(t *testing.T) {
 		wantStdout string
 		wantStderr string
 	}{
-		"simple_args": {
+		{
+			it: "should_echo_on_stdout",
 			cmd:        "echo",
 			args:       []string{"-n", "hello world"},
 			wantStdout: "hello world",
-		},
-		"want_an_error": {
+		}, 	{
+			it: "should_error",
 			cmd:     "ls",
 			args:    []string{"nonexisting"},
 			wantErr: "ls [nonexisting]: exit status 2 - ls: cannot access 'nonexisting': No such file or directory\n",
-		},
-		"use_stdin": {
+			wantStderr: "ls: cannot access 'nonexisting': No such file or directory\n",
+		}, {
+			it: "should_read_stdin_and_write_stdout",
 			cmd:        "base64",
 			args:       []string{"-d"},
 			in:         "aGVsbG8gd29ybGQ=",
 			wantStdout: "hello world",
-		},
-		"environment": {
+		}, {
+			it: "should_use_the_specified_environment",
 			options: &Opt{
 				Env: []string{"SONG=HappyHappyJoyJoy"},
 			},
 			cmd:        "env",
 			wantStdout: "SONG=HappyHappyJoyJoy\n",
-		},
-		"pwd": {
+		}, {
+			it: "should_execute_in_the_specified_dir",
 			options: &Opt{
 				Dir: "/tmp",
 			},
@@ -50,8 +53,8 @@ func TestRun(t *testing.T) {
 
 	log := stdr.New(nil)
 
-	for name, tst := range tests {
-		t.Run(name, func(t *testing.T) {
+	for _, tst := range tests {
+		t.Run(tst.it, func(t *testing.T) {
 			stdout, stderr, err := Run(log, tst.options, tst.in, tst.cmd, tst.args...)
 			if tst.wantErr != "" {
 				assert.EqualError(t, err, tst.wantErr)

@@ -1,7 +1,6 @@
 package tmplt
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -39,18 +38,13 @@ func ExpandFile(path, suffix string, values interface{}) error {
 	}
 	defer out.Close()
 
-	err = Expand(string(in), out, values)
-	if err != nil {
-		return fmt.Errorf("%s: %w", in, err)
-	}
-
-	return nil
+	return Expand(path, string(in), out, values)
 }
 
 // Expand takes an in string with https://golang.org/pkg/text/template/ directives and values
 // and writes the result to out.
-func Expand(in string, out io.Writer, values interface{}) error {
-	t, err := template.New("tmplt").Parse(in)
+func Expand(name, in string, out io.Writer, values interface{}) error {
+	t, err := template.New(name).Parse(in)
 	if err != nil {
 		return err
 	}

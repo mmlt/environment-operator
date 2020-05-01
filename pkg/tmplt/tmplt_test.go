@@ -62,7 +62,7 @@ func TestExpand(t *testing.T) {
 	for _, tst := range tests {
 		t.Run(tst.it, func(t *testing.T) {
 			out := &bytes.Buffer{}
-			err := Expand(tst.inText, out, tst.inValues)
+			err := Expand("testing", tst.inText, out, tst.inValues)
 			assert.NoError(t, err)
 			got := out.String()
 			assert.Equal(t, tst.want, got)
