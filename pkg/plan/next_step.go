@@ -3,11 +3,14 @@ package plan
 import (
 	"encoding/base64"
 	v1 "github.com/mmlt/environment-operator/api/v1"
+	"github.com/mmlt/environment-operator/pkg/addon"
 	"github.com/mmlt/environment-operator/pkg/infra"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"hash"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"path/filepath"
+	"time"
 )
 
 // NextStep takes kind Environment as an input and decides what Step should be executed next.
@@ -28,13 +31,25 @@ func (p *Plan) NextStep(nsn types.NamespacedName, src source.Getter, ispec v1.In
 
 // See NextStep
 func (p *Plan) nextStep(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
+	// infra changes?
 	h, err := src.Hash(nsn, source.Ninfra)
 	if err != nil {
 		return nil, err
 	}
-
 	if hashAsString(h) != status.Infra.Hash {
 		return p.nsInfraChanged(nsn, src, ispec, cspec, status)
+	}
+
+	// cluster changes?
+	for _, c := range cspec {
+		h, err := src.Hash(nsn, c.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		if hashAsString(h) != status.Clusters[c.Name].Hash {
+			return p.nsClusterChanged(nsn, c.Name, src, c, status)
+		}
 	}
 
 	// no changes
@@ -56,7 +71,7 @@ func (p *Plan) nsInfraChanged(nsn types.NamespacedName, src source.Getter, ispec
 	}
 
 	if cond.any("Infra", metav1.ConditionTrue, v1.ReasonRunning) {
-		// A step is running.
+		// An infra step is running.
 		return nil, nil
 	}
 
@@ -102,20 +117,100 @@ func (p *Plan) nsInfraChanged(nsn types.NamespacedName, src source.Getter, ispec
 	return nil, nil
 }
 
+// ClusterChanged predicate.
+func (p *Plan) nsClusterChanged(nsn types.NamespacedName, clusterName string, src source.Getter, cspec v1.ClusterSpec, status v1.EnvironmentStatus) (infra.Step, error) {
+	// wrap status.Conditions for read only access.
+	cond := &conditions{inner: status.Conditions}
+
+	if cs := cond.collect("Test", metav1.ConditionTrue, v1.ReasonRunning); len(cs) > 0 {
+		// One or more test steps are running.
+		// Request to cancel them so infra deployment can start earlier.
+		// TODO return multiple steps to cancel them all together?
+		return nil, nil
+	}
+
+	if cond.any("Cluster", metav1.ConditionTrue, v1.ReasonRunning) {
+		// An Cluster step is running.
+		return nil, nil
+	}
+
+	path, hash, err := src.Get(nsn, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	//TODO move to clusterKubeconfigStep() ?
+	tfPath, _, err := src.Get(nsn, source.Ninfra)
+	if err != nil {
+		return nil, err
+	}
+
+	cond2 := conditions2(status.Conditions)
+
+	kcPath := filepath.Join(path, "kubeconfig")
+
+	if cond2.typePrefix("ClusterKubeconfig").recent(15*time.Minute).count() == 0 {
+		// No recently generated kube config
+		return clusterKubeconfigStep(tfPath, clusterName, kcPath), nil
+	}
+
+	// AddonStep
+	if cond.unknown("ClusterAddon") {
+		// day1
+		return clusterAddonStep(path, kcPath, hash, cspec, p.Addon), nil
+	}
+	/*	if t, tsr := cond.matches("Infra", metav1.ConditionFalse, v1.ReasonReady); t == tsr &&
+			t >= 3 &&
+			cond.after("InfraApply", "InfraPlan", "InfraInit") {
+			// All 3 Infra steps have ConditionFalse/ReasonReady and
+			// ApplyStep is newer than PlanStep, PlanStep is newer then InitStep.
+			return infraInitStep(path, hash, ispec, cspec), nil
+		}
+
+		}*/
+
+	// Nothing to do under the current conditions.
+	return nil, nil
+}
+
 // InfraInitStep returns a new infra InitStep
-func infraInitStep(path string, hash hash.Hash, ispec v1.InfraSpec, cspec []v1.ClusterSpec,) infra.Step {
+func infraInitStep(path string, hash hash.Hash, ispec v1.InfraSpec, cspec []v1.ClusterSpec) infra.Step {
 	//TODO calc hash over parameters
 
 	return &infra.InitStep{
 		Values: infra.InfraValues{
-			Infra: ispec,
+			Infra:    ispec,
 			Clusters: cspec,
 		},
 		SourcePath: path,
-		Hash: hashAsString(hash),
+		Hash:       hashAsString(hash),
 	}
 }
 
+//
+func clusterKubeconfigStep(tfPath, clusterName, kcPath string) infra.Step {
+	//TODO calc hash over parameters
+
+	return &infra.KubeconfigStep{
+		TFPath:      tfPath,
+		ClusterName: clusterName,
+		KCPath:      kcPath,
+	}
+}
+
+// ClusterAddonStep returns a new cluster AddonStep
+func clusterAddonStep(path, kcPath string, hash hash.Hash, cspec v1.ClusterSpec, addon addon.Addonr) infra.Step {
+	//TODO calc hash over parameters
+
+	return &infra.AddonStep{
+		SourcePath: path,
+		KCPath:     kcPath,
+		JobPaths:   cspec.Addons.Jobs,
+		Values:     cspec.Addons.X,
+		Hash:       hashAsString(hash),
+		Addon:      addon,
+	}
+}
 
 // HashAsString returns the base64 representation of h.
 func hashAsString(h hash.Hash) string {

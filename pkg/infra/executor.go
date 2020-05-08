@@ -103,7 +103,7 @@ func (ex *Executor) Accept(step Step) (bool, error) {
 	ex.Lock()
 	defer ex.Unlock()
 
-	if _, ok := ex.running[step.id()]; ok {
+	if _, ok := ex.running[step.Meta().ID]; ok {
 		// step already running
 		return true, nil
 	}
@@ -123,7 +123,7 @@ func (ex *Executor) Accept(step Step) (bool, error) {
 		stopCh: make(chan<- interface{}),
 		step:   step,
 	}
-	ex.running[step.id()] = r
+	ex.running[step.Meta().ID] = r
 	MetricSteps.Inc()
 	go func() {
 		//TODO behavior is Step dependent, receiver contains the work to do, parameters carry plumbing
@@ -134,7 +134,7 @@ func (ex *Executor) Accept(step Step) (bool, error) {
 		}
 
 		ex.Lock()
-		delete(ex.running, step.id())
+		delete(ex.running, step.Meta().ID)
 		ex.Unlock()
 
 		close(r.stopCh)

@@ -3,6 +3,7 @@ module github.com/mmlt/environment-operator
 go 1.14
 
 require (
+	github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680
 	github.com/go-logr/logr v0.1.0
 	github.com/go-logr/stdr v0.0.0-20190808155957-db4f46c40425
 	github.com/hashicorp/hcl v1.0.0
@@ -16,9 +17,11 @@ require (
 	github.com/stretchr/testify v1.5.1
 	golang.org/x/mod v0.2.0
 	golang.org/x/tools v0.0.0-20191119224855-298f0cb1881e
+	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190918155943-95b840bb6a1f
 	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
 	k8s.io/client-go v0.0.0-20190918160344-1fbdaa4c8d90
 	k8s.io/klog v1.0.0
 	sigs.k8s.io/controller-runtime v0.4.0
+	sigs.k8s.io/yaml v1.1.0
 )

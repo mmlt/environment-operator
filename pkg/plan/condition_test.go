@@ -9,9 +9,9 @@ import (
 func TestConditions_After(t *testing.T) {
 	data := &conditions{
 		inner: []v1.EnvironmentCondition{
-			{Type: "new", LastTransitionTime: toTime(3)},
-			{Type: "older", LastTransitionTime: toTime(2)},
-			{Type: "oldest", LastTransitionTime: toTime(1)},
+			{Type: "new", LastTransitionTime: testToTime(3)},
+			{Type: "older", LastTransitionTime: testToTime(2)},
+			{Type: "oldest", LastTransitionTime: testToTime(1)},
 		},
 	}
 

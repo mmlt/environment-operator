@@ -35,10 +35,10 @@ func (st *ApplyStep) Type() string {
 	return "InfraApply"
 }
 
-// ID returns a unique identification of this step.
+/*// ID returns a unique identification of this step.
 func (st *ApplyStep) id() StepID {
 	return st.ID
-}
+}*/
 
 // Ord returns the execution order of this step.
 func (st *ApplyStep) ord() StepOrd {

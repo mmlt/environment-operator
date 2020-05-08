@@ -29,7 +29,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 	tests := []struct {
 		it     string
 		src    fakeSource
-		ispec v1.InfraSpec
+		ispec  v1.InfraSpec
 		cspec  []v1.ClusterSpec
 		status v1.EnvironmentStatus
 		want   infra.Step
@@ -37,34 +37,34 @@ func TestNextStep_InfraChanged(t *testing.T) {
 		// It should return no step when any step is running.
 		{
 			it:  "should_return_no_step_when_an_InitStep_is_running",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
-					{Type: "InfraInit", Status: metav1.ConditionTrue, Reason: v1.ReasonRunning, LastTransitionTime: toTime(100)},
-					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(101)},
-					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(102)},
+					{Type: "InfraInit", Status: metav1.ConditionTrue, Reason: v1.ReasonRunning, LastTransitionTime: testToTime(100)},
+					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(101)},
+					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(102)},
 				},
 			},
 			want: nil,
 		}, {
 			it:  "should_return_no_step_when_a_PlanStep_is_running",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
-					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(100)},
-					{Type: "InfraPlan", Status: metav1.ConditionTrue, Reason: v1.ReasonRunning, LastTransitionTime: toTime(101)},
-					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(102)},
+					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(100)},
+					{Type: "InfraPlan", Status: metav1.ConditionTrue, Reason: v1.ReasonRunning, LastTransitionTime: testToTime(101)},
+					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(102)},
 				},
 			},
 			want: nil,
 		}, {
 			it:  "should_return_no_step_when_an_ApplyStep_is_running",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
-					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(100)},
-					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(101)},
-					{Type: "InfraApply", Status: metav1.ConditionTrue, Reason: v1.ReasonRunning, LastTransitionTime: toTime(102)},
+					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(100)},
+					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(101)},
+					{Type: "InfraApply", Status: metav1.ConditionTrue, Reason: v1.ReasonRunning, LastTransitionTime: testToTime(102)},
 				},
 			},
 			want: nil,
@@ -72,32 +72,32 @@ func TestNextStep_InfraChanged(t *testing.T) {
 
 		// It should return a next step.
 		{
-			it:    "should_return_an_InitStep_on_day1",
-			src:   fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			it:  "should_return_an_InitStep_on_day1",
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			//TODO cspec: []v1.ClusterSpec{{}}, // at least one cluster because it contains infra values.
 			want: &infra.InitStep{
-				SourcePath: "path/to/infra/src", Hash: toHashString(12),
+				SourcePath: "path/to/infra/src", Hash: testToHashString(12),
 			},
 		}, {
-			it:    "should_return_a_InitStep_on_day2",
-			src:   fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			it:  "should_return_a_InitStep_on_day2",
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			//TODO cspec: []v1.ClusterSpec{{}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
-					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(100)},
-					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(101)},
-					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(102)},
+					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(100)},
+					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(101)},
+					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(102)},
 				},
 			},
 			want: &infra.InitStep{
-				SourcePath: "path/to/infra/src", Hash: toHashString(12),
+				SourcePath: "path/to/infra/src", Hash: testToHashString(12),
 			},
 		}, {
 			it:  "should_return_a_PlanStep_when_an_InitStep_completed_successfully_(day1)",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
-					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(100)},
+					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(100)},
 				},
 			},
 			want: &infra.PlanStep{
@@ -105,12 +105,12 @@ func TestNextStep_InfraChanged(t *testing.T) {
 			},
 		}, {
 			it:  "should_return_a_PlanStep_when_an_InitStep_completed_successfully_(day2)",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
-					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(200)},
-					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(101)},
-					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(102)},
+					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(200)},
+					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(101)},
+					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(102)},
 				},
 			},
 			want: &infra.PlanStep{
@@ -118,28 +118,28 @@ func TestNextStep_InfraChanged(t *testing.T) {
 			},
 		}, {
 			it:  "should_return_an_ApplyStep_when_a_PlanStep_completed_successfully_(day1)",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
-					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(200)},
-					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(201)},
-					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(102)},
+					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(200)},
+					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(201)},
+					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(102)},
 				},
 			},
 			want: &infra.ApplyStep{
-				SourcePath: "path/to/infra/src", Hash: toHashString(12), Added: 0, Changed: 0, Deleted: 0,
+				SourcePath: "path/to/infra/src", Hash: testToHashString(12), Added: 0, Changed: 0, Deleted: 0,
 			},
 		}, {
 			it:  "should_return_an_ApplyStep_when_a_PlanStep_completed_successfully_(day2)",
-			src: fakeSource{source.Ninfra: {"path/to/infra/src", toHash(12)}},
+			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			status: v1.EnvironmentStatus{
 				Conditions: []v1.EnvironmentCondition{
-					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(100)},
-					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: toTime(101)},
+					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(100)},
+					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(101)},
 				},
 			},
 			want: &infra.ApplyStep{
-				SourcePath: "path/to/infra/src", Hash: toHashString(12), Added: 0, Changed: 0, Deleted: 0,
+				SourcePath: "path/to/infra/src", Hash: testToHashString(12), Added: 0, Changed: 0, Deleted: 0,
 			},
 		},
 	}
@@ -162,6 +162,7 @@ type fakeSource map[string]struct {
 	dir  string
 	hash hash.Hash
 }
+
 // FakeSource implements source.Getter
 var _ source.Getter = fakeSource{}
 
@@ -182,20 +183,20 @@ func (fs fakeSource) Get(nsn types.NamespacedName, name string) (string, hash.Ha
 }
 
 // ToHash returns a hash for testing.
-func toHash(b byte) hash.Hash {
+func testToHash(b byte) hash.Hash {
 	h := fnv.New64()
 	h.Write([]byte{b})
 	return h
 }
 
 // ToHashString is toHash with string output.
-func toHashString(b byte) string {
-	h := toHash(b)
+func testToHashString(b byte) string {
+	h := testToHash(b)
 	return hashAsString(h)
 }
 
 // ToTime returns a time for testing.
-func toTime(n int) metav1.Time {
+func testToTime(n int) metav1.Time {
 	t := time.Date(n, 1, 1, 0, 0, 0, 0, time.UTC)
 	return metav1.Time{Time: t}
 }

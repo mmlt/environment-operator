@@ -34,10 +34,10 @@ func (st *PlanStep) Type() string {
 	return "InfraPlan"
 }
 
-// ID returns a unique identification of this step.
+/*// ID returns a unique identification of this step.
 func (st *PlanStep) id() StepID {
 	return st.ID
-}
+}*/
 
 // Ord returns the execution order of this step.
 func (st *PlanStep) ord() StepOrd {

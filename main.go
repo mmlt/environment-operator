@@ -17,6 +17,7 @@ package main
 
 import (
 	"flag"
+	"github.com/mmlt/environment-operator/pkg/addon"
 	"github.com/mmlt/environment-operator/pkg/infra"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
@@ -91,11 +92,16 @@ func main() {
 		Selector: *selector,
 	}
 	r.Sources = &source.Sources{
-		BasePath: filepath.Join(os.TempDir(), "envrecon"),
+		RootPath: filepath.Join(os.TempDir(), "envrecon"),
 		Log:      r.Log.WithName("source"),
 	}
+	ao := &addon.Addon{
+		Log: r.Log.WithName("addon"),
+	}
 	r.Plan = &plan.Plan{
-		Log: r.Log.WithName("plan"),
+		Log:   r.Log.WithName("plan"),
+		Addon: ao,
+		//Terraform:  tf,
 	}
 	tf := &terraform.Terraform{
 		Log: r.Log.WithName("tf"),

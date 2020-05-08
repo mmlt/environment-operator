@@ -67,6 +67,10 @@ func (p *Plan) UpdateStatusValues(status *v1.EnvironmentStatus, step infra.Step)
 			// update hash meaning we've successfully applied the desired config and parameters.
 			status.Infra.Hash = x.Hash
 		}
+	case *infra.KubeconfigStep:
+
+	case *infra.AddonStep:
+
 	default:
 		return fmt.Errorf("(fatal) unexpected step type: %T", step)
 	}

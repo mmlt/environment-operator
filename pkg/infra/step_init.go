@@ -25,7 +25,7 @@ type InitStep struct {
 
 // InfraValues hold the Specs that are needed during template expansion.
 type InfraValues struct {
-	Infra v1.InfraSpec
+	Infra    v1.InfraSpec
 	Clusters []v1.ClusterSpec
 }
 
@@ -39,10 +39,10 @@ func (st *InitStep) Type() string {
 	return "InfraInit"
 }
 
-// ID returns a unique identification of this step.
+/*// ID returns a unique identification of this step.
 func (st *InitStep) id() StepID {
 	return st.ID
-}
+}*/
 
 // Ord returns the execution order of this step.
 func (st *InitStep) ord() StepOrd {

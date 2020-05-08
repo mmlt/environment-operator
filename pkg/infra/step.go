@@ -15,12 +15,12 @@ type Step interface {
 	Type() string
 	// ID returns a unique identification of a Step.
 	// TODO consider removing this method (use Meta() instead)
-	id() StepID
+	//id() StepID
 	// Ord returns the execution order of a Step type.
 	// (this method is a reminder to keep StepOrd const in sync with implementations)
 	// TODO consider moving this to Plan
-	ord() StepOrd
-	// Execute a step, return true on success.
+	//ord() StepOrd
+	//// Execute a step, return true on success.
 	execute(context.Context, Infoer, Updater, terraform.Terraformer, logr.Logger) bool //TODO move terraformer to StepInit,Plan,Apply structs (planner is responsible for setting)
 }
 

@@ -45,9 +45,9 @@ const testTimeoutSec = 600
 
 // Vars accessible from test cases.
 var (
-	cfg *rest.Config
+	cfg       *rest.Config
 	k8sClient client.Client
-	testEnv *envtest.Environment
+	testEnv   *envtest.Environment
 
 	// TestReconciler is the reconciler under test.
 	testReconciler *EnvironmentReconciler
@@ -70,15 +70,15 @@ var _ = BeforeSuite(func(done Done) {
 		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 	}
 
-	By("starting testenv")
+	By("setting up the test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
 	}
 
 	var err error
 	cfg, err = testEnv.Start()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(cfg).ToNot(BeNil())
+	Expect(err).NotTo(HaveOccurred())
+	Expect(cfg).NotTo(BeNil())
 
 	if debugging {
 		ctrl.Log.Info("API Server", "host", cfg.Host)
@@ -90,26 +90,26 @@ var _ = BeforeSuite(func(done Done) {
 	// +kubebuilder:scaffold:scheme
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(k8sClient).ToNot(BeNil())
+	Expect(err).NotTo(HaveOccurred())
+	Expect(k8sClient).NotTo(BeNil())
 
 	// Setup manager (similar to main.go)
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	// Create environment reconciler and all it's dependencies.
 	testReconciler = &EnvironmentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("envctrl"),
-		Log:    ctrl.Log.WithName("EnvironmentReconciler"),
+		Log:      ctrl.Log.WithName("EnvironmentReconciler"),
 		//TODO Selector: *selector,
 	}
 	testReconciler.Sources = &source.Sources{
-		BasePath: filepath.Join(os.TempDir(), "envrecon"),
+		RootPath: filepath.Join(os.TempDir(), "envrecon"),
 		Log:      testReconciler.Log.WithName("source"),
 	}
 	testReconciler.Plan = &plan.Plan{
@@ -128,19 +128,19 @@ var _ = BeforeSuite(func(done Done) {
 
 	// Add reconciler to manager.
 	err = testReconciler.SetupWithManager(mgr)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	// Start manager.
 	go func() {
 		err = mgr.Start(ctrl.SetupSignalHandler())
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 	}()
 
 	close(done)
 }, testTimeoutSec)
 
 var _ = AfterSuite(func() {
-	By("tearing down testenv")
+	By("tearing down the test environment")
 	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 })

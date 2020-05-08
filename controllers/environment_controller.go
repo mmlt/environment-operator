@@ -39,14 +39,12 @@ import (
 // EnvironmentReconciler reconciles a Environment object.
 type EnvironmentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
-	Log    logr.Logger
+	Log      logr.Logger
 
 	// TODO Selector is a label=value string that selects the CR's that are handled by this instance.
 	Selector string
-
-
 
 	// Sources fetches tf or yaml source code.
 	Sources *source.Sources
@@ -60,7 +58,6 @@ type EnvironmentReconciler struct {
 	updateMutex sync.Mutex
 
 	updateTally int // For debugging
-	x types.UID
 }
 
 // +kubebuilder:rbac:groups=clusterops.mmlt.nl,resources=environments,verbs=get;list;watch;create;update;patch;delete
@@ -83,7 +80,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		log.V(1).Info("Unable to get kind Environment", "err", err)
 		return ctrl.Result{}, ignoreNotFound(err)
 	}
-r.x = cr.ObjectMeta.UID //TODO
+
 	// Get ClusterSpecs with defaults.
 	cspec, err := flattenedClusterSpec(cr.Spec)
 	if err != nil {
@@ -200,11 +197,11 @@ func (r *EnvironmentReconciler) Info(id infra.StepID, msg string) error {
 	// With UID the events show with the Object.
 	// Pass UID around? OR pass Object around (instead of nsn)?
 	o := &corev1.ObjectReference{
-		Kind:            "Environment",
-		Namespace:       id.Namespace,
-		Name:            id.Name,
+		Kind:      "Environment",
+		Namespace: id.Namespace,
+		Name:      id.Name,
 		//UID:             r.x,
-		APIVersion:      "clusterops.mmlt.nl/v1",
+		APIVersion: "clusterops.mmlt.nl/v1",
 	}
 	r.Recorder.Event(o, "Normal", id.Type, msg)
 	return nil

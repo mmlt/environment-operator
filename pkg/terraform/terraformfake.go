@@ -137,15 +137,17 @@ func (t *TerraformFake) SetupFakeResults() {
 	t.OutputResult = map[string]interface{}{
 		"clusters": map[string]interface{}{
 			"value": map[string]interface{}{
-				"clustername": map[string]interface{}{
-						"client_certificate": "LS0tLS1Cclientcert",
-						"client_key": "LS0tLS1CRclientkey",
+				"mycluster": map[string]interface{}{
+					"kube_admin_config": map[string]interface{}{
+						"client_certificate":     "LS0tLS1Cclientcert",
+						"client_key":             "LS0tLS1CRclientkey",
 						"cluster_ca_certificate": "LS0tLS1CRcacert",
-						"host": "https://xy-clustername-123a.hcp.westeurope.azmk8s.io:443",
-						"password": "4ee5bb2",
-						"username": "clusterAdmin_aaa-rg_xy-clustername",
+						"host":                   "https://xy-clustername-123a.hcp.westeurope.azmk8s.io:443",
+						"password":               "4ee5bb2",
+						"username":               "clusterAdmin_aaa-rg_xy-clustername",
 					},
 				},
 			},
+		},
 	}
 }

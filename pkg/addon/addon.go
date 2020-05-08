@@ -9,6 +9,7 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"text/scanner"
 )
 
 // Addonr is able to provision Kubernetes resources.
@@ -30,8 +31,10 @@ type KTResult struct {
 	// Errors is a list of error messages.
 	Errors []string
 
-	// Most recently logged terraform object name.
+	// Most recently logged kubernetes resource name.
 	Object string
+	// The sequence number of the object.
+	ObjectID string
 	// Most recently logged action being performed; creating (creation), modifying (modification), destroying (destruction).
 	// *ing means in-progress, *tion means completed. TODO consider normalizing *tion to *ed
 	Action string
@@ -45,10 +48,10 @@ type Addon struct {
 // Start implements Addonr.
 func (a *Addon) Start(ctx context.Context, dir, jobPath, valuesPath, kubeconfigPath string) (*exec.Cmd, chan KTResult, error) {
 	cmd := exe.RunAsync(ctx, a.Log, &exe.Opt{Dir: dir}, "", "kubectl-tmplt",
-	"-m", "apply",
-	"--job-file", jobPath,
-	"--set-file", valuesPath,
-	"--kubeconfig", kubeconfigPath)
+		"-m", "apply",
+		"--job-file", jobPath,
+		"--set-file", valuesPath,
+		"--kubeconfig", kubeconfigPath)
 
 	o, err := cmd.StdoutPipe()
 	if err != nil {
@@ -95,24 +98,46 @@ func (a *Addon) parseAsyncAddonResponse(in io.ReadCloser) chan KTResult {
 	return out
 }
 
-
 // ParseAddonResponseLine parses a line.
 // If content can be extracted from line it returns an updated shallow copy of in, otherwise it returns nil.
 // It increments in running counters.
 func parseAddonResponseLine(in *KTResult, line string) *KTResult {
-	ss := strings.Split(line, " ")
-	if len(ss) < 2 {
+	if len(line) < 3 {
 		// not interesting.
 		return nil
 	}
 
 	r := *in
 
-	//TODO implement parsing
-	if ss[0] == "Error:" {
-		r.Errors = append(r.Errors, line[len("Error: "):])
+	if line[0] == 'E' {
+		r.Errors = append(r.Errors, line[2:])
 		return &r
 	}
 
-	return nil
+	if line[0] != 'I' {
+		return nil
+	}
+
+	var last3 []string
+	var sc scanner.Scanner
+	sc.Init(strings.NewReader(line))
+	for tok := sc.Scan(); tok != scanner.EOF; tok = sc.Scan() {
+		last3 = append(last3, strings.Trim(sc.TokenText(), "\""))
+		if len(last3) > 3 {
+			last3 = last3[1:]
+		}
+		if len(last3) == 3 && last3[1] == "=" {
+			switch last3[0] {
+			case "msg":
+				r.Object = last3[2]
+			case "op":
+				r.Action = last3[2]
+			case "id":
+				r.ObjectID = last3[2]
+				// not used: "tpl" "level"
+			}
+		}
+	}
+
+	return &r
 }
