@@ -16,9 +16,9 @@ func Test_parseAddonResponseLine(t *testing.T) {
 		{
 			it: "must handle happy input",
 			in: []string{
-				"I 18:24:53  \"level\"=0 \"msg\"=\"namespace/kube-system unchanged\" \"op\"=\"InstrApply\" \"id\"=1  \"tpl\"=\"namespace.yaml\"\n",
-				"I 18:24:54  \"level\"=0 \"msg\"=\"namespace/xyz-system created\" \"op\"=\"InstrApply\"  \"id\"=2 \"tpl\"=\"namespace.yaml\"\n",
-				"I 18:24:55  \"level\"=0 \"msg\"=\"pod/opa-5cd59b58bc-rrrxf condition met\" \"op\"=\"InstrWait\"  \"id\"=3  \"tpl\"=\"\"\n",
+				"I 18:24:53  \"level\"=0 \"txt\"=\"namespace/kube-system unchanged\" \"msg\"=\"InstrApply\" \"id\"=1  \"tpl\"=\"namespace.yaml\"\n",
+				"I 18:24:54  \"level\"=0 \"txt\"=\"namespace/xyz-system created\" \"msg\"=\"InstrApply\"  \"id\"=2 \"tpl\"=\"namespace.yaml\"\n",
+				"I 18:24:55  \"level\"=0 \"txt\"=\"pod/opa-5cd59b58bc-rrrxf condition met\" \"msg\"=\"InstrWait\"  \"id\"=3  \"tpl\"=\"\"\n",
 			},
 			want: []KTResult{
 				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "1", Action: "InstrApply"},
@@ -29,11 +29,11 @@ func Test_parseAddonResponseLine(t *testing.T) {
 		{
 			it: "must handle template errors",
 			in: []string{
-				"I 18:24:54  \"level\"=0 \"msg\"=\"InstrApply\"  \"id\"=1 \"msg\"=\"namespace/kube-system unchanged\" \"tpl\"=\"namespace.yaml\"\n",
+				"I 18:24:54  \"level\"=0 \"msg\"=\"InstrApply\"  \"id\"=1 \"txt\"=\"namespace/kube-system unchanged\" \"tpl\"=\"namespace.yaml\"\n",
 				"E expand ../../../tpl/cert-manager/cert-manager.yaml: execute: template: input:5944:7: executing \"input\" at <eq .Values.k8sProvider \"minikube\">: error calling eq: incompatible types for comparison\n",
 			},
 			want: []KTResult{
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "1", Action: ""},
+				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "1", Action: "InstrApply"},
 				{Added: 0, Changed: 0, Deleted: 0, Errors: []string{"expand ../../../tpl/cert-manager/cert-manager.yaml: execute: template: input:5944:7: executing \"input\" at <eq .Values.k8sProvider \"minikube\">: error calling eq: incompatible types for comparison"}, Object: "", ObjectID: "", Action: ""},
 			},
 		},
@@ -58,25 +58,27 @@ func Test_parseAddonResponseLine(t *testing.T) {
 	}
 
 	for _, tst := range tsts {
-		rd, wr := io.Pipe()
+		t.Run(tst.it, func(t *testing.T) {
+			rd, wr := io.Pipe()
 
-		// start parser
-		ch := ao.parseAsyncAddonResponse(rd)
+			// start parser
+			ch := ao.parseAsyncAddonResponse(rd)
 
-		// send input
-		go func() {
-			for _, s := range tst.in {
-				wr.Write([]byte(s))
+			// send input
+			go func() {
+				for _, s := range tst.in {
+					wr.Write([]byte(s))
+				}
+				wr.Close()
+			}()
+
+			// read output
+			rs := []KTResult{}
+			for r := range ch {
+				rs = append(rs, r)
 			}
-			wr.Close()
-		}()
 
-		// read output
-		rs := []KTResult{}
-		for r := range ch {
-			rs = append(rs, r)
-		}
-
-		assert.Equal(t, tst.want, rs, "It %s.", tst.it)
+			assert.Equal(t, tst.want, rs, "It %s.", tst.it)
+		})
 	}
 }

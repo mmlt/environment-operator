@@ -128,9 +128,9 @@ func parseAddonResponseLine(in *KTResult, line string) *KTResult {
 		}
 		if len(last3) == 3 && last3[1] == "=" {
 			switch last3[0] {
-			case "msg":
+			case "txt":
 				r.Object = last3[2]
-			case "op":
+			case "msg":
 				r.Action = last3[2]
 			case "id":
 				r.ObjectID = last3[2]
