@@ -30,7 +30,7 @@ type EnvironmentSpec struct {
 	Policy EnvironmentPolicy `json:"policy,omitempty"`
 
 	// Infra defines infrastructure that much exist before clusters can be created.
-	Infra  InfraSpec `json:"infra,omitempty"`
+	Infra InfraSpec `json:"infra,omitempty"`
 
 	// Defaults defines the values common to all Clusters.
 	Defaults ClusterSpec `json:"defaults,omitempty"`
@@ -68,7 +68,7 @@ type InfraSpec struct {
 
 	// EnvDomain is the most significant part of the domain name for this environment.
 	// For example; example.com
-	EnvDomain     string `json:"envDomain,omitempty"`
+	EnvDomain string `json:"envDomain,omitempty"`
 
 	// EnvName is the name of this environment.
 	// Typically a concatenation of region, cloud provider and environment type (test, production).
@@ -85,16 +85,16 @@ type InfraSpec struct {
 // ClusterSpec defines cluster specific infra, K8s resources and tests.
 type ClusterSpec struct {
 	// Name is the cluster name.
-	Name   string           `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
 
 	// Infra defines cluster specific infrastructure.
-	Infra  ClusterInfraSpec `json:"infra,omitempty"`
+	Infra ClusterInfraSpec `json:"infra,omitempty"`
 
 	// ClusterAddonSpec defines the Kubernetes resources to deploy to have a functioning cluster.
 	Addons ClusterAddonSpec `json:"addons,omitempty"`
 
 	// ClusterAddonSpec defines what conformance test to run.
-	Test ClusterTestSpec  `json:"test,omitempty"`
+	Test ClusterTestSpec `json:"test,omitempty"`
 }
 
 // SourceSpec defines the location to fetch content like configuration scripts and tests from.
@@ -151,18 +151,18 @@ type AADSpec struct {
 // AZSpec defines Azure specific infra structure settings.
 type AZSpec struct {
 	// Subscription
-	Subscription  string `json:"subscription,omitempty"`
+	Subscription string `json:"subscription,omitempty"`
 
 	// ResourceGroup
 	ResourceGroup string `json:"resourceGroup,omitempty"`
 
 	// The VNet CIDR that connects one or more clusters.
-	VNetCIDR      string `json:"vnetCIDR,omitempty"`
+	VNetCIDR string `json:"vnetCIDR,omitempty"`
 
 	// Subnet newbits is the number of bits to add to the VNet address mask to produce the subnet mask.
 	// IOW 2^subnetNewbits-1 is the max number of clusters in the VNet.
 	// For example given a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
-	SubnetNewbits int    `json:"subnetNewbits,omitempty"`
+	SubnetNewbits int `json:"subnetNewbits,omitempty"`
 
 	// X are extension values (when regular values don't fit the need)
 	// +optional
@@ -216,101 +216,45 @@ type ClusterTestSpec struct {
 
 // EnvironmentStatus defines the observed state of an Environment.
 type EnvironmentStatus struct {
-	// Synced is a single word describing the Environment's fitness.
-	// Check conditions for more details.
-	//TODO consider renaming to summary
-	// +optional
-	Synced EnvironmentSyncedType `json:"synced,omitempty"`
-
-	// Conditions are the latest available observations of the Environment's fitness.
+	// Conditions are a synopsis of the StepStates.
 	// +optional
 	Conditions []EnvironmentCondition `json:"conditions,omitempty"`
 
-	// Infra contains the deployment state of the infra and optional result values.
-	// Note: cluster specific result values are in Clusters.
-	// +optional
-	Infra InfraStatus `json:"infra,omitempty"`
-
-	// Clusters contains the deployment state of the clusters and optional result values.
-	// +optional
-	Clusters map[string]ClusterStatus `json:"clusters,omitempty"`
-
-	// Clusters contains the deployment status of the clusters and optional result values.
-	// +optional
-	//TODO Tests map[string]TestStatus `json:"tests,omitempty"`
+	// Step contains the latest available observations of the Environment's state.
+	Steps map[string]StepStatus `json:"steps,omitempty"`
 }
 
-// EnvironmentSyncedType is the condition of the Environment in one word.
-type EnvironmentSyncedType string
+// StepStatus is the last observed status of a Step.
+type StepStatus struct {
+	// Last time the state transitioned.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	// +required
+	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+	// The reason for the StepState's last transition in CamelCase.
+	// +required
+	State StepStatusState `json:"state"`
+	// A human readable message indicating details about the transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+	// An opaque value representing the config/parameters applied by the step.
+	Hash string `json:"hash,omitempty"`
+}
+
+// HasIssue returns true if the Step has a problem that should prevent a next step from running.
+func (ss *StepStatus) HasIssue() bool {
+	return ss.State == StateError
+}
+
+// EnvironmentConditionReason is the reason for the condition change.
+type StepStatusState string
 
 const (
-	// SyncedUnknown means the Environment state is unknown.
-	SyncedUnknown EnvironmentSyncedType = ""
-	// EnvironmentSyncedRunning means changes are being made to get the Environment in the desired state.
-	SyncedSyncing EnvironmentSyncedType = "Syncing"
-	// SyncedReady means the Enviroment is in the desired state and there is nothing to do.
-	SyncedReady EnvironmentSyncedType = "Ready"
-	// SyncedError means an error occurred during syncing and human intervention is needed to recover.
-	SyncedError EnvironmentSyncedType = "Error"
+	StateRunning StepStatusState = "Running"
+	StateReady   StepStatusState = "Ready"
+	StateError   StepStatusState = "Error"
 )
 
-type InfraStatus struct {
-	// PAdded is the number of infrastructure objects planned to being added on apply.
-	// +optional
-	PAdded int `json:"pAdded,omitempty"`
-	// PChanged is the number of infrastructure objects planned to being changed on apply.
-	// +optional
-	PChanged int `json:"pChanged,omitempty"`
-	// PAdded is the number of infrastructure objects planned to being deleted on apply.
-	// +optional
-	PDeleted int `json:"pDeleted,omitempty"`
-
-	// Added is the number of infrastructure objects added on last apply.
-	// +optional
-	Added int `json:"added,omitempty"`
-	// Changed is the number of infrastructure objects changed on last apply.
-	// +optional
-	Changed int `json:"changed,omitempty"`
-	// Added is the number of infrastructure objects deleted on last apply.
-	// +optional
-	Deleted int `json:"deleted,omitempty"`
-
-	// Hash is an unique value for the (terraform) source and parameters being deployed.
-	// (controller internal state, do not use)
-	// +optional
-	Hash string `json:"hash,omitempty"`
-
-	// TFState is the Terraform state.
-	// (controller internal state, do not use)
-	// +optional
-	TFState string `json:"zTFState,omitempty"`
-}
-
-type ClusterStatus struct {
-	// Result values provided to access a cluster.
-	CA     string          `json:"certificate-authority-data,omitempty"`
-	Server string          `json:"server,omitempty"`
-	User   UserCredentials `json:"user,omitempty"`
-
-	// Hash is an unique value for the (addons) source and parameters being deployed.
-	// Hash includes infra.hash to express the dependency of clusters on infra.
-	// (controller internal state, do not use)
-	// +optional
-	Hash string `json:"hash,omitempty"`
-}
-
-// UserCredentials are the result values to authenticate with a cluster.
-type UserCredentials struct {
-	ClientCertificate string `json:"string client-certificate,omitempty"`
-	ClientKey         string `json:"client-key,omitempty"`
-	Password          string `json:"password,omitempty"`
-	Username          string `json:"username,omitempty"`
-	//TODO needed? AOSHA             string `json:"aoSHA,omitempty"`
-}
-
-// EnvironmentCondition shows what the operator is doing or has done.
-// Infra condition types: InfraTmplt, InfraInit, InfraPlan, InfraApply
-// Cluster condition types: ClusterAddon<ClusterName> ClusterTest<ClusterName>
+// EnvironmentCondition provides a synopsis of the current environment state.
 // See KEP sig-api-machinery/1623-standardize-conditions is going to introduce it as k8s.io/apimachinery/pkg/apis/meta/v1
 type EnvironmentCondition struct {
 	// Type of condition in CamelCase.

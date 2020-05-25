@@ -132,7 +132,7 @@ func (ss *Sources) Hash(nsn types.NamespacedName, name string) (hash.Hash, error
 }
 
 // Get implements Getter.
-func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, hash.Hash, error) {
+func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, hash.Hash, error) { //TODO remove hash because it's confusing, one should Hash() instead
 	id := userID{nsn, name}
 
 	u, ok := ss.users[id]
@@ -143,7 +143,7 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, hash.Hash
 	switch u.src.spec.Type {
 	case v1.SourceTypeGIT:
 		p := ss.gitPath(u.src.spec)
-		// TODO sync with GIT fetch
+		// TODO sync with GIT fetch to prevent concurrent fetch and copy
 		err := otia10copy.Copy(p, u.path, otia10copy.Options{
 			Skip: func(p string) bool { return strings.HasSuffix(p, ".git") },
 		})

@@ -1,9 +1,10 @@
-package infra
+package step
 
 import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
+	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/terraform"
 	"strings"
 )
@@ -16,8 +17,6 @@ type ApplyStep struct {
 
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
-	// Hash is an opaque value passed to Update.
-	Hash string
 
 	/* Results */
 
@@ -30,23 +29,8 @@ func (st *ApplyStep) Meta() *StepMeta {
 	return &st.StepMeta
 }
 
-// Type returns the type of this Step.
-func (st *ApplyStep) Type() string {
-	return "InfraApply"
-}
-
-/*// ID returns a unique identification of this step.
-func (st *ApplyStep) id() StepID {
-	return st.ID
-}*/
-
-// Ord returns the execution order of this step.
-func (st *ApplyStep) ord() StepOrd {
-	return StepOrdApply
-}
-
 // Execute terraform apply.
-func (st *ApplyStep) execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
+func (st *ApplyStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
 	log.Info("ApplyStep")
 
 	// Run
@@ -54,13 +38,13 @@ func (st *ApplyStep) execute(ctx context.Context, isink Infoer, usink Updater, t
 	if err != nil {
 		log.Error(err, "start terraform apply")
 		isink.Warning(st.ID, "start terraform apply:"+err.Error())
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = "start terraform apply:" + err.Error()
 		usink.Update(st)
 		return false
 	}
 
-	st.State = StepStateRunning
+	st.State = v1.StateRunning
 	usink.Update(st)
 
 	// notify sink while waiting for command completion.
@@ -82,17 +66,17 @@ func (st *ApplyStep) execute(ctx context.Context, isink Infoer, usink Updater, t
 
 	// Return results.
 	if last == nil {
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = "did not receive response from terraform apply"
 		usink.Update(st)
 		return false
 	}
 
 	if len(last.Errors) > 0 {
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = strings.Join(last.Errors, ", ")
 	} else {
-		st.State = StepStateReady
+		st.State = v1.StateReady
 		st.Msg = fmt.Sprintf("terraform apply errors=0 added=%d changed=%d deleted=%d",
 			last.TotalAdded, last.TotalChanged, last.TotalDestroyed)
 	}
@@ -103,5 +87,5 @@ func (st *ApplyStep) execute(ctx context.Context, isink Infoer, usink Updater, t
 
 	usink.Update(st)
 
-	return st.State == StepStateReady
+	return st.State == v1.StateReady
 }

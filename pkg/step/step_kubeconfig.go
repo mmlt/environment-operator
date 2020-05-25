@@ -1,10 +1,11 @@
-package infra
+package step
 
 import (
 	"context"
 	"encoding/base64"
 	"fmt"
 	"github.com/go-logr/logr"
+	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/terraform"
 	"io/ioutil"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api/v1"
@@ -23,9 +24,6 @@ type KubeconfigStep struct {
 	ClusterName string
 	// KCPath is the place were the kube config file is written.
 	KCPath string
-
-	// Hash is an opaque value passed to Update.
-	Hash string //TODO not needed (we run this step before AddonStep)
 }
 
 // Meta returns a reference to the meta data this Step.
@@ -33,32 +31,17 @@ func (st *KubeconfigStep) Meta() *StepMeta {
 	return &st.StepMeta
 }
 
-// Type returns the type of this Step.
-func (st *KubeconfigStep) Type() string {
-	return "ClusterKubeconfig"
-}
-
-/*// ID returns a unique identification of this step.
-func (st *InitStep) id() StepID {
-	return st.ID
-}*/
-
-/*// Ord returns the execution order of this step.
-func (st *KubeconfigStep) ord() StepOrd {
-	return StepOrdInit
-}*/
-
 // Run a step.
-func (st *KubeconfigStep) execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
+func (st *KubeconfigStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
 	log.Info("KubeconfigStep")
 
 	// Run.
-	st.State = StepStateRunning
+	st.State = v1.StateRunning
 	usink.Update(st)
 
 	o, err := tf.Output(st.TFPath)
 	if err != nil {
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = fmt.Sprintf("terraform output: %v", err)
 		usink.Update(st)
 		return false
@@ -66,7 +49,7 @@ func (st *KubeconfigStep) execute(ctx context.Context, isink Infoer, usink Updat
 
 	kc, err := kubeconfig(o, st.ClusterName)
 	if err != nil {
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = fmt.Sprintf("kubeconfig from terraform output: %v", err)
 		usink.Update(st)
 		return false
@@ -74,19 +57,19 @@ func (st *KubeconfigStep) execute(ctx context.Context, isink Infoer, usink Updat
 
 	ioutil.WriteFile(st.KCPath, kc, 0664)
 	if err != nil {
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = fmt.Sprintf("write kubeconfig: %v", err)
 		usink.Update(st)
 		return false
 	}
 
 	// Return results.
-	st.State = StepStateReady
+	st.State = v1.StateReady
 	// TODO return values
 
 	usink.Update(st)
 
-	return st.State == StepStateReady
+	return st.State == v1.StateReady
 }
 
 func kubeconfig(json map[string]interface{}, clusterName string) ([]byte, error) {

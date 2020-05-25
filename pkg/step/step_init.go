@@ -1,4 +1,4 @@
-package infra
+package step
 
 import (
 	"context"
@@ -20,7 +20,6 @@ type InitStep struct {
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
 	// Hash is an opaque value passed to Update.
-	Hash string
 }
 
 // InfraValues hold the Specs that are needed during template expansion.
@@ -34,32 +33,17 @@ func (st *InitStep) Meta() *StepMeta {
 	return &st.StepMeta
 }
 
-// Type returns the type of this Step.
-func (st *InitStep) Type() string {
-	return "InfraInit"
-}
-
-/*// ID returns a unique identification of this step.
-func (st *InitStep) id() StepID {
-	return st.ID
-}*/
-
-// Ord returns the execution order of this step.
-func (st *InitStep) ord() StepOrd {
-	return StepOrdInit
-}
-
 // Run a step.
-func (st *InitStep) execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
+func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
 	log.Info("InitStep")
 
 	// Run.
-	st.State = StepStateRunning
+	st.State = v1.StateRunning
 	usink.Update(st)
 
 	err := tmplt.ExpandAll(st.SourcePath, ".tmplt", st.Values)
 	if err != nil {
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = err.Error()
 		usink.Update(st)
 		return false
@@ -68,9 +52,9 @@ func (st *InitStep) execute(ctx context.Context, isink Infoer, usink Updater, tf
 	tfr := tf.Init(st.SourcePath)
 
 	// Return results.
-	st.State = StepStateReady
+	st.State = v1.StateReady
 	if tfr.Errors > 0 {
-		st.State = StepStateError
+		st.State = v1.StateError
 	}
 
 	st.Msg = fmt.Sprintf("terraform init errors=%d warnings=%d", tfr.Errors, tfr.Warnings)
@@ -79,5 +63,5 @@ func (st *InitStep) execute(ctx context.Context, isink Infoer, usink Updater, tf
 
 	usink.Update(st)
 
-	return st.State == StepStateReady
+	return st.State == v1.StateReady
 }

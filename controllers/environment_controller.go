@@ -23,6 +23,7 @@ import (
 	"github.com/mmlt/environment-operator/pkg/infra"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
+	"github.com/mmlt/environment-operator/pkg/step"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -118,7 +119,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 }
 
 // Update Environment status with step.
-func (r *EnvironmentReconciler) Update(step infra.Step) {
+func (r *EnvironmentReconciler) Update(step step.Step) {
 	// Implementation:
 	// Update serializes writes to environment status but does not rate limit them.
 
@@ -149,24 +150,17 @@ func (r *EnvironmentReconciler) Update(step infra.Step) {
 		}
 
 		// Merge step into CR.
-		err = r.Plan.UpdateStatusCondition(&cr.Status, step)
+		err = r.Plan.UpdateStatusStep(&cr.Status, step)
+		if err != nil {
+			r.Log.Error(err, "update status state")
+			return
+		}
+
+		err = r.Plan.UpdateStatusConditions(&cr.Status)
 		if err != nil {
 			r.Log.Error(err, "update status condition")
 			return
 		}
-		err = r.Plan.UpdateStatusValues(&cr.Status, step)
-		if err != nil {
-			r.Log.Error(err, "update status values")
-			return
-		}
-		err = r.Plan.UpdateStatusSynced(&cr.Status)
-		if err != nil {
-			r.Log.Error(err, "update status synced")
-			return
-		}
-
-		//TODO remove or change to V(3) because the conditions list can be long
-		//log.Info("Update Status", "conditions", cr.Status.Conditions, "retry", i, "tally", r.updateTally)
 
 		// Write back to server.
 		ctx = context.Background()
@@ -191,7 +185,7 @@ func (r *EnvironmentReconciler) Update(step infra.Step) {
 	return
 }
 
-func (r *EnvironmentReconciler) Info(id infra.StepID, msg string) error {
+func (r *EnvironmentReconciler) Info(id step.StepID, msg string) error {
 	//r.Log.V(2).Info("Event", "type", "Normal", "id", id, "msg", msg)
 	//TODO use gvk := obj.GetObjectKind().GroupVersionKind() to replace hardcoded values?
 	// With UID the events show with the Object.
@@ -203,11 +197,11 @@ func (r *EnvironmentReconciler) Info(id infra.StepID, msg string) error {
 		//UID:             r.x,
 		APIVersion: "clusterops.mmlt.nl/v1",
 	}
-	r.Recorder.Event(o, "Normal", id.Type, msg)
+	r.Recorder.Event(o, "Normal", id.ShortName(), msg)
 	return nil
 }
 
-func (r *EnvironmentReconciler) Warning(id infra.StepID, msg string) error {
+func (r *EnvironmentReconciler) Warning(id step.StepID, msg string) error {
 	r.Log.V(2).Info("Event", "type", "Warning", "id", id, "msg", msg)
 	//TODO implement EventRecorder Warning
 	return nil

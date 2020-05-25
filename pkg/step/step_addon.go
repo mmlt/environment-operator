@@ -1,10 +1,11 @@
-package infra
+package step
 
 import (
 	"context"
 	"fmt"
 	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
+	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/addon"
 	"github.com/mmlt/environment-operator/pkg/terraform"
 	"io/ioutil"
@@ -28,8 +29,6 @@ type AddonStep struct {
 	JobPaths []string
 	// Values are passed with -set flag to kubectl-tmplt.
 	Values map[string]string
-	// Hash is an opaque value passed to Update.
-	Hash string
 
 	/* Results */
 
@@ -42,26 +41,11 @@ func (st *AddonStep) Meta() *StepMeta {
 	return &st.StepMeta
 }
 
-// Type returns the type of this Step.
-func (st *AddonStep) Type() string {
-	return "ClusterAddon"
-}
-
-/*// ID returns a unique identification of this step.
-func (st *AddonStep) id() StepID {
-	return st.ID
-}*/
-
-// Ord returns the execution order of this step.
-func (st *AddonStep) ord() StepOrd {
-	return StepOrdAddons
-}
-
 // Execute addon.
-func (st *AddonStep) execute(ctx context.Context, isink Infoer, usink Updater, _ terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
+func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, _ terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
 	log.Info("ClusterAddon")
 
-	st.State = StepStateRunning
+	st.State = v1.StateRunning
 	usink.Update(st)
 
 	// Create values yaml
@@ -69,7 +53,7 @@ func (st *AddonStep) execute(ctx context.Context, isink Infoer, usink Updater, _
 	if err != nil {
 		log.Error(err, "addon")
 		isink.Warning(st.ID, "addon:"+err.Error())
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = "addon:" + err.Error()
 		usink.Update(st)
 		return false
@@ -82,7 +66,7 @@ func (st *AddonStep) execute(ctx context.Context, isink Infoer, usink Updater, _
 		if err != nil {
 			log.Error(err, "start kubectl-tmplt")
 			isink.Warning(st.ID, "start kubectl-tmplt:"+err.Error())
-			st.State = StepStateError
+			st.State = v1.StateError
 			st.Msg = "start kubectl-tmplt:" + err.Error()
 			usink.Update(st)
 			return false
@@ -113,7 +97,7 @@ func (st *AddonStep) execute(ctx context.Context, isink Infoer, usink Updater, _
 
 	// Return results.
 	if len(totals) == 0 {
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = "did not receive response from kubectl-tmplt"
 		usink.Update(st)
 		return false
@@ -129,10 +113,10 @@ func (st *AddonStep) execute(ctx context.Context, isink Infoer, usink Updater, _
 	}
 
 	if len(tE) > 0 {
-		st.State = StepStateError
+		st.State = v1.StateError
 		st.Msg = strings.Join(tE, ", ")
 	} else {
-		st.State = StepStateReady
+		st.State = v1.StateReady
 		st.Msg = fmt.Sprintf("kubectl-tmplt errors=0 added=%d changed=%d deleted=%d", tA, tC, tD)
 	}
 
@@ -142,7 +126,7 @@ func (st *AddonStep) execute(ctx context.Context, isink Infoer, usink Updater, _
 
 	usink.Update(st)
 
-	return st.State == StepStateReady
+	return st.State == v1.StateReady
 }
 
 // ValuesYamlIn write a yaml file with st values and returns the path.
