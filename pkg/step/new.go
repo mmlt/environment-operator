@@ -5,11 +5,11 @@ import (
 	v1 "github.com/mmlt/environment-operator/api/v1"
 )
 
-func New(id StepID, ispec v1.InfraSpec, cspec []v1.ClusterSpec, path, hash string) (Step, error) {
+func New(id ID, ispec v1.InfraSpec, cspec []v1.ClusterSpec, path, hash string) (Step, error) {
 	var r Step
 
 	switch id.Type {
-	case StepTypeInit:
+	case TypeInit:
 		r = &InitStep{
 			Values: InfraValues{
 				Infra:    ispec,
@@ -17,9 +17,9 @@ func New(id StepID, ispec v1.InfraSpec, cspec []v1.ClusterSpec, path, hash strin
 			},
 			SourcePath: path,
 		}
-	case StepTypePlan:
+	case TypePlan:
 		r = &PlanStep{}
-	case StepTypeApply:
+	case TypeApply:
 		r = &ApplyStep{}
 
 		/*TODO implements KubeconfigStep, AddonStep

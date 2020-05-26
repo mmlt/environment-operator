@@ -1,4 +1,4 @@
-package infra
+package executor
 
 import (
 	"github.com/mmlt/environment-operator/pkg/terraform"

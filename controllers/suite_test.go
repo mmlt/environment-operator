@@ -17,7 +17,7 @@ package controllers
 
 import (
 	"github.com/go-logr/stdr"
-	"github.com/mmlt/environment-operator/pkg/infra"
+	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/terraform"
@@ -119,7 +119,7 @@ var _ = BeforeSuite(func(done Done) {
 		Log: testReconciler.Log.WithName("tffake"),
 	}
 	tf.SetupFakeResults()
-	testReconciler.Executor = &infra.Executor{
+	testReconciler.Executor = &executor.Executor{
 		UpdateSink: testReconciler,
 		EventSink:  testReconciler,
 		Terraform:  tf,

@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"github.com/mmlt/environment-operator/pkg/addon"
+	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/infra"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
@@ -106,7 +107,7 @@ func main() {
 	tf := &terraform.Terraform{
 		Log: r.Log.WithName("tf"),
 	}
-	r.Executor = &infra.Executor{
+	r.Executor = &executor.Executor{
 		UpdateSink: r,
 		EventSink:  r,
 		Terraform:  tf,

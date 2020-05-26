@@ -11,7 +11,7 @@ import (
 
 // ApplyStep performs a terraform apply.
 type ApplyStep struct {
-	StepMeta
+	meta
 
 	/* Parameters */
 
@@ -25,8 +25,8 @@ type ApplyStep struct {
 }
 
 // Meta returns a reference to the meta data this Step.
-func (st *ApplyStep) Meta() *StepMeta {
-	return &st.StepMeta
+func (st *ApplyStep) Meta() *meta {
+	return &st.meta
 }
 
 // Execute terraform apply.
@@ -84,6 +84,8 @@ func (st *ApplyStep) Execute(ctx context.Context, isink Infoer, usink Updater, t
 	st.Added = last.TotalAdded
 	st.Changed = last.TotalChanged
 	st.Deleted = last.TotalDestroyed
+
+	// TODO return values (or check policies now and flag a warning)
 
 	usink.Update(st)
 

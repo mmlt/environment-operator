@@ -42,7 +42,6 @@ func (p *Plan) nextStep(nsn types.NamespacedName, src source.Getter, ispec v1.In
 
 	*/
 
-	//TODO remove path, h, err := src.Get(nsn, source.Ninfra)
 	h, err := src.Hash(nsn, source.Ninfra)
 	if err != nil {
 		return nil, err
@@ -79,7 +78,7 @@ func (p *Plan) nextStep(nsn types.NamespacedName, src source.Getter, ispec v1.In
 	return nil, nil
 }
 
-func (p *Plan) stepNew(id step.StepID, nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, hash string) (step.Step, error) {
+func (p *Plan) stepNew(id step.ID, nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, hash string) (step.Step, error) {
 	path, _, err := src.Get(nsn, source.Ninfra) //TODO make Ninfra a param?
 	if err != nil {
 		return nil, err

@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-	"github.com/mmlt/environment-operator/pkg/infra"
+	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -32,11 +32,6 @@ var _ = ginkgo.Describe("Happy path tests", func() {
 		// Add any teardown steps that needs to be executed after each test
 	})
 
-	// TODO Add Tests for OpenAPI validation (or additional CRD features) specified in
-	// your API definition.
-	// Avoid adding tests for vanilla CRUD operations because they would
-	// test Kubernetes API server, which isn't the goal here.
-
 	//ginkgo.Context("Happy path", func() {
 	ginkgo.It("Should provision infra", func() {
 		toCreate := testEnvironmentCR(nsn, testSpecPlayground())
@@ -56,9 +51,9 @@ var _ = ginkgo.Describe("Happy path tests", func() {
 		}, testTimeoutSec, time.Second).Should(BeTrue())
 
 		ginkgo.By("Check hat the reconcile doesn't continue (no more steps are started)")
-		c := testutil.ToFloat64(infra.MetricSteps)
+		c := testutil.ToFloat64(executor.MetricSteps)
 		time.Sleep(time.Second)
-		Expect(testutil.ToFloat64(infra.MetricSteps) - c).To(Equal(0.0))
+		Expect(testutil.ToFloat64(executor.MetricSteps) - c).To(Equal(0.0))
 
 		ginkgo.By("Checking CR Status")
 		Expect(len(fetched.Status.Steps)).To(BeNumerically("==", 3))

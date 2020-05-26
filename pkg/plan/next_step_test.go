@@ -32,7 +32,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 		ispec  v1.InfraSpec
 		cspec  []v1.ClusterSpec
 		status v1.EnvironmentStatus
-		want   infra.Step
+		want   executor.Step
 	}{
 		// It should return no step when any step is running.
 		{
@@ -75,7 +75,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 			it:  "should_return_an_InitStep_on_day1",
 			src: fakeSource{source.Ninfra: {"path/to/infra/src", testToHash(12)}},
 			//TODO cspec: []v1.ClusterSpec{{}}, // at least one cluster because it contains infra values.
-			want: &infra.InitStep{
+			want: &executor.InitStep{
 				SourcePath: "path/to/infra/src", Hash: testToHashString(12),
 			},
 		}, {
@@ -89,7 +89,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(102)},
 				},
 			},
-			want: &infra.InitStep{
+			want: &executor.InitStep{
 				SourcePath: "path/to/infra/src", Hash: testToHashString(12),
 			},
 		}, {
@@ -100,7 +100,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 					{Type: "InfraInit", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(100)},
 				},
 			},
-			want: &infra.PlanStep{
+			want: &executor.PlanStep{
 				SourcePath: "path/to/infra/src",
 			},
 		}, {
@@ -113,7 +113,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(102)},
 				},
 			},
-			want: &infra.PlanStep{
+			want: &executor.PlanStep{
 				SourcePath: "path/to/infra/src",
 			},
 		}, {
@@ -126,7 +126,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 					{Type: "InfraApply", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(102)},
 				},
 			},
-			want: &infra.ApplyStep{
+			want: &executor.ApplyStep{
 				SourcePath: "path/to/infra/src", Hash: testToHashString(12), Added: 0, Changed: 0, Deleted: 0,
 			},
 		}, {
@@ -138,7 +138,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 					{Type: "InfraPlan", Status: metav1.ConditionFalse, Reason: v1.ReasonReady, LastTransitionTime: testToTime(101)},
 				},
 			},
-			want: &infra.ApplyStep{
+			want: &executor.ApplyStep{
 				SourcePath: "path/to/infra/src", Hash: testToHashString(12), Added: 0, Changed: 0, Deleted: 0,
 			},
 		},

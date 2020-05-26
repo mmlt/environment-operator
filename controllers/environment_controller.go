@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/imdario/mergo"
-	"github.com/mmlt/environment-operator/pkg/infra"
+	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
@@ -54,7 +54,7 @@ type EnvironmentReconciler struct {
 	Plan *plan.Plan
 
 	// Executor executes Steps.
-	Executor *infra.Executor
+	Executor *executor.Executor
 
 	updateMutex sync.Mutex
 
@@ -185,7 +185,7 @@ func (r *EnvironmentReconciler) Update(step step.Step) {
 	return
 }
 
-func (r *EnvironmentReconciler) Info(id step.StepID, msg string) error {
+func (r *EnvironmentReconciler) Info(id step.ID, msg string) error {
 	//r.Log.V(2).Info("Event", "type", "Normal", "id", id, "msg", msg)
 	//TODO use gvk := obj.GetObjectKind().GroupVersionKind() to replace hardcoded values?
 	// With UID the events show with the Object.
@@ -201,7 +201,7 @@ func (r *EnvironmentReconciler) Info(id step.StepID, msg string) error {
 	return nil
 }
 
-func (r *EnvironmentReconciler) Warning(id step.StepID, msg string) error {
+func (r *EnvironmentReconciler) Warning(id step.ID, msg string) error {
 	r.Log.V(2).Info("Event", "type", "Warning", "id", id, "msg", msg)
 	//TODO implement EventRecorder Warning
 	return nil

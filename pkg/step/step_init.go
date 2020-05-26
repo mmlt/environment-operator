@@ -11,7 +11,7 @@ import (
 
 // InitStep performs a terraform init
 type InitStep struct {
-	StepMeta
+	meta
 
 	/* Parameters */
 
@@ -29,8 +29,8 @@ type InfraValues struct {
 }
 
 // Meta returns a reference to the meta data this Step.
-func (st *InitStep) Meta() *StepMeta {
-	return &st.StepMeta
+func (st *InitStep) Meta() *meta {
+	return &st.meta
 }
 
 // Run a step.
@@ -59,7 +59,7 @@ func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf
 
 	st.Msg = fmt.Sprintf("terraform init errors=%d warnings=%d", tfr.Errors, tfr.Warnings)
 
-	// TODO return values
+	// TODO return values (or check policies now and flag a warning)
 
 	usink.Update(st)
 

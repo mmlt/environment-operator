@@ -1,4 +1,4 @@
-package infra
+package executor
 
 import (
 	"context"
@@ -30,8 +30,8 @@ func init() {
 	metrics.Registry.MustRegister(MetricSteps, MetricStepFailures)
 }
 
-// Executor executes Plans to create/update infrastructure.
 // TODO update comment;
+// Executor executes Steps to create/update infrastructure.
 //Can execute multiple Plan's in parallel.
 //Know how to serialize certain steps.
 //Only contains (ephemeral) state that is common to all Plans.
@@ -49,7 +49,7 @@ type Executor struct {
 	Terraform terraform.Terraformer
 
 	// Running is the map of running steps.
-	running map[step.StepID]run
+	running map[step.ID]run
 
 	Log logr.Logger
 	sync.Mutex
@@ -57,11 +57,6 @@ type Executor struct {
 
 //TODO do we still needs these for testing? if yes move to _test
 /*
-// Updater is a third party that wants to know about changes while executing a Step. //TODO remove
-type Updater interface {
-	Update(Step)
-}
-
 // Update is an adaptor from Update method to UpdaterFunc.
 func (f UpdaterFunc) Update(step Step) {
 	f(step)
@@ -69,13 +64,7 @@ func (f UpdaterFunc) Update(step Step) {
 
 // UpdaterFunc is a function that conforms to the Updater interface.
 type UpdaterFunc func(Step)
-
-// Infoer is a third party that wants to receive info/warning events. //TODO remove
-// The main purpose is to help the user understand/debug the system.
-type Infoer interface {
-	Info(id StepID, msg string) error
-	Warning(id StepID, msg string) error
-}*/
+*/
 
 // Run is the concurrent execution of a step.
 type run struct {
@@ -87,8 +76,8 @@ type run struct {
 // Accept attempts to execute another step and returns true if step is accepted.
 // When a step is not accepted it should be retried later on.
 // Progress is communicated over the receivers UpdateSink and EventSink.
-func (ex *Executor) Accept(st step.Step) (bool, error) { //TODO rename step package to steps so we can use step as parameter
-	if st == nil {
+func (ex *Executor) Accept(stp step.Step) (bool, error) { //TODO rename step package to steps so we can use step as parameter
+	if stp == nil {
 		// nothing to do
 		return true, nil
 	}
@@ -96,7 +85,7 @@ func (ex *Executor) Accept(st step.Step) (bool, error) { //TODO rename step pack
 	ex.Lock()
 	defer ex.Unlock()
 
-	if _, ok := ex.running[st.Meta().ID]; ok {
+	if _, ok := ex.running[stp.Meta().ID]; ok {
 		// step already running
 		return true, nil
 	}
@@ -107,27 +96,27 @@ func (ex *Executor) Accept(st step.Step) (bool, error) { //TODO rename step pack
 	}
 
 	if ex.running == nil {
-		ex.running = make(map[step.StepID]run)
+		ex.running = make(map[step.ID]run)
 	}
 
 	// Execute step.
 	r := run{
 		ctx:    context.Background(),
 		stopCh: make(chan<- interface{}),
-		step:   st,
+		step:   stp,
 	}
-	ex.running[st.Meta().ID] = r
+	ex.running[stp.Meta().ID] = r
 	MetricSteps.Inc()
 	go func() {
 		//TODO behavior is Step dependent, receiver contains the work to do, parameters carry plumbing
-		// Move sinks, Terraform, Log to StepMeta? StepMeta will be created by Planner (nice: Planner can decide on Terraform impl)
-		ok := st.Execute(r.ctx, ex.EventSink, ex.UpdateSink, ex.Terraform, ex.Log)
+		// Move sinks, Terraform, Log to meta? meta will be created by Planner (nice: Planner can decide on Terraform impl)
+		ok := stp.Execute(r.ctx, ex.EventSink, ex.UpdateSink, ex.Terraform, ex.Log)
 		if !ok {
 			MetricStepFailures.Inc()
 		}
 
 		ex.Lock()
-		delete(ex.running, st.Meta().ID)
+		delete(ex.running, stp.Meta().ID)
 		ex.Unlock()
 
 		close(r.stopCh)
@@ -135,56 +124,3 @@ func (ex *Executor) Accept(st step.Step) (bool, error) { //TODO rename step pack
 
 	return true, nil
 }
-
-// Accept attempts to execute another step and returns true if step is accepted.
-// When a step is not accepted it should be retried later on.
-// Progress is communicated over the Updater and Infoer interfaces as passed to New().
-/*func (ex *Executor) Accept(step Step) (bool, error) {
-	if step == nil {
-		// nothing to do
-		return true, nil
-	}
-
-	ex.Lock()
-	defer ex.Unlock()
-
-	if _, ok := ex.running[step.Meta().ID]; ok {
-		// step already running
-		return true, nil
-	}
-
-	if len(ex.running) > 5 {
-		// no worker available (max number reached)
-		return false, nil
-	}
-
-	if ex.running == nil {
-		ex.running = make(map[StepID]run)
-	}
-
-	// Execute step.
-	r := run{
-		ctx:    context.Background(),
-		stopCh: make(chan<- interface{}),
-		step:   step,
-	}
-	ex.running[step.Meta().ID] = r
-	MetricSteps.Inc()
-	go func() {
-		//TODO behavior is Step dependent, receiver contains the work to do, parameters carry plumbing
-		// Move sinks, Terraform, Log to StepMeta? StepMeta will be created by Planner (nice: Planner can decide on Terraform impl)
-		ok := step.execute(r.ctx, ex.EventSink, ex.UpdateSink, ex.Terraform, ex.Log)
-		if !ok {
-			MetricStepFailures.Inc()
-		}
-
-		ex.Lock()
-		delete(ex.running, step.Meta().ID)
-		ex.Unlock()
-
-		close(r.stopCh)
-	}()
-
-	return true, nil
-}
-*/

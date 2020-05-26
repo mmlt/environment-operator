@@ -10,7 +10,7 @@ import (
 
 // PlanStep performs a terraform init
 type PlanStep struct {
-	StepMeta
+	meta
 
 	/* Parameters */
 
@@ -24,8 +24,8 @@ type PlanStep struct {
 }
 
 // Meta returns a reference to the meta data this Step.
-func (st *PlanStep) Meta() *StepMeta {
-	return &st.StepMeta
+func (st *PlanStep) Meta() *meta {
+	return &st.meta
 }
 
 // Run a step.
@@ -50,6 +50,8 @@ func (st *PlanStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf
 	st.Added = tfr.PlanAdded
 	st.Changed = tfr.PlanChanged
 	st.Deleted = tfr.PlanDeleted
+
+	// TODO return values (or check policies now and flag a warning)
 
 	usink.Update(st)
 

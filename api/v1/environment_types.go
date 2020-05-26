@@ -246,7 +246,7 @@ func (ss *StepStatus) HasIssue() bool {
 }
 
 // EnvironmentConditionReason is the reason for the condition change.
-type StepStatusState string
+type StepStatusState string //TODO rename to StepState?
 
 const (
 	StateRunning StepStatusState = "Running"

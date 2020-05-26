@@ -14,7 +14,7 @@ import (
 
 // InitStep performs a terraform init
 type KubeconfigStep struct {
-	StepMeta
+	meta
 
 	/* Parameters */
 
@@ -27,8 +27,8 @@ type KubeconfigStep struct {
 }
 
 // Meta returns a reference to the meta data this Step.
-func (st *KubeconfigStep) Meta() *StepMeta {
-	return &st.StepMeta
+func (st *KubeconfigStep) Meta() *meta {
+	return &st.meta
 }
 
 // Run a step.

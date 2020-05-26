@@ -15,7 +15,7 @@ import (
 
 // AddonStep performs a kubectl-tmplt coterraform apply.
 type AddonStep struct {
-	StepMeta
+	meta
 
 	Addon addon.Addonr
 
@@ -37,8 +37,8 @@ type AddonStep struct {
 }
 
 // Meta returns a reference to the meta data this Step.
-func (st *AddonStep) Meta() *StepMeta {
-	return &st.StepMeta
+func (st *AddonStep) Meta() *meta {
+	return &st.meta
 }
 
 // Execute addon.
