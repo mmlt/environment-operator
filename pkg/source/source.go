@@ -82,9 +82,6 @@ type src struct {
 	lastUpdateHash hash.Hash
 }
 
-// Ninfra is a special name that is used for infra content.
-const Ninfra = "_infra_"
-
 type Getter interface {
 	// Hash returns the hash of the source content.
 	Hash(nsn types.NamespacedName, name string) (hash.Hash, error)
@@ -97,6 +94,8 @@ var timeNow = time.Now
 
 // Hash implements Getter.
 func (ss *Sources) Hash(nsn types.NamespacedName, name string) (hash.Hash, error) {
+	name = defaultName(name)
+
 	id := userID{nsn, name}
 
 	u, ok := ss.users[id]
@@ -123,6 +122,10 @@ func (ss *Sources) Hash(nsn types.NamespacedName, name string) (hash.Hash, error
 		if err != nil {
 			return nil, err
 		}
+	case "":
+		return nil, fmt.Errorf("spec %s: source.type not set", name)
+	default:
+		return nil, fmt.Errorf("spec %s: source.type %s not supported", name, u.src.spec.Type)
 	}
 
 	u.src.lastUpdateTime = timeNow()
@@ -132,7 +135,11 @@ func (ss *Sources) Hash(nsn types.NamespacedName, name string) (hash.Hash, error
 }
 
 // Get implements Getter.
-func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, hash.Hash, error) { //TODO remove hash because it's confusing, one should Hash() instead
+func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, hash.Hash, error) {
+	//TODO remove hash because it's confusing, one should Hash() instead
+	// PS. content may have changed since call to Hash() (that's why hash is returned)
+	name = defaultName(name)
+
 	id := userID{nsn, name}
 
 	u, ok := ss.users[id]
@@ -163,6 +170,8 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, hash.Hash
 
 // Register name as an user of the spec source.
 func (ss *Sources) Register(nsn types.NamespacedName, name string, spec v1.SourceSpec) error {
+	name = defaultName(name)
+
 	id := userID{nsn, name}
 
 	if ss.users == nil {
@@ -309,4 +318,12 @@ func hashAll(path string) (hash.Hash, error) {
 	})
 
 	return h, err
+}
+
+// DefaultName returns a default for an empty name.
+func defaultName(name string) string {
+	if name == "" {
+		return "_infra_"
+	}
+	return name
 }

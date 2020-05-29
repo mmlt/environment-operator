@@ -99,7 +99,19 @@ func (t *TerraformFake) Output(dir string) (map[string]interface{}, error) {
 }
 
 // SetupFakeResults sets the receiver up data that is returned during testing.
-func (t *TerraformFake) SetupFakeResults() {
+// clusters is a map[string]interface{}{
+//		"mycluster": map[string]interface{}{
+//			"kube_admin_config": map[string]interface{}{
+//				"client_certificate":     "LS0tLS1Cclientcert",
+//				"client_key":             "LS0tLS1CRclientkey",
+//				"cluster_ca_certificate": "LS0tLS1CRcacert",
+//				"host":                   "https://api.kubernetes.example.com:443",
+//				"password":               "4ee5bb2",
+//				"username":               "someadmin",
+//			},
+//		},
+//	},
+func (t *TerraformFake) SetupFakeResults(clusters map[string]interface{}) {
 	t.InitResult = TFResult{
 		Info: 1,
 	}
@@ -136,18 +148,7 @@ func (t *TerraformFake) SetupFakeResults() {
 
 	t.OutputResult = map[string]interface{}{
 		"clusters": map[string]interface{}{
-			"value": map[string]interface{}{
-				"mycluster": map[string]interface{}{
-					"kube_admin_config": map[string]interface{}{
-						"client_certificate":     "LS0tLS1Cclientcert",
-						"client_key":             "LS0tLS1CRclientkey",
-						"cluster_ca_certificate": "LS0tLS1CRcacert",
-						"host":                   "https://xy-clustername-123a.hcp.westeurope.azmk8s.io:443",
-						"password":               "4ee5bb2",
-						"username":               "clusterAdmin_aaa-rg_xy-clustername",
-					},
-				},
-			},
+			"value": clusters,
 		},
 	}
 }

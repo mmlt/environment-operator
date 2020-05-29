@@ -43,7 +43,7 @@ func (st *AddonStep) Meta() *meta {
 
 // Execute addon.
 func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, _ terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
-	log.Info("ClusterAddon")
+	log.Info("start")
 
 	st.State = v1.StateRunning
 	usink.Update(st)
@@ -131,19 +131,19 @@ func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, _
 
 // ValuesYamlIn write a yaml file with st values and returns the path.
 func (st *AddonStep) valuesYamlIn(dir string) (string, error) {
-	const filename = "envreconvalues.yaml"
+	const filename = "envopvalues.yaml"
 
-	d, err := yaml.Marshal(st.Values)
-	if err != nil {
-		return "", err
-	}
-
-	if string(d) == "null" {
-		d = []byte{}
+	d := []byte{}
+	if st.Values != nil {
+		var err error
+		d, err = yaml.Marshal(st.Values)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	p := filepath.Join(dir, filename)
-	err = ioutil.WriteFile(p, d, 0644)
+	err := ioutil.WriteFile(p, d, 0644)
 
 	return p, err
 }

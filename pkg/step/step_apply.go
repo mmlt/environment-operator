@@ -31,7 +31,7 @@ func (st *ApplyStep) Meta() *meta {
 
 // Execute terraform apply.
 func (st *ApplyStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
-	log.Info("ApplyStep")
+	log.Info("start")
 
 	// Run
 	cmd, ch, err := tf.StartApply(ctx, st.SourcePath)

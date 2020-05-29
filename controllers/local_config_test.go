@@ -34,7 +34,7 @@ var _ = ginkgo.Describe("Happy path tests", func() {
 
 	//ginkgo.Context("Happy path", func() {
 	ginkgo.It("Should provision infra", func() {
-		toCreate := testEnvironmentCR(nsn, testSpecPlayground())
+		toCreate := testEnvironmentCR(nsn, testSpecLocal())
 
 		ginkgo.By("Creating kind Environment and waiting for reconcile completion")
 		Expect(k8sClient.Create(context.Background(), toCreate)).Should(Succeed())
@@ -56,7 +56,7 @@ var _ = ginkgo.Describe("Happy path tests", func() {
 		Expect(testutil.ToFloat64(executor.MetricSteps) - c).To(Equal(0.0))
 
 		ginkgo.By("Checking CR Status")
-		Expect(len(fetched.Status.Steps)).To(BeNumerically("==", 3))
+		Expect(len(fetched.Status.Steps)).To(BeNumerically("==", 5))
 
 		Expect(fetched.Status.Steps["Init"].State).To(Equal(v1.StateReady))
 		Expect(fetched.Status.Steps["Init"].Message).To(Equal("terraform init errors=0 warnings=0"))
@@ -66,6 +66,11 @@ var _ = ginkgo.Describe("Happy path tests", func() {
 
 		Expect(fetched.Status.Steps["Apply"].State).To(Equal(v1.StateReady))
 		Expect(fetched.Status.Steps["Apply"].Message).To(Equal("terraform apply errors=0 added=1 changed=2 deleted=1"))
+
+		Expect(fetched.Status.Steps["Kubeconfigone"].State).To(Equal(v1.StateReady))
+
+		Expect(fetched.Status.Steps["Addonsone"].State).To(Equal(v1.StateReady))
+
 	})
 	//})
 })

@@ -3,7 +3,6 @@ package plan
 import (
 	"fmt"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-	"github.com/mmlt/environment-operator/pkg/infra"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/testr"
 	"github.com/stretchr/testify/assert"
@@ -144,7 +143,7 @@ func TestNextStep_InfraChanged(t *testing.T) {
 		},
 	}
 
-	plan := Plan{
+	plan := Planner{
 		Log: testr.New(t),
 	}
 	nsn := types.NamespacedName{Namespace: "default", Name: "env-for-testing"}

@@ -239,9 +239,32 @@ spec:
                 az:
                   description: AZ values.
                   properties:
+                    dns:
+                      description: DNS is an optional list of custom DNS servers.
+                        (VM's in VNet need to be restarted to propagate changes to
+                        this value)
+                      items:
+                        type: string
+                      type: array
                     resourceGroup:
                       description: ResourceGroup
                       type: string
+                    routes:
+                      description: Routes is an optional list of routes
+                      items:
+                        description: AZRoute is an entry in the routing table of the
+                          VNet.
+                        properties:
+                          addressPrefix:
+                            type: string
+                          name:
+                            type: string
+                          nextHopInIPAddress:
+                            type: string
+                          nextHopType:
+                            type: string
+                        type: object
+                      type: array
                     subnetNewbits:
                       description: Subnet newbits is the number of bits to add to
                         the VNet address mask to produce the subnet mask. IOW 2^subnetNewbits-1
@@ -315,46 +338,12 @@ spec:
         status:
           description: EnvironmentStatus defines the observed state of an Environment.
           properties:
-            clusters:
-              additionalProperties:
-                properties:
-                  certificate-authority-data:
-                    description: Result values provided to access a cluster.
-                    type: string
-                  hash:
-                    description: Hash is an unique value for the (addons) source and
-                      parameters being deployed. Hash includes infra.hash to express
-                      the dependency of clusters on infra. (controller internal state,
-                      do not use)
-                    type: string
-                  server:
-                    type: string
-                  user:
-                    description: UserCredentials are the result values to authenticate
-                      with a cluster.
-                    properties:
-                      client-key:
-                        type: string
-                      password:
-                        type: string
-                      string client-certificate:
-                        type: string
-                      username:
-                        type: string
-                    type: object
-                type: object
-              description: Clusters contains the deployment state of the clusters
-                and optional result values.
-              type: object
             conditions:
-              description: Conditions are the latest available observations of the
-                Environment's fitness.
+              description: Conditions are a synopsis of the StepStates.
               items:
-                description: 'EnvironmentCondition shows what the operator is doing
-                  or has done. Infra condition types: InfraTmplt, InfraInit, InfraPlan,
-                  InfraApply Cluster condition types: ClusterAddon<ClusterName> ClusterTest<ClusterName>
-                  See KEP sig-api-machinery/1623-standardize-conditions is going to
-                  introduce it as k8s.io/apimachinery/pkg/apis/meta/v1'
+                description: EnvironmentCondition provides a synopsis of the current
+                  environment state. See KEP sig-api-machinery/1623-standardize-conditions
+                  is going to introduce it as k8s.io/apimachinery/pkg/apis/meta/v1
                 properties:
                   lastTransitionTime:
                     description: Last time the condition transitioned from one status
@@ -384,48 +373,35 @@ spec:
                 - type
                 type: object
               type: array
-            infra:
-              description: 'Infra contains the deployment state of the infra and optional
-                result values. Note: cluster specific result values are in Clusters.'
-              properties:
-                added:
-                  description: Added is the number of infrastructure objects added
-                    on last apply.
-                  type: integer
-                changed:
-                  description: Changed is the number of infrastructure objects changed
-                    on last apply.
-                  type: integer
-                deleted:
-                  description: Added is the number of infrastructure objects deleted
-                    on last apply.
-                  type: integer
-                hash:
-                  description: Hash is an unique value for the (terraform) source
-                    and parameters being deployed. (controller internal state, do
-                    not use)
-                  type: string
-                pAdded:
-                  description: PAdded is the number of infrastructure objects planned
-                    to being added on apply.
-                  type: integer
-                pChanged:
-                  description: PChanged is the number of infrastructure objects planned
-                    to being changed on apply.
-                  type: integer
-                pDeleted:
-                  description: PAdded is the number of infrastructure objects planned
-                    to being deleted on apply.
-                  type: integer
-                zTFState:
-                  description: TFState is the Terraform state. (controller internal
-                    state, do not use)
-                  type: string
+            steps:
+              additionalProperties:
+                description: StepStatus is the last observed status of a Step.
+                properties:
+                  hash:
+                    description: An opaque value representing the config/parameters
+                      applied by the step.
+                    type: string
+                  lastTransitionTime:
+                    description: Last time the state transitioned. This should be
+                      when the underlying condition changed.  If that is not known,
+                      then using the time when the API field changed is acceptable.
+                    format: date-time
+                    type: string
+                  message:
+                    description: A human readable message indicating details about
+                      the transition.
+                    type: string
+                  state:
+                    description: The reason for the StepState's last transition in
+                      CamelCase.
+                    type: string
+                required:
+                - lastTransitionTime
+                - state
+                type: object
+              description: Step contains the latest available observations of the
+                Environment's state.
               type: object
-            synced:
-              description: Synced is a single word describing the Environment's fitness.
-                Check conditions for more details. TODO consider renaming to summary
-              type: string
           type: object
       type: object
   version: v1

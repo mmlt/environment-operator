@@ -110,7 +110,7 @@ func (ex *Executor) Accept(stp step.Step) (bool, error) { //TODO rename step pac
 	go func() {
 		//TODO behavior is Step dependent, receiver contains the work to do, parameters carry plumbing
 		// Move sinks, Terraform, Log to meta? meta will be created by Planner (nice: Planner can decide on Terraform impl)
-		ok := stp.Execute(r.ctx, ex.EventSink, ex.UpdateSink, ex.Terraform, ex.Log)
+		ok := stp.Execute(r.ctx, ex.EventSink, ex.UpdateSink, ex.Terraform, ex.Log.WithName(stp.Meta().ID.ShortName()))
 		if !ok {
 			MetricStepFailures.Inc()
 		}

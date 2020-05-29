@@ -35,7 +35,7 @@ func (st *InitStep) Meta() *meta {
 
 // Run a step.
 func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
-	log.Info("InitStep")
+	log.Info("start")
 
 	// Run.
 	st.State = v1.StateRunning

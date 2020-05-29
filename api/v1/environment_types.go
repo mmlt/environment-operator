@@ -159,14 +159,31 @@ type AZSpec struct {
 	// The VNet CIDR that connects one or more clusters.
 	VNetCIDR string `json:"vnetCIDR,omitempty"`
 
+	// DNS is an optional list of custom DNS servers.
+	// (VM's in VNet need to be restarted to propagate changes to this value)
+	// +optional
+	DNS []string `json:"dns,omitempty"`
+
 	// Subnet newbits is the number of bits to add to the VNet address mask to produce the subnet mask.
 	// IOW 2^subnetNewbits-1 is the max number of clusters in the VNet.
 	// For example given a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
 	SubnetNewbits int `json:"subnetNewbits,omitempty"`
 
+	// Routes is an optional list of routes
+	// +optional
+	Routes []AZRoute `json:"routes,omitempty"`
+
 	// X are extension values (when regular values don't fit the need)
 	// +optional
 	X map[string]string `json:"x,omitempty"`
+}
+
+// AZRoute is an entry in the routing table of the VNet.
+type AZRoute struct {
+	Name               string `json:"name,omitempty" hcl:"name"`
+	AddressPrefix      string `json:"addressPrefix,omitempty" hcl:"address_prefix"`
+	NextHopType        string `json:"nextHopType,omitempty" hcl:"next_hop_type"`
+	NextHopInIPAddress string `json:"nextHopInIPAddress,omitempty" hcl:"next_hop_in_ip_address" hcle:"omitempty"`
 }
 
 // ClusterInfraSpec defines cluster specific infrastructure.
@@ -240,10 +257,11 @@ type StepStatus struct {
 	Hash string `json:"hash,omitempty"`
 }
 
+/*TODO remove or apply in all case that do a checks like stp.State == v1.StateError
 // HasIssue returns true if the Step has a problem that should prevent a next step from running.
 func (ss *StepStatus) HasIssue() bool {
 	return ss.State == StateError
-}
+}*/
 
 // EnvironmentConditionReason is the reason for the condition change.
 type StepStatusState string //TODO rename to StepState?

@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api/v1"
 	"sigs.k8s.io/yaml"
+	"strings"
 )
 
 // InitStep performs a terraform init
@@ -33,7 +34,7 @@ func (st *KubeconfigStep) Meta() *meta {
 
 // Run a step.
 func (st *KubeconfigStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
-	log.Info("KubeconfigStep")
+	log.Info("start")
 
 	// Run.
 	st.State = v1.StateRunning
@@ -78,30 +79,37 @@ func kubeconfig(json map[string]interface{}, clusterName string) ([]byte, error)
 		return nil, err
 	}
 
-	get := func(k string) string {
-		if err != nil {
-			return ""
-		}
-		v, ok := m[k]
-		if !ok {
-			err = fmt.Errorf("missing: %s", k)
-		}
-		s, ok := v.(string)
-		if !ok {
-			err = fmt.Errorf("%s: expected string", k)
-		}
-		return s
+	host, err := get(m, "host")
+	if err != nil {
+		return nil, err
 	}
-	get64 := func(k string) []byte {
-		s := get(k)
-		if err != nil {
-			return []byte{}
+	ca, err := get64(m, "cluster_ca_certificate")
+	if err != nil && strings.HasPrefix(host, "https://") /*testenv host is just a plain IP address*/ {
+		return nil, err
+	}
+
+	var ai clientcmdapi.AuthInfo
+	b, err := get64(m, "client_certificate")
+	if err == nil {
+		ai.ClientCertificateData = b
+	}
+	b, err = get64(m, "client_key")
+	if err == nil {
+		ai.ClientKeyData = b
+	}
+	s, err := get(m, "username")
+	if err == nil {
+		ai.Username = s
+	}
+	s, err = get(m, "password")
+	if err == nil {
+		ai.Password = s
+	}
+	if !strings.HasPrefix(host, "127.0") {
+		// API server on loopback adapter doesn't need auth.
+		if (ai.ClientCertificateData == nil || ai.ClientKeyData == nil) && (ai.Username == "" || ai.Password == "") {
+			return nil, fmt.Errorf("expected client_certificate,client_key or username,password")
 		}
-		d, e := base64.StdEncoding.DecodeString(s)
-		if e != nil {
-			err = fmt.Errorf("%s: %v", k, e)
-		}
-		return d
 	}
 
 	c := &clientcmdapi.Config{
@@ -109,8 +117,8 @@ func kubeconfig(json map[string]interface{}, clusterName string) ([]byte, error)
 			{
 				Name: clusterName,
 				Cluster: clientcmdapi.Cluster{
-					Server:                   get("host"),
-					CertificateAuthorityData: get64("cluster_ca_certificate"),
+					Server:                   host,
+					CertificateAuthorityData: ca,
 				},
 			},
 		},
@@ -125,18 +133,11 @@ func kubeconfig(json map[string]interface{}, clusterName string) ([]byte, error)
 		},
 		AuthInfos: []clientcmdapi.NamedAuthInfo{
 			{
-				Name: "admin",
-				AuthInfo: clientcmdapi.AuthInfo{
-					ClientCertificateData: get64("client_certificate"),
-					ClientKeyData:         get64("client_key"),
-				},
+				Name:     "admin",
+				AuthInfo: ai,
 			},
 		},
 		CurrentContext: "default",
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	out, err := yaml.Marshal(c)
@@ -159,4 +160,28 @@ func getMSIPath(data map[string]interface{}, keys ...string) (map[string]interfa
 		}
 	}
 	return data, nil
+}
+
+func get(m map[string]interface{}, k string) (string, error) {
+	v, ok := m[k]
+	if !ok {
+		return "", fmt.Errorf("missing: %s", k)
+	}
+	s, ok := v.(string)
+	if !ok {
+		return "", fmt.Errorf("%s: expected string", k)
+	}
+	return s, nil
+}
+
+func get64(m map[string]interface{}, k string) ([]byte, error) {
+	s, err := get(m, k)
+	if err != nil {
+		return []byte{}, err
+	}
+	d, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return []byte{}, fmt.Errorf("%s: %v", k, err)
+	}
+	return d, nil
 }

@@ -25,38 +25,94 @@ func TestExpand(t *testing.T) {
 	}
 
 	type Val struct {
-		Field string
-		Map map[string]string
+		Field  string
+		Map    map[string]string
 		Struct Xyz
+		List   []string
+		Any    interface{}
+	}
+
+	type HCL struct {
+		One   string `hcl:"one"`
+		Two   int    `hcl:"two"`
+		Three string `hcl:"three" hcle:"omitempty"`
 	}
 
 	tests := []struct {
-		it      string
-		inText  string
+		it       string
+		inText   string
 		inValues interface{}
-		want string
+		want     string
 	}{
 		{
-			it: "should expand a field",
+			it:     "should expand a field",
 			inText: "{{ .Field }}",
 			inValues: Val{
 				Field: "field",
 			},
 			want: "field",
-		},{
-			it: "should expand a map",
+		}, {
+			it:     "should expand a map",
 			inText: "{{ .Map.two }}",
 			inValues: Val{
 				Map: map[string]string{"one": "1", "two": "2"},
 			},
 			want: "2",
-		},{
-			it: "should expand a struct",
+		}, {
+			it:     "should expand a struct field",
 			inText: "{{ .Struct.Name }}",
 			inValues: Val{
 				Struct: Xyz{Name: "xyzfield"},
 			},
 			want: "xyzfield",
+		}, {
+			it:     "should expand a list raw",
+			inText: "{{ .List }}",
+			inValues: Val{
+				List: []string{"one", "two", "three"},
+			},
+			want: `[one two three]`,
+		}, {
+			it:     "should expand any list HCL formatted",
+			inText: "{{toHCL .Any }}",
+			inValues: Val{
+				Any: []string{"one", "two", "three"},
+			},
+			want: `[
+  "one",
+  "two",
+  "three",
+]
+`,
+		}, {
+			it:     "should expand an annotated struct HCL formatted",
+			inText: "{{toHCL .Any }}",
+			inValues: Val{
+				Any: HCL{
+					One:   "one",
+					Two:   2,
+					Three: "333",
+				},
+			},
+			want: `one = "one"
+
+two = 2
+
+three = "333"
+`,
+		}, {
+			it:     "should expand an annotated struct HCL formatted, respecting omitempty",
+			inText: "{{toHCL .Any }}",
+			inValues: Val{
+				Any: HCL{
+					One: "one",
+					Two: 2,
+				},
+			},
+			want: `one = "one"
+
+two = 2
+`,
 		},
 	}
 	for _, tst := range tests {

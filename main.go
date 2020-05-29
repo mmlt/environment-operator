@@ -19,7 +19,6 @@ import (
 	"flag"
 	"github.com/mmlt/environment-operator/pkg/addon"
 	"github.com/mmlt/environment-operator/pkg/executor"
-	"github.com/mmlt/environment-operator/pkg/infra"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/terraform"
@@ -44,7 +43,6 @@ var (
 
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
-
 	_ = clusteropsv1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
@@ -59,8 +57,6 @@ func main() {
 
 	// klog
 	klog.InitFlags(nil)
-	flag.Set("v", "5")
-	flag.Set("alsologtostderr", "true")
 	flag.Parse()
 
 	log := klogr.New()
@@ -88,21 +84,20 @@ func main() {
 	r := &controllers.EnvironmentReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("envctrl"),
-		Log:      ctrl.Log.WithName("envctrl"),
+		Recorder: mgr.GetEventRecorderFor("envop"),
+		Log:      ctrl.Log.WithName("recon"),
 		Selector: *selector,
 	}
 	r.Sources = &source.Sources{
-		RootPath: filepath.Join(os.TempDir(), "envrecon"),
+		RootPath: filepath.Join(os.TempDir(), "envop"),
 		Log:      r.Log.WithName("source"),
 	}
 	ao := &addon.Addon{
 		Log: r.Log.WithName("addon"),
 	}
-	r.Plan = &plan.Plan{
+	r.Planner = &plan.Planner{
 		Log:   r.Log.WithName("plan"),
 		Addon: ao,
-		//Terraform:  tf,
 	}
 	tf := &terraform.Terraform{
 		Log: r.Log.WithName("tf"),

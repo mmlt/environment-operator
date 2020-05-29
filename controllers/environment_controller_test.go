@@ -20,17 +20,32 @@ func TestController_flattenedClusterSpec(t *testing.T) {
 					Name: "cpe",
 					Infra: v1.ClusterInfraSpec{
 						X: map[string]string{
-							"overridden":    "cpe-cluster",
 							"notOverridden": "default",
+							"overridden":    "cpe-cluster",
 						},
 					},
-				}, {
+					Addons: v1.ClusterAddonSpec{
+						Source: v1.SourceSpec{
+							Type: "local",
+							URL:  "../config/samples/addons",
+						},
+						Jobs: []string{"cluster/local/minikube/all.yaml"},
+					},
+				},
+				{
 					Name: "second",
 					Infra: v1.ClusterInfraSpec{
 						X: map[string]string{
-							"overridden":    "second-cluster",
 							"notOverridden": "default",
+							"overridden":    "second-cluster",
 						},
+					},
+					Addons: v1.ClusterAddonSpec{
+						Source: v1.SourceSpec{
+							Type: "local",
+							URL:  "../config/samples/addons",
+						},
+						Jobs: []string{"cluster/local/minikube/all.yaml"},
 					},
 				},
 			},

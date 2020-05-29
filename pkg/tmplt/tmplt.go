@@ -1,6 +1,8 @@
 package tmplt
 
 import (
+	"fmt"
+	"github.com/rodaine/hclencoder"
 	"io"
 	"io/ioutil"
 	"os"
@@ -44,7 +46,10 @@ func ExpandFile(path, suffix string, values interface{}) error {
 // Expand takes an in string with https://golang.org/pkg/text/template/ directives and values
 // and writes the result to out.
 func Expand(name, in string, out io.Writer, values interface{}) error {
-	t, err := template.New(name).Parse(in)
+	funcMap := template.FuncMap{
+		"toHCL": toHCL,
+	}
+	t, err := template.New(name).Funcs(funcMap).Parse(in)
 	if err != nil {
 		return err
 	}
@@ -52,7 +57,10 @@ func Expand(name, in string, out io.Writer, values interface{}) error {
 	return t.Execute(out, values)
 }
 
-
-
-
-
+func toHCL(in interface{}) string {
+	b, err := hclencoder.Encode(in)
+	if err != nil {
+		return fmt.Sprintf("toHCL: %v", err)
+	}
+	return string(b)
+}

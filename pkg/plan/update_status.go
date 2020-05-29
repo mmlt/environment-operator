@@ -5,17 +5,21 @@ import (
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/step"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // UpdateStatusStep saves the step state in Status.Step.
-func (p *Plan) UpdateStatusStep(status *v1.EnvironmentStatus, stp step.Step) error {
+func (p *Planner) UpdateStatusStep(status *v1.EnvironmentStatus, stp step.Step) error {
 	m := stp.Meta()
 
 	s := v1.StepStatus{
 		State:              m.State,
 		Message:            m.Msg,
-		Hash:               m.Hash,
 		LastTransitionTime: metav1.Time{Time: m.LastUpdate},
+	}
+
+	if m.State == v1.StateReady || m.State == v1.StateError {
+		s.Hash = m.Hash
 	}
 
 	if status.Steps == nil {
@@ -28,16 +32,21 @@ func (p *Plan) UpdateStatusStep(status *v1.EnvironmentStatus, stp step.Step) err
 
 // UpdateStatusConditions updates Status.Conditions to reflects the current state of the world.
 // Ready = True when all steps are in ready state, Ready = False when some are not ready.
-func (p *Plan) UpdateStatusConditions(status *v1.EnvironmentStatus) error {
-	steps := []step.ID{
-		{Type: step.TypeInit},
-		{Type: step.TypePlan},
-		{Type: step.TypeApply},
+func (p *Planner) UpdateStatusConditions(nsn types.NamespacedName, status *v1.EnvironmentStatus) error {
+	//steps := []step.ID{
+	//	{Type: step.TypeInit},
+	//	{Type: step.TypePlan},
+	//	{Type: step.TypeApply},
+	//}
+
+	plan, ok := p.currentPlan(nsn)
+	if !ok {
+		return fmt.Errorf("expected plan for: %v", nsn)
 	}
 
 	var runningCnt, readyCnt, errorCnt, stateCnt, totalCnt int
 	var latestTime metav1.Time
-	for _, id := range steps /*TODO get allSteps(cspec) from Plan? needs nsn to get the right steps*/ {
+	for _, id := range plan { //steps /*TODO get allSteps(cspec) from Planner? needs nsn to get the right steps*/
 		totalCnt++
 		if s, ok := status.Steps[id.ShortName()]; ok {
 			stateCnt++

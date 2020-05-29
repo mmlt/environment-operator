@@ -50,8 +50,8 @@ type EnvironmentReconciler struct {
 	// Sources fetches tf or yaml source code.
 	Sources *source.Sources
 
-	// Plan decides on the next step to execute based on Environment.
-	Plan *plan.Plan
+	// Planner decides on the next step to execute based on Environment.
+	Planner *plan.Planner
 
 	// Executor executes Steps.
 	Executor *executor.Executor
@@ -74,6 +74,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	// TODO Client side filtering by r.Selector label until https://github.com/kubernetes-sigs/controller-runtime/issues/244 becomes available.
 
 	// TODO add Policy checks
+	// TODO enable/disable via annotations?
 
 	// Get Environment.
 	cr := &v1.Environment{}
@@ -90,7 +91,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	}
 
 	// Register sources.
-	err = r.Sources.Register(req.NamespacedName, source.Ninfra, cr.Spec.Infra.Source)
+	err = r.Sources.Register(req.NamespacedName, "", cr.Spec.Infra.Source)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, fmt.Errorf("register infra source: %w", err)
 	}
@@ -101,8 +102,8 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		}
 	}
 
-	// Plan next step.
-	step, err := r.Plan.NextStep(req.NamespacedName, r.Sources, cr.Spec.Infra, cspec, cr.Status)
+	// Planner next step.
+	step, err := r.Planner.NextStep(req.NamespacedName, r.Sources, cr.Spec.Infra, cspec, cr.Status)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, fmt.Errorf("plan next step: %w", err)
 	}
@@ -150,13 +151,13 @@ func (r *EnvironmentReconciler) Update(step step.Step) {
 		}
 
 		// Merge step into CR.
-		err = r.Plan.UpdateStatusStep(&cr.Status, step)
+		err = r.Planner.UpdateStatusStep(&cr.Status, step)
 		if err != nil {
 			r.Log.Error(err, "update status state")
 			return
 		}
 
-		err = r.Plan.UpdateStatusConditions(&cr.Status)
+		err = r.Planner.UpdateStatusConditions(nsn, &cr.Status)
 		if err != nil {
 			r.Log.Error(err, "update status condition")
 			return

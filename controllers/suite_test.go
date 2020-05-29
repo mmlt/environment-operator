@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"github.com/go-logr/stdr"
+	"github.com/mmlt/environment-operator/pkg/addon"
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
@@ -104,21 +105,35 @@ var _ = BeforeSuite(func(done Done) {
 	testReconciler = &EnvironmentReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("envctrl"),
-		Log:      ctrl.Log.WithName("EnvironmentReconciler"),
+		Recorder: mgr.GetEventRecorderFor("envop"),
+		Log:      ctrl.Log.WithName("recon"),
 		//TODO Selector: *selector,
 	}
 	testReconciler.Sources = &source.Sources{
-		RootPath: filepath.Join(os.TempDir(), "envrecon"),
+		RootPath: filepath.Join(os.TempDir(), "envop"),
 		Log:      testReconciler.Log.WithName("source"),
 	}
-	testReconciler.Plan = &plan.Plan{
+	testReconciler.Planner = &plan.Planner{
+		Addon: &addon.Addon{
+			Log: testReconciler.Log.WithName("addon"),
+		},
 		Log: testReconciler.Log.WithName("plan"),
 	}
 	tf := &terraform.TerraformFake{
 		Log: testReconciler.Log.WithName("tffake"),
 	}
-	tf.SetupFakeResults()
+	tf.SetupFakeResults(map[string]interface{}{
+		"one": map[string]interface{}{
+			"kube_admin_config": map[string]interface{}{
+				"client_certificate":     cfg.CertData,
+				"client_key":             cfg.KeyData,
+				"cluster_ca_certificate": cfg.CAData,
+				"host":                   cfg.Host,
+				"password":               cfg.Password,
+				"username":               cfg.Username,
+			},
+		},
+	})
 	testReconciler.Executor = &executor.Executor{
 		UpdateSink: testReconciler,
 		EventSink:  testReconciler,

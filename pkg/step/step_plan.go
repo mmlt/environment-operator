@@ -30,7 +30,7 @@ func (st *PlanStep) Meta() *meta {
 
 // Run a step.
 func (st *PlanStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
-	log.Info("PlanStep")
+	log.Info("start")
 
 	// Run.
 	st.State = v1.StateRunning
