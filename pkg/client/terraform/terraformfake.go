@@ -98,8 +98,9 @@ func (t *TerraformFake) Output(dir string) (map[string]interface{}, error) {
 	return t.OutputResult, nil
 }
 
-// SetupFakeResults sets the receiver up data that is returned during testing.
-// clusters is a map[string]interface{}{
+// SetupFakeResults sets the receiver up with data that is returned during testing.
+// If clusters == nil it defaults to:
+//	map[string]interface{}{
 //		"mycluster": map[string]interface{}{
 //			"kube_admin_config": map[string]interface{}{
 //				"client_certificate":     "LS0tLS1Cclientcert",
@@ -112,6 +113,21 @@ func (t *TerraformFake) Output(dir string) (map[string]interface{}, error) {
 //		},
 //	},
 func (t *TerraformFake) SetupFakeResults(clusters map[string]interface{}) {
+	if clusters == nil {
+		clusters = map[string]interface{}{
+			"mycluster": map[string]interface{}{
+				"kube_admin_config": map[string]interface{}{
+					"client_certificate":     "LS0tLS1Cclientcert",
+					"client_key":             "LS0tLS1CRclientkey",
+					"cluster_ca_certificate": "LS0tLS1CRcacert",
+					"host":                   "https://api.kubernetes.example.com:443",
+					"password":               "4ee5bb2",
+					"username":               "someadmin",
+				},
+			},
+		}
+	}
+
 	t.InitResult = TFResult{
 		Info: 1,
 	}

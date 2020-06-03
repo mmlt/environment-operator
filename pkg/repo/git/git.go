@@ -18,8 +18,6 @@ import (
 
 // Repo represents the GIT repository to clone/pull from.
 type Repo struct {
-	// name of repo (.
-	//name string
 	// url of repo.
 	url string
 	// reference to repo content to get (see https://git-scm.com/docs/git-show-ref)
@@ -101,35 +99,6 @@ func (r *Repo) Remove() error {
 	return os.RemoveAll(r.tempDir)
 }
 
-/*TODO remove
-// HasChanged returns true if the receiver state is different from the argument state.
-func (r *Repo) HasChanged(state types.State) (bool, error) {
-	s, err := r.fingerprint()
-	if err != nil {
-		return false, err
-	}
-
-	return state[r.name] != s, nil
-}*/
-
-/*// UpdateStatus updates to argument state object to reflect the receiver state.
-func (r *Repo) CollectState(state types.State) error {
-	s, err := r.fingerprint()
-	if err != nil {
-		return err
-	}
-
-	state[r.name] = s
-
-	return nil
-}
-*/
-// UpdateStatus updates to argument status object to reflect the receiver status.
-/*func (r *Repo) UpdateStatus(status *v1alpha1.ClusterAddonStatus) error {
-	//TODO add errors messages to conditions
-	return nil
-}*/
-
 // SHAremote returns the SHA of the last commit to the remote repo.
 func (r *Repo) SHAremote() (string, error) {
 	//TODO consider returning cached value if called within 1 minute
@@ -138,7 +107,6 @@ func (r *Repo) SHAremote() (string, error) {
 		args = append(args, r.reference)
 	}
 	o, _, err := exe.Run(r.log, nil, "", "git", args...)
-	//TODO remove o, _, err := exe.Run("git", exe.Args{"ls-remote", r.url, "refs/heads/" + r.reference}, exe.Opt{}, r.log)
 	if err != nil {
 		return "", err
 	}
@@ -240,23 +208,6 @@ func urlWithToken(url, token string) string {
 	}
 	return prefix + token + "@" + url[len(prefix):]
 }
-
-// Hashed returns a short version of url/branch in alphanum chars only.
-/*TODO
-func Hashed(url, branch string) string {
-	// url part is max 24 chars incl. 8 chars hash.
-	const max = 24 - 8
-
-	h := fnv.New32a()
-	h.Write([]byte(url))
-
-	b := path.Base(url)
-	l := len(b)
-	if l > max {
-		l = max
-	}
-	return fmt.Sprintf("%x-%s-%s", h.Sum32(), b[len(b)-l:], branch)
-}*/
 
 // OptTempDir returns options to exe commands in the temporary directory.
 func (r *Repo) optTempDir() *exe.Opt {

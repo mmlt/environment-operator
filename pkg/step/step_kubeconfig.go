@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-	"github.com/mmlt/environment-operator/pkg/terraform"
+	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"io/ioutil"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api/v1"
 	"sigs.k8s.io/yaml"

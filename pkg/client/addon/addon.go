@@ -9,7 +9,7 @@ import (
 	"io"
 	"os/exec"
 	"strings"
-	"text/scanner"
+	"unicode"
 )
 
 // Addonr is able to provision Kubernetes resources.
@@ -118,26 +118,47 @@ func parseAddonResponseLine(in *KTResult, line string) *KTResult {
 		return nil
 	}
 
-	var last3 []string
-	var sc scanner.Scanner
-	sc.Init(strings.NewReader(line))
-	for tok := sc.Scan(); tok != scanner.EOF; tok = sc.Scan() {
-		last3 = append(last3, strings.Trim(sc.TokenText(), "\""))
-		if len(last3) > 3 {
-			last3 = last3[1:]
+	kvDo(line, func(k, v string) {
+		switch k {
+		case "txt":
+			r.Object = v
+		case "msg":
+			r.Action = v
+		case "id":
+			r.ObjectID = v
+			// not used: "tpl" "level"
 		}
-		if len(last3) == 3 && last3[1] == "=" {
-			switch last3[0] {
-			case "txt":
-				r.Object = last3[2]
-			case "msg":
-				r.Action = last3[2]
-			case "id":
-				r.ObjectID = last3[2]
-				// not used: "tpl" "level"
-			}
-		}
-	}
+	})
 
 	return &r
+}
+
+// KVDo calls do for each k=v pattern in line.
+// Quoted strings are allowed for k and v.
+func kvDo(line string, do func(k, v string)) {
+	lastQuote := rune(0)
+	ss := strings.FieldsFunc(line, func(c rune) bool {
+		switch {
+		case c == lastQuote:
+			lastQuote = rune(0)
+			return false
+		case lastQuote != rune(0):
+			return false
+		case unicode.In(c, unicode.Quotation_Mark):
+			lastQuote = c
+			return false
+		default:
+			return unicode.IsSpace(c)
+
+		}
+	})
+	for _, s := range ss {
+		kv := strings.Split(s, "=")
+		if len(kv) != 2 {
+			continue
+		}
+		k := strings.Trim(kv[0], "\"")
+		v := strings.Trim(kv[1], "\"")
+		do(k, v)
+	}
 }

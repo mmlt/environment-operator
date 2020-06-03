@@ -1,10 +1,11 @@
+// Package executor performs steps to create environments.
 package executor
 
 import (
 	"context"
 	"github.com/go-logr/logr"
+	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/step"
-	"github.com/mmlt/environment-operator/pkg/terraform"
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sync"
@@ -30,16 +31,7 @@ func init() {
 	metrics.Registry.MustRegister(MetricSteps, MetricStepFailures)
 }
 
-// TODO update comment;
-// Executor executes Steps to create/update infrastructure.
-//Can execute multiple Plan's in parallel.
-//Know how to serialize certain steps.
-//Only contains (ephemeral) state that is common to all Plans.
-//State that needs to be persisted is sent to the Reconciler.
-//Some of this state might be on a local (persistent) volume like GIT, TFState.
-//Can restart from state (in Plan)
-
-// Executor runs Steps.
+// Executor performs Steps.
 type Executor struct {
 	// UpdateSink is notified when a plan has changed.
 	UpdateSink step.Updater
@@ -55,17 +47,6 @@ type Executor struct {
 	sync.Mutex
 }
 
-//TODO do we still needs these for testing? if yes move to _test
-/*
-// Update is an adaptor from Update method to UpdaterFunc.
-func (f UpdaterFunc) Update(step Step) {
-	f(step)
-}
-
-// UpdaterFunc is a function that conforms to the Updater interface.
-type UpdaterFunc func(Step)
-*/
-
 // Run is the concurrent execution of a step.
 type run struct {
 	ctx    context.Context
@@ -76,7 +57,7 @@ type run struct {
 // Accept attempts to execute another step and returns true if step is accepted.
 // When a step is not accepted it should be retried later on.
 // Progress is communicated over the receivers UpdateSink and EventSink.
-func (ex *Executor) Accept(stp step.Step) (bool, error) { //TODO rename step package to steps so we can use step as parameter
+func (ex *Executor) Accept(stp step.Step) (bool, error) {
 	if stp == nil {
 		// nothing to do
 		return true, nil

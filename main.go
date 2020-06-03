@@ -17,11 +17,11 @@ package main
 
 import (
 	"flag"
-	"github.com/mmlt/environment-operator/pkg/addon"
+	"github.com/mmlt/environment-operator/pkg/client/addon"
+	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
-	"github.com/mmlt/environment-operator/pkg/terraform"
 	"k8s.io/klog"
 	"k8s.io/klog/klogr"
 	"os"

@@ -27,6 +27,15 @@ func Test_parseAddonResponseLine(t *testing.T) {
 			},
 		},
 		{
+			it: "must handle all input",
+			in: []string{
+				"I 09:14:40  \"level\"=0 \"msg\"=\"InstrApply\"  \"id\"=25 \"tpl\"=\"hashi-injector.yaml\" \"txt\"=\"service/vault-agent-injector-svc created\"\n",
+			},
+			want: []KTResult{
+				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "service/vault-agent-injector-svc created", ObjectID: "25", Action: "InstrApply"},
+			},
+		},
+		{
 			it: "must handle template errors",
 			in: []string{
 				"I 18:24:54  \"level\"=0 \"msg\"=\"InstrApply\"  \"id\"=1 \"txt\"=\"namespace/kube-system unchanged\" \"tpl\"=\"namespace.yaml\"\n",

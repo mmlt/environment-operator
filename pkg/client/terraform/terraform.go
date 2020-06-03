@@ -252,7 +252,7 @@ func parseApplyResponseLine(in *TFApplyResult, line string) *TFApplyResult {
 		rre := regexp.MustCompile(`Apply complete! Resources: (\d+) added, (\d+) changed, (\d+) destroyed.`)
 		rs := rre.FindAllStringSubmatch(line, -1)
 		if len(rs) == 1 && len(rs[0]) == 4 {
-			// TODO errors ignored
+			// errors are ignored
 			r.TotalAdded, _ = strconv.Atoi(rs[0][1])
 			r.TotalChanged, _ = strconv.Atoi(rs[0][2])
 			r.TotalDestroyed, _ = strconv.Atoi(rs[0][3])

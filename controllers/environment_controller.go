@@ -187,6 +187,14 @@ func (r *EnvironmentReconciler) Update(step step.Step) {
 }
 
 func (r *EnvironmentReconciler) Info(id step.ID, msg string) error {
+	return r.event(id, "Normal", msg)
+}
+
+func (r *EnvironmentReconciler) Warning(id step.ID, msg string) error {
+	return r.event(id, "Warning", msg)
+}
+
+func (r *EnvironmentReconciler) event(id step.ID, eventtype, msg string) error {
 	//r.Log.V(2).Info("Event", "type", "Normal", "id", id, "msg", msg)
 	//TODO use gvk := obj.GetObjectKind().GroupVersionKind() to replace hardcoded values?
 	// With UID the events show with the Object.
@@ -198,13 +206,7 @@ func (r *EnvironmentReconciler) Info(id step.ID, msg string) error {
 		//UID:             r.x,
 		APIVersion: "clusterops.mmlt.nl/v1",
 	}
-	r.Recorder.Event(o, "Normal", id.ShortName(), msg)
-	return nil
-}
-
-func (r *EnvironmentReconciler) Warning(id step.ID, msg string) error {
-	r.Log.V(2).Info("Event", "type", "Warning", "id", id, "msg", msg)
-	//TODO implement EventRecorder Warning
+	r.Recorder.Event(o, eventtype, id.ShortName(), msg)
 	return nil
 }
 

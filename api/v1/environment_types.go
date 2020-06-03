@@ -49,13 +49,13 @@ type EnvironmentPolicy string
 
 const (
 	// AllowAll allows create, update and delete of cluster add-ons.
-	AllowAll EnvironmentPolicy = "AllowAll"
+	PolicyAllowAll EnvironmentPolicy = "AllowAll"
 
 	// DenyDelete forbids delete of cluster add-ons when ClusterAddon resource is deleted.
-	DenyDelete EnvironmentPolicy = "DenyDelete"
+	PolicyDenyDelete EnvironmentPolicy = "DenyDelete"
 
 	// DenyUpdate forbids update/delete of cluster add-ons when ClusterAddon or repo changes.
-	DenyUpdate EnvironmentPolicy = "DenyUpdate"
+	PolicyDenyUpdate EnvironmentPolicy = "DenyUpdate"
 )
 
 // InfraSpec defines the infrastructure that the clusters depend on.
@@ -249,7 +249,7 @@ type StepStatus struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
 	// The reason for the StepState's last transition in CamelCase.
 	// +required
-	State StepStatusState `json:"state"`
+	State StepState `json:"state"`
 	// A human readable message indicating details about the transition.
 	// +optional
 	Message string `json:"message,omitempty"`
@@ -257,19 +257,13 @@ type StepStatus struct {
 	Hash string `json:"hash,omitempty"`
 }
 
-/*TODO remove or apply in all case that do a checks like stp.State == v1.StateError
-// HasIssue returns true if the Step has a problem that should prevent a next step from running.
-func (ss *StepStatus) HasIssue() bool {
-	return ss.State == StateError
-}*/
-
-// EnvironmentConditionReason is the reason for the condition change.
-type StepStatusState string //TODO rename to StepState?
+// StepState is the current state of the step.
+type StepState string
 
 const (
-	StateRunning StepStatusState = "Running"
-	StateReady   StepStatusState = "Ready"
-	StateError   StepStatusState = "Error"
+	StateRunning StepState = "Running"
+	StateReady   StepState = "Ready"
+	StateError   StepState = "Error"
 )
 
 // EnvironmentCondition provides a synopsis of the current environment state.

@@ -328,7 +328,7 @@ func TestParseAsyncApplyResponse(t *testing.T) {
 					Errors: []string{"A resource with the ID \"/subscriptions/ea365/resourcegroups/xxx-rg/providers/Microsoft.ContainerService/managedClusters/yyy-cpe\" already exists - to be managed via Terraform this resource needs to be imported into the State. Please see the resource documentation for \"azurerm_kubernetes_cluster\" for more information."},
 				},
 			},
-		},	{
+		}, {
 			it: "must parse a succesful apply",
 			in: []string{
 				"azurerm_route_table.env: Modifying... [id=/subscriptions/ea363b8e/resourceGroups/xxx-rg/providers/Microsoft.Network/routeTables/yyy-routetable]\n",

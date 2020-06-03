@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-	"github.com/mmlt/environment-operator/pkg/terraform"
+	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"time"
 )
 
@@ -25,7 +25,7 @@ type meta struct {
 	// Hash is unique for the config/parameters applied by this step.
 	Hash string
 	// State indicates if this step has started, is in error etc.
-	State v1.StepStatusState
+	State v1.StepState
 	// Msg helps explaining the state. Mandatory for StepStateError.
 	Msg string
 	// LastUpdate is the time of the last state change.
@@ -47,7 +47,7 @@ func (si *ID) ShortName() string {
 	return si.Type.String() + si.ClusterName
 }
 
-//go:generate stringer -type StepType -trimprefix Type
+//go:generate stringer -type Type -trimprefix Type
 
 // Type allows us to iterate step types. //TODO do we need iteration? why not use const TypeInit = "Init" and remove go:generate?
 type Type int
@@ -56,7 +56,7 @@ const (
 	TypeInit Type = iota
 	TypePlan
 	TypeApply
-	TypePool
+	TypeAKSPool
 	TypeKubeconfig
 	TypeAddons
 	TypeTest

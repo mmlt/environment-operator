@@ -4,7 +4,7 @@ package plan
 import (
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-	"github.com/mmlt/environment-operator/pkg/addon"
+	"github.com/mmlt/environment-operator/pkg/client/addon"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"k8s.io/apimachinery/pkg/types"
 	"sync"
@@ -64,10 +64,10 @@ func (p *Planner) selectPlan(nsn types.NamespacedName, cspec []v1.ClusterSpec) {
 	)
 	for _, v := range cspec {
 		r = append(r,
-			//step.ID{Type: step.TypePool, ClusterName: v.Name}),
+			step.ID{Type: step.TypeAKSPool, ClusterName: v.Name},
 			step.ID{Type: step.TypeKubeconfig, ClusterName: v.Name},
 			step.ID{Type: step.TypeAddons, ClusterName: v.Name},
-			//step.ID{Type: step.TypeTest, ClusterName: v.Name},
+			//TODO step.ID{Type: step.TypeTest, ClusterName: v.Name},
 		)
 	}
 

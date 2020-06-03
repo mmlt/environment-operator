@@ -86,7 +86,7 @@ type Getter interface {
 	// Hash returns the hash of the source content.
 	Hash(nsn types.NamespacedName, name string) (hash.Hash, error)
 	// Get copies the source content to a workdir and returns its path.
-	Get(nsn types.NamespacedName, name string) (string, hash.Hash, error)
+	Get(nsn types.NamespacedName, name string) (string, error)
 }
 
 // For testing.
@@ -135,16 +135,14 @@ func (ss *Sources) Hash(nsn types.NamespacedName, name string) (hash.Hash, error
 }
 
 // Get implements Getter.
-func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, hash.Hash, error) {
-	//TODO remove hash because it's confusing, one should Hash() instead
-	// PS. content may have changed since call to Hash() (that's why hash is returned)
+func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, error) {
 	name = defaultName(name)
 
 	id := userID{nsn, name}
 
 	u, ok := ss.users[id]
 	if !ok {
-		return "", nil, fmt.Errorf("source user not found: %s", name)
+		return "", fmt.Errorf("source user not found: %s", name)
 	}
 
 	switch u.src.spec.Type {
@@ -155,17 +153,17 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, hash.Hash
 			Skip: func(p string) bool { return strings.HasSuffix(p, ".git") },
 		})
 		if err != nil {
-			return "", nil, fmt.Errorf("source get(%s): %w", name, err)
+			return "", fmt.Errorf("source get(%s): %w", name, err)
 		}
 	case v1.SourceTypeLocal:
 		//TODO remove unused files from workdir?
 		err := otia10copy.Copy(u.src.spec.URL, u.path)
 		if err != nil {
-			return "", nil, fmt.Errorf("source get(%s): %w", name, err)
+			return "", fmt.Errorf("source get(%s): %w", name, err)
 		}
 	}
 
-	return u.path, u.src.lastUpdateHash, nil
+	return u.path, nil
 }
 
 // Register name as an user of the spec source.

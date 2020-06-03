@@ -6,14 +6,14 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-	"github.com/mmlt/environment-operator/pkg/addon"
-	"github.com/mmlt/environment-operator/pkg/terraform"
+	"github.com/mmlt/environment-operator/pkg/client/addon"
+	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 )
 
-// AddonStep performs a kubectl-tmplt coterraform apply.
+// AddonStep performs a kubectl-tmplt apply.
 type AddonStep struct {
 	meta
 
@@ -41,7 +41,7 @@ func (st *AddonStep) Meta() *meta {
 	return &st.meta
 }
 
-// Execute addon.
+// Execute addon apply for a cluster.
 func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, _ terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
 	log.Info("start")
 

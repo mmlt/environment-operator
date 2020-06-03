@@ -28,66 +28,6 @@ func (p *Planner) NextStep(nsn types.NamespacedName, src source.Getter, ispec v1
 	return st, err
 }
 
-/*TODO remove
-func (p *Planner) nextStepOLD(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (step.Step, error) {
-
-
-		//infraHash
-		//for step := init..apply poolupgrade (infra step iterator)
-		//	if step.hasIssue
-		//		if hasIssueBudget(step)
-		//			step.Reset()
-		//		else
-		//			return nil, nil //nothing to do
-		//	if step.Hash != infraHash
-		//		return NewStep(stepname, steptype, spec, hash)
-		//
-		//for step := addon..qa (cluster step iterator)
-		//	the same as above but with different input hash and spec
-
-	h, err := src.Hash(nsn, "")
-	if err != nil {
-		return nil, err
-	}
-	//TODO add parameters to hash
-	hash := hashAsString(h)
-
-	plan, ok := p.currentPlan(nsn)
-	if !ok {
-		return nil, fmt.Errorf("expected plan for: %v", nsn)
-	}
-
-	for _, id := range plan {
-		current, ok := status.Steps[id.ShortName()]
-		if !ok {
-			// first time this step is seen
-			return p.stepNew(id, nsn, src, ispec, cspec, hash)
-		}
-
-		if current.Hash == hash {
-			continue
-		}
-
-		if current.State == v1.StateRunning {
-			continue
-			//TODO running for a long time may indicate a problem; for example the step execution stopped without updating the status
-		}
-
-		if current.HasIssue() {
-//TODO introduce error budgets && !enoughIssueBudget(currentStatus)
-// no budget to retry
-			return nil, nil
-		}
-
-		return p.stepNew(id, nsn, src, ispec, cspec, hash)
-	}
-
-	//TODO do the same for clusterStepOrder(cspec)
-
-	return nil, nil
-}
-*/
-
 func (p *Planner) nextStep(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (step.Step, error) {
 	plan, ok := p.currentPlan(nsn)
 	if !ok {
@@ -95,20 +35,28 @@ func (p *Planner) nextStep(nsn types.NamespacedName, src source.Getter, ispec v1
 	}
 
 	for _, id := range plan {
-		h, err := src.Hash(nsn, id.ClusterName)
+		// Calculate hash over source and spec(s)
+		// TODO consider moving calculation to a function that mirrors how newStep uses parameters.
+		sh, err := src.Hash(nsn, id.ClusterName)
 		if err != nil {
 			return nil, err
 		}
-		// sum source and spec hash
 		var hash string
 		if id.ClusterName == "" {
-			hash, err = hashToString(h.Sum(nil), ispec)
+			// hash for infra steps
+			//TODO move out of loop
+			h := []interface{}{sh.Sum(nil), ispec}
+			for _, s := range cspec {
+				h = append(h, s.Infra)
+			}
+			hash, err = hashToString(h)
 		} else {
+			// hash for steps that have cluster specific parameters
 			spec, err := cspecAtName(cspec, id.ClusterName)
 			if err != nil {
 				return nil, err
 			}
-			hash, err = hashToString(h.Sum(nil), spec)
+			hash, err = hashToString(sh.Sum(nil), spec)
 		}
 		if err != nil {
 			return nil, err
@@ -143,13 +91,13 @@ func (p *Planner) nextStep(nsn types.NamespacedName, src source.Getter, ispec v1
 
 func (p *Planner) stepNew(id step.ID, nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, hash string) (step.Step, error) {
 	// NB. Source Get is called for each step that needs a source. Many of these calls are redundant as a previous call
-	// already performed the Get. TODO The Get call can be made smarter to reduce copying.
+	// already performed the Get. TODO make Get call smarter to reduce copying.
 
 	var r step.Step
 
 	switch id.Type {
 	case step.TypeInit:
-		path, _, err := src.Get(nsn, "")
+		path, err := src.Get(nsn, "")
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +109,7 @@ func (p *Planner) stepNew(id step.ID, nsn types.NamespacedName, src source.Gette
 			SourcePath: path,
 		}
 	case step.TypePlan:
-		path, _, err := src.Get(nsn, id.ClusterName)
+		path, err := src.Get(nsn, id.ClusterName)
 		if err != nil {
 			return nil, err
 		}
@@ -169,21 +117,29 @@ func (p *Planner) stepNew(id step.ID, nsn types.NamespacedName, src source.Gette
 			SourcePath: path,
 		}
 	case step.TypeApply:
-		path, _, err := src.Get(nsn, id.ClusterName)
+		path, err := src.Get(nsn, id.ClusterName)
 		if err != nil {
 			return nil, err
 		}
 		r = &step.ApplyStep{
 			SourcePath: path,
 		}
-	//TODO case step.TypePool:
-	//	r = &step.PoolStep{}
-	case step.TypeKubeconfig:
-		tfPath, _, err := src.Get(nsn, "")
+	case step.TypeAKSPool:
+		spec, err := cspecAtName(cspec, id.ClusterName)
 		if err != nil {
 			return nil, err
 		}
-		path, _, err := src.Get(nsn, id.ClusterName)
+		r = &step.AKSPoolStep{
+			ResourceGroup: ispec.AZ.ResourceGroup,
+			Cluster:       ispec.EnvName + "-" + id.ClusterName, // we prefix AZ resources with env name.
+			Version:       spec.Infra.Version,
+		}
+	case step.TypeKubeconfig:
+		tfPath, err := src.Get(nsn, "")
+		if err != nil {
+			return nil, err
+		}
+		path, err := src.Get(nsn, id.ClusterName)
 		if err != nil {
 			return nil, err
 		}
@@ -194,7 +150,7 @@ func (p *Planner) stepNew(id step.ID, nsn types.NamespacedName, src source.Gette
 			KCPath:      kcPath,
 		}
 	case step.TypeAddons:
-		path, _, err := src.Get(nsn, id.ClusterName)
+		path, err := src.Get(nsn, id.ClusterName)
 		if err != nil {
 			return nil, err
 		}
@@ -219,15 +175,6 @@ func (p *Planner) stepNew(id step.ID, nsn types.NamespacedName, src source.Gette
 
 	return r, nil
 }
-
-//TODO remove HashAsString returns the base64 representation of h.
-/*func hashAsString(h hash.Hash) string {
-	if h == nil {
-		return ""
-	}
-	r := h.Sum(nil)
-	return base64.StdEncoding.EncodeToString(r)
-}*/
 
 // HashToString returns a string that is unique for args.
 func hashToString(args ...interface{}) (string, error) {
