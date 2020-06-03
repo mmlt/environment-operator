@@ -26,6 +26,7 @@ import (
 	"k8s.io/klog/klogr"
 	"os"
 	"path/filepath"
+	"time"
 
 	clusteropsv1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/controllers"
@@ -54,6 +55,8 @@ func main() {
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	selector := flag.String("selector", "clusterops.mmlt.nl/env=eu41tp",
 		"Select the CR's that are handled by this operator instance.")
+	syncPeriodInMin := flag.Int("sync-period-in-min", 10,
+		"The max. interval time to check external sources like git.")
 
 	// klog
 	klog.InitFlags(nil)
@@ -68,11 +71,13 @@ func main() {
 
 	// Setup manager.
 
+	p := time.Duration(*syncPeriodInMin) * time.Minute
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: *metricsAddr,
 		LeaderElection:     *enableLeaderElection,
 		Port:               9443,
+		SyncPeriod:         &p,
 		//TODO Add RateLimiter that starts at 1m to max 10m see https://github.com/kubernetes-sigs/controller-runtime/issues/631
 	})
 	if err != nil {
