@@ -4,7 +4,6 @@ package executor
 import (
 	"context"
 	"github.com/go-logr/logr"
-	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -37,8 +36,11 @@ type Executor struct {
 	UpdateSink step.Updater
 	// EventSink is notified of Info and Warning events.
 	EventSink step.Infoer
-	// TF is the terraform implementation to use.
-	Terraform terraform.Terraformer
+	//TODO remove
+	//// Terraform is the terraform implementation to use.
+	//Terraform terraform.Terraformer
+	//// Azure is the azure cli implementation to use.
+	//Azure azure.AZer
 
 	// Running is the map of running steps.
 	running map[step.ID]run
@@ -89,9 +91,8 @@ func (ex *Executor) Accept(stp step.Step) (bool, error) {
 	ex.running[stp.Meta().ID] = r
 	MetricSteps.Inc()
 	go func() {
-		//TODO behavior is Step dependent, receiver contains the work to do, parameters carry plumbing
-		// Move sinks, Terraform, Log to meta? meta will be created by Planner (nice: Planner can decide on Terraform impl)
-		ok := stp.Execute(r.ctx, ex.EventSink, ex.UpdateSink, ex.Terraform, ex.Log.WithName(stp.Meta().ID.ShortName()))
+		log := ex.Log.WithName("Execute").WithValues("stepName", stp.Meta().ID.ShortName())
+		ok := stp.Execute(r.ctx, ex.EventSink, ex.UpdateSink, log)
 		if !ok {
 			MetricStepFailures.Inc()
 		}

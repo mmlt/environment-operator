@@ -219,6 +219,10 @@ spec:
                   description: ClusterAddonSpec defines what conformance test to run.
                   type: object
               type: object
+            destroy:
+              description: Destroy is true when an environment needs to be removed.
+                Typically used in cluster delete/create test cases.
+              type: boolean
             infra:
               description: Infra defines infrastructure that much exist before clusters
                 can be created.

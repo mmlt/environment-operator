@@ -7,7 +7,6 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/addon"
-	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -15,13 +14,15 @@ import (
 
 // AddonStep performs a kubectl-tmplt apply.
 type AddonStep struct {
-	meta
+	Metaa
 
 	Addon addon.Addonr
 
 	/* Parameters */
 	// KCPath is the path of the kube config file.
 	KCPath string
+	// MasterVaultPath is the path to a directory containing the config of the Vault to use.
+	MasterVaultPath string
 	// SourcePath is the path to the directory containing the k8s resources.
 	SourcePath string
 	// JobPaths is collection of paths (relative to SourcePath) to job files.
@@ -36,13 +37,13 @@ type AddonStep struct {
 	Added, Changed, Deleted int
 }
 
-// Meta returns a reference to the meta data this Step.
-func (st *AddonStep) Meta() *meta {
-	return &st.meta
+// Meta returns a reference to the Metaa data this Step.
+func (st *AddonStep) Meta() *Metaa {
+	return &st.Metaa
 }
 
 // Execute addon apply for a cluster.
-func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, _ terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
+func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	st.State = v1.StateRunning
@@ -62,7 +63,7 @@ func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, _
 	var totals []addon.KTResult
 	for _, job := range st.JobPaths {
 		// Run kubectl-tmplt
-		cmd, ch, err := st.Addon.Start(ctx, st.SourcePath, job, values, st.KCPath)
+		cmd, ch, err := st.Addon.Start(ctx, st.SourcePath, job, values, st.KCPath, st.MasterVaultPath)
 		if err != nil {
 			log.Error(err, "start kubectl-tmplt")
 			isink.Warning(st.ID, "start kubectl-tmplt:"+err.Error())
@@ -89,9 +90,17 @@ func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, _
 			}
 		}
 
-		//TODO fix 'last' not being set because no data is received from the channel since the Start().
-		if last != nil {
-			totals = append(totals, *last)
+		if last == nil {
+			// no data has been received from the channel since the Start().
+			log.Info("kubectl-tmplt no feedback received")
+
+			continue //TODO or exit loop?
+		}
+
+		totals = append(totals, *last)
+
+		if len(last.Errors) > 0 {
+			break
 		}
 	}
 

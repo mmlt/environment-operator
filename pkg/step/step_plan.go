@@ -10,12 +10,15 @@ import (
 
 // PlanStep performs a terraform init
 type PlanStep struct {
-	meta
+	Metaa
 
 	/* Parameters */
 
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
+
+	// Terraform is the terraform implementation to use.
+	Terraform terraform.Terraformer
 
 	/* Results */
 
@@ -23,20 +26,20 @@ type PlanStep struct {
 	Added, Changed, Deleted int
 }
 
-// Meta returns a reference to the meta data this Step.
-func (st *PlanStep) Meta() *meta {
-	return &st.meta
+// Meta returns a reference to the Metaa data this Step.
+func (st *PlanStep) Meta() *Metaa {
+	return &st.Metaa
 }
 
 // Run a step.
-func (st *PlanStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
+func (st *PlanStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run.
 	st.State = v1.StateRunning
 	usink.Update(st)
 
-	tfr := tf.Plan(st.SourcePath)
+	tfr := st.Terraform.Plan(st.SourcePath)
 
 	// Return results.
 	st.State = v1.StateReady

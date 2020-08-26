@@ -97,7 +97,7 @@ func testSpecLocal() *v1.EnvironmentSpec {
 		},
 		Defaults: v1.ClusterSpec{
 			Infra: v1.ClusterInfraSpec{
-				Version: "1.15.7",
+				Version: "1.16.8",
 				X: map[string]string{
 					"overridden":    "default",
 					"notOverridden": "default",

@@ -4,22 +4,20 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"time"
 )
 
 // Step is the behaviour that all *Step types have in common.
 type Step interface {
-	// Meta returns a reference to the meta data of a Step.
-	Meta() *meta
+	// Meta returns a reference to the Metaa data of a Step.
+	Meta() *Metaa
 	// Execute a step, return true on success.
-	//TODO consider moving terraformer to StepInit,Plan,Apply structs (planner is responsible for setting)
-	Execute(context.Context, Infoer, Updater, terraform.Terraformer, logr.Logger) bool
+	Execute(context.Context, Infoer, Updater, logr.Logger) bool
 }
 
-// meta contains the fields that all steps have in common.
+// Metaa contains the fields that all steps have in common.
 // (it is embedded in all *Steps types)
-type meta struct {
+type Metaa struct {
 	// ID uniquely identifies this step.
 	ID ID
 	// Hash is unique for the config/parameters applied by this step.
@@ -44,26 +42,24 @@ type ID struct {
 
 // ShortName returns a name that's unique within an environment.
 func (si *ID) ShortName() string {
-	return si.Type.String() + si.ClusterName
+	return string(si.Type) + si.ClusterName
 }
 
-//go:generate stringer -type Type -trimprefix Type
-
-// Type allows us to iterate step types. //TODO do we need iteration? why not use const TypeInit = "Init" and remove go:generate?
-type Type int
+// Type of step.
+type Type string
 
 const (
-	TypeInit Type = iota
-	TypePlan
-	TypeApply
-	TypeAKSPool
-	TypeKubeconfig
-	TypeAddons
-	TypeTest
-	TypeLast // there is no LastStep
+	TypeInit       Type = "Init"
+	TypePlan       Type = "Plan"
+	TypeApply      Type = "Apply"
+	TypeDestroy    Type = "Destroy"
+	TypeAKSPool    Type = "AKSPool"
+	TypeKubeconfig Type = "Kubeconfig"
+	TypeAddons     Type = "Addons"
+	TypeTest       Type = "Test"
 )
 
-// Updater is a third party that wants to know about Step changes.
+// Updater is a third party that wants to know about Step state changes.
 type Updater interface {
 	Update(Step)
 }

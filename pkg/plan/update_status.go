@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// UpdateStatusStep saves the step state in Status.Step.
+// UpdateStatusStep saves the step state in the environment status field.
 func (p *Planner) UpdateStatusStep(status *v1.EnvironmentStatus, stp step.Step) error {
 	m := stp.Meta()
 
@@ -18,7 +18,8 @@ func (p *Planner) UpdateStatusStep(status *v1.EnvironmentStatus, stp step.Step) 
 		LastTransitionTime: metav1.Time{Time: m.LastUpdate},
 	}
 
-	if m.State == v1.StateReady || m.State == v1.StateError {
+	if m.State == v1.StateReady {
+		// step is completed successfully
 		s.Hash = m.Hash
 	}
 
@@ -46,9 +47,9 @@ func (p *Planner) UpdateStatusConditions(nsn types.NamespacedName, status *v1.En
 
 	var runningCnt, readyCnt, errorCnt, stateCnt, totalCnt int
 	var latestTime metav1.Time
-	for _, id := range plan { //steps /*TODO get allSteps(cspec) from Planner? needs nsn to get the right steps*/
+	for _, st := range plan { //steps /*TODO get allSteps(cspec) from Planner? needs nsn to get the right steps*/
 		totalCnt++
-		if s, ok := status.Steps[id.ShortName()]; ok {
+		if s, ok := status.Steps[st.Meta().ID.ShortName()]; ok {
 			stateCnt++
 			switch s.State {
 			case v1.StateRunning:

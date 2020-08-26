@@ -44,7 +44,8 @@ type EnvironmentReconciler struct {
 	Recorder record.EventRecorder
 	Log      logr.Logger
 
-	// TODO Selector is a label=value string that selects the CR's that are handled by this instance.
+	// Selector much match the value of resource label to be handled this instance.
+	// An empty Selector matches all resources.
 	Selector string
 
 	// Sources fetches tf or yaml source code.
@@ -61,6 +62,8 @@ type EnvironmentReconciler struct {
 	updateTally int // For debugging
 }
 
+const label = "clusterops.mmlt.nl/operator"
+
 // +kubebuilder:rbac:groups=clusterops.mmlt.nl,resources=environments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=clusterops.mmlt.nl,resources=environments/status,verbs=get;update;patch
 
@@ -71,8 +74,6 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	log := r.Log.WithValues("request", req.NamespacedName)
 	log.V(1).Info("Start Reconcile")
 
-	// TODO Client side filtering by r.Selector label until https://github.com/kubernetes-sigs/controller-runtime/issues/244 becomes available.
-
 	// TODO add Policy checks
 	// TODO enable/disable via annotations?
 
@@ -81,6 +82,16 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
 		log.V(1).Info("Unable to get kind Environment", "err", err)
 		return ctrl.Result{}, ignoreNotFound(err)
+	}
+
+	// TODO Server side filtering https://github.com/kubernetes-sigs/controller-runtime/issues/244
+	// For now do client side filtering...
+	if len(r.Selector) > 0 {
+		v, ok := cr.Labels[label]
+		if !ok || v != r.Selector {
+			log.V(2).Info("label selector doesn't match", "label", label, "value", v, "selector", r.Selector)
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// Get ClusterSpecs with defaults.
@@ -102,15 +113,13 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		}
 	}
 
-	// Planner next step.
-	step, err := r.Planner.NextStep(req.NamespacedName, r.Sources, cr.Spec.Infra, cspec, cr.Status)
+	// Ask Planner for next step.
+	step, err := r.Planner.NextStep(req.NamespacedName, r.Sources, cr.Spec.Destroy, cr.Spec.Infra, cspec, cr.Status)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, fmt.Errorf("plan next step: %w", err)
 	}
 
-	log.V(2).Info("Next Step", "step", step)
-
-	// Accept step for execution.
+	// Try to run step.
 	accepted, err := r.Executor.Accept(step)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, fmt.Errorf("accept step for execution: %w", err)
@@ -124,7 +133,7 @@ func (r *EnvironmentReconciler) Update(step step.Step) {
 	// Implementation:
 	// Update serializes writes to environment status but does not rate limit them.
 
-	log := r.Log.V(2)
+	log := r.Log.WithName("Update").V(2)
 
 	step.Meta().LastUpdate = time.Now()
 
@@ -138,7 +147,11 @@ func (r *EnvironmentReconciler) Update(step step.Step) {
 	defer r.updateMutex.Unlock()
 
 	r.updateTally++
-	log.Info("Update", "step", step, "tally", r.updateTally)
+	if step.Meta().State == v1.StateError {
+		log.Info(string(step.Meta().State), "stepName", step.Meta().ID.ShortName(), "update", r.updateTally, "step", step)
+	} else {
+		log.Info(string(step.Meta().State), "stepName", step.Meta().ID.ShortName(), "update", r.updateTally)
+	}
 
 	for i := 0; i < 10; i++ {
 		// Get Environment.
@@ -174,7 +187,7 @@ func (r *EnvironmentReconciler) Update(step step.Step) {
 			// the object has been modified (code 409)
 			//apierrors.SuggestsClientDelay()				err.ErrStatus.Code == apierrors.IsConflict()
 			time.Sleep(time.Second)
-			log.Info("update status conflict", "retry", i, "tally", r.updateTally)
+			log.Info("update status conflict", "retry", i, "update", r.updateTally)
 
 			continue
 		}
@@ -182,7 +195,7 @@ func (r *EnvironmentReconciler) Update(step step.Step) {
 
 		return
 	}
-	log.Info("update status of kind Environment give up", "tally", r.updateTally)
+	log.Info("update status of kind Environment give up", "update", r.updateTally)
 	return
 }
 

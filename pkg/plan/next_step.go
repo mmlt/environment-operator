@@ -11,186 +11,235 @@ import (
 	"strconv"
 )
 
-// NextStep takes kind Environment as an input and decides what Step should be executed next.
+// NextStep decides what Step should be executed next.
 // Current state is stored as hashes of source code and parameters in the Environment kind status.
-func (p *Planner) NextStep(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (step.Step, error) {
-	p.selectPlan(nsn, cspec)
+// When a step hash doesn't match the hash stored in status the step will be executed.
+func (p *Planner) NextStep(nsn types.NamespacedName, src source.Getter, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (step.Step, error) {
+	log := p.Log.WithName("NextStep").V(2)
 
-	st, err := p.nextStep(nsn, src, ispec, cspec, status)
+	err := p.buildPlan(nsn, src, destroy, ispec, cspec)
+	if err != nil {
+		return nil, err
+	}
+
+	st, err := p.selectStep(nsn, status)
 
 	if st != nil {
-		// set the fields common to all steps.
-		id := &st.Meta().ID
-		id.Namespace = nsn.Namespace
-		id.Name = nsn.Name
+		log.Info("success", "stepName", st.Meta().ID.ShortName())
 	}
 
 	return st, err
 }
 
-func (p *Planner) nextStep(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (step.Step, error) {
-	plan, ok := p.currentPlan(nsn)
+// BuildPlan builds a plan with the steps to apply to the target environment.
+// An environment is identified by nsn.
+func (p *Planner) buildPlan(nsn types.NamespacedName, src source.Getter, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
+	p.Lock()
+	defer p.Unlock()
+
+	if p.currentPlans == nil {
+		p.currentPlans = make(map[types.NamespacedName]plan)
+	}
+
+	switch {
+	case destroy:
+		return p.buildDestroyPlan(nsn, src, ispec, cspec)
+
+	default:
+		return p.buildCreatePlan(nsn, src, ispec, cspec)
+	}
+}
+
+//
+func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
+	pl := make(plan, 0, 3+4*len(cspec))
+
+	tfPath, err := src.Get(nsn, "")
+	if err != nil {
+		return err
+	}
+
+	tfHash, err := src.Hash(nsn, "")
+	if err != nil {
+		return err
+	}
+
+	h := p.hash(tfHash)
+
+	pl = append(pl,
+		&step.InitStep{
+			Metaa: stepMeta(nsn, "", step.TypeInit, h),
+			Values: step.InfraValues{
+				Infra:    ispec,
+				Clusters: cspec,
+			},
+			SourcePath: tfPath,
+			Terraform:  p.Terraform,
+		},
+		//TODO consider alternative of plan -destroy and apply
+		&step.DestroyStep{
+			Metaa:      stepMeta(nsn, "", step.TypeDestroy, h),
+			SourcePath: tfPath,
+			Terraform:  p.Terraform,
+		})
+
+	p.currentPlans[nsn] = pl
+
+	return nil
+}
+
+//
+func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
+	pl := make(plan, 0, 3+4*len(cspec))
+
+	tfPath, err := src.Get(nsn, "")
+	if err != nil {
+		return err
+	}
+
+	// infra hash
+	tfHash, err := src.Hash(nsn, "")
+	if err != nil {
+		return err
+	}
+	var cspecInfra []interface{}
+	for _, s := range cspec {
+		cspecInfra = append(cspecInfra, s.Infra)
+	}
+	h := p.hash(tfHash, ispec, cspecInfra)
+
+	pl = append(pl,
+		&step.InitStep{
+			Metaa: stepMeta(nsn, "", step.TypeInit, h),
+			Values: step.InfraValues{
+				Infra:    ispec,
+				Clusters: cspec,
+			},
+			SourcePath: tfPath,
+			Terraform:  p.Terraform,
+		},
+		&step.PlanStep{
+			Metaa:      stepMeta(nsn, "", step.TypePlan, h),
+			SourcePath: tfPath,
+			Terraform:  p.Terraform,
+		},
+		&step.ApplyStep{
+			Metaa:      stepMeta(nsn, "", step.TypeApply, h),
+			SourcePath: tfPath,
+			Terraform:  p.Terraform,
+		})
+
+	for _, cl := range cspec {
+		//TODO Fix that Hash and Git have to be called in order (Get depends on Hash having run once)
+		cHash, err := src.Hash(nsn, cl.Name)
+		if err != nil {
+			return err
+		}
+
+		cPath, err := src.Get(nsn, cl.Name)
+		if err != nil {
+			return err
+		}
+
+		kcPath := filepath.Join(cPath, "kubeconfig")
+		mvPath := filepath.Join(cPath, "mkv", "real") // TODO should be configurable in environment.yaml as it depends on k8s-cluster-addons repo layout
+
+		pl = append(pl,
+			&step.AKSPoolStep{
+				Metaa:         stepMeta(nsn, cl.Name, step.TypeAKSPool, p.hash(tfHash, ispec.AZ.ResourceGroup, cl.Infra.Version)),
+				ResourceGroup: ispec.AZ.ResourceGroup,
+				Cluster:       ispec.EnvName + "-" + cl.Name, // we prefix AZ resources with env name.
+				Version:       cl.Infra.Version,
+				Azure:         p.Azure,
+			},
+			&step.KubeconfigStep{
+				Metaa:       stepMeta(nsn, cl.Name, step.TypeKubeconfig, p.hash(tfHash)),
+				TFPath:      tfPath,
+				ClusterName: cl.Name,
+				KCPath:      kcPath,
+				Terraform:   p.Terraform,
+				Kubectl:     p.Kubectl,
+			},
+			&step.AddonStep{
+				Metaa:           stepMeta(nsn, cl.Name, step.TypeAddons, p.hash(cHash, cl.Addons.Jobs, cl.Addons.X)),
+				SourcePath:      cPath,
+				KCPath:          kcPath,
+				MasterVaultPath: mvPath,
+				JobPaths:        cl.Addons.Jobs,
+				Values:          cl.Addons.X,
+				Addon:           p.Addon,
+			},
+			//TODO step.TestStep
+		)
+	}
+
+	p.currentPlans[nsn] = pl
+
+	return nil
+}
+
+func stepMeta(nsn types.NamespacedName, clusterName string, typ step.Type, hash string) step.Metaa {
+	return step.Metaa{
+		ID: step.ID{
+			Type:        typ,
+			Namespace:   nsn.Namespace,
+			Name:        nsn.Name,
+			ClusterName: clusterName,
+		},
+		Hash: hash,
+	}
+}
+
+// SelectStep returns the next step to execute from current plan.
+func (p *Planner) selectStep(nsn types.NamespacedName, status v1.EnvironmentStatus) (step.Step, error) {
+	pl, ok := p.currentPlan(nsn)
 	if !ok {
 		return nil, fmt.Errorf("expected plan for: %v", nsn)
 	}
 
-	for _, id := range plan {
-		// Calculate hash over source and spec(s)
-		// TODO consider moving calculation to a function that mirrors how newStep uses parameters.
-		sh, err := src.Hash(nsn, id.ClusterName)
-		if err != nil {
-			return nil, err
-		}
-		var hash string
-		if id.ClusterName == "" {
-			// hash for infra steps
-			//TODO move out of loop
-			h := []interface{}{sh.Sum(nil), ispec}
-			for _, s := range cspec {
-				h = append(h, s.Infra)
-			}
-			hash, err = hashToString(h)
-		} else {
-			// hash for steps that have cluster specific parameters
-			spec, err := cspecAtName(cspec, id.ClusterName)
-			if err != nil {
-				return nil, err
-			}
-			hash, err = hashToString(sh.Sum(nil), spec)
-		}
-		if err != nil {
-			return nil, err
-		}
+	for _, st := range pl {
+		id := st.Meta().ID
 
-		// get current step state
+		// Get current step state.
 		current, ok := status.Steps[id.ShortName()]
 		if !ok {
 			// first time this step is seen
-			return p.stepNew(id, nsn, src, ispec, cspec, hash)
+			return st, nil
+		}
+
+		// Checking hash before state has the effect that steps that are in error state but not changed are skipped.
+		// A step can get such a state when the following sequence of events take place;
+		//	1. step source or parameter are changed
+		//	2. step runs but errors
+		//	3. changes from 1 are undone
+
+		if current.Hash == st.Meta().Hash {
+			continue
 		}
 
 		if current.State == v1.StateRunning {
 			//TODO running for a long time may indicate a problem; for example the step execution stopped without updating the status
 			return nil, nil
 		} else if current.State == v1.StateError {
-			/*TODO introduce error budgets && !enoughIssueBudget(currentStatus)*/
+			//TODO introduce error budgets && !enoughIssueBudget(currentStatus) to retry after error
 
 			// no budget to retry
 			return nil, nil
 		}
 
-		if current.Hash == hash {
-			continue
-		}
-
-		return p.stepNew(id, nsn, src, ispec, cspec, hash)
+		return st, nil
 	}
 
 	return nil, nil
 }
 
-func (p *Planner) stepNew(id step.ID, nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec, hash string) (step.Step, error) {
-	// NB. Source Get is called for each step that needs a source. Many of these calls are redundant as a previous call
-	// already performed the Get. TODO make Get call smarter to reduce copying.
-
-	var r step.Step
-
-	switch id.Type {
-	case step.TypeInit:
-		path, err := src.Get(nsn, "")
-		if err != nil {
-			return nil, err
-		}
-		r = &step.InitStep{
-			Values: step.InfraValues{
-				Infra:    ispec,
-				Clusters: cspec,
-			},
-			SourcePath: path,
-		}
-	case step.TypePlan:
-		path, err := src.Get(nsn, id.ClusterName)
-		if err != nil {
-			return nil, err
-		}
-		r = &step.PlanStep{
-			SourcePath: path,
-		}
-	case step.TypeApply:
-		path, err := src.Get(nsn, id.ClusterName)
-		if err != nil {
-			return nil, err
-		}
-		r = &step.ApplyStep{
-			SourcePath: path,
-		}
-	case step.TypeAKSPool:
-		spec, err := cspecAtName(cspec, id.ClusterName)
-		if err != nil {
-			return nil, err
-		}
-		r = &step.AKSPoolStep{
-			ResourceGroup: ispec.AZ.ResourceGroup,
-			Cluster:       ispec.EnvName + "-" + id.ClusterName, // we prefix AZ resources with env name.
-			Version:       spec.Infra.Version,
-		}
-	case step.TypeKubeconfig:
-		tfPath, err := src.Get(nsn, "")
-		if err != nil {
-			return nil, err
-		}
-		path, err := src.Get(nsn, id.ClusterName)
-		if err != nil {
-			return nil, err
-		}
-		kcPath := filepath.Join(path, "kubeconfig")
-		r = &step.KubeconfigStep{
-			TFPath:      tfPath,
-			ClusterName: id.ClusterName,
-			KCPath:      kcPath,
-		}
-	case step.TypeAddons:
-		path, err := src.Get(nsn, id.ClusterName)
-		if err != nil {
-			return nil, err
-		}
-		kcPath := filepath.Join(path, "kubeconfig")
-		spec, err := cspecAtName(cspec, id.ClusterName)
-		if err != nil {
-			return nil, err
-		}
-		r = &step.AddonStep{
-			SourcePath: path,
-			KCPath:     kcPath,
-			JobPaths:   spec.Addons.Jobs,
-			Values:     spec.Addons.X,
-			Addon:      p.Addon,
-		}
-	default:
-		return nil, fmt.Errorf("unexpected step type: %v", id.Type)
-	}
-
-	r.Meta().ID = id
-	r.Meta().Hash = hash
-
-	return r, nil
-}
-
-// HashToString returns a string that is unique for args.
-func hashToString(args ...interface{}) (string, error) {
+// Hash returns a string that is unique for args.
+// Errors are logged but not returned.
+func (p *Planner) hash(args ...interface{}) string {
 	i, err := hashstructure.Hash(args, nil)
 	if err != nil {
-		return "", err
+		p.Log.Error(err, "hash")
+		return "hasherror"
 	}
-	return strconv.FormatUint(i, 16), nil
-}
-
-// CSpectAtName returns the ClusterSpec with name.
-func cspecAtName(cspec []v1.ClusterSpec, name string) (*v1.ClusterSpec, error) {
-	for _, s := range cspec {
-		if s.Name == name {
-			return &s, nil
-		}
-	}
-	return nil, fmt.Errorf("no clusterSpec with name: %s", name)
+	return strconv.FormatUint(i, 16)
 }

@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
-	"github.com/mmlt/environment-operator/pkg/client/az"
-	"github.com/mmlt/environment-operator/pkg/client/terraform"
+	"github.com/mmlt/environment-operator/pkg/client/azure"
 	"time"
 )
 
 // AKSPoolStep can upgrade AKS node pools to the desired kubernetes version.
 type AKSPoolStep struct {
-	meta
+	Metaa
 
 	/* Parameters */
 
@@ -23,15 +22,18 @@ type AKSPoolStep struct {
 	Cluster string
 	// Version is the Kubernetes version to upgrade the node pool(s) to.
 	Version string
+
+	// Azure is the azure cli implementation to use.
+	Azure azure.AZer
 }
 
-// Meta returns a reference to the meta data this Step.
-func (st *AKSPoolStep) Meta() *meta {
-	return &st.meta
+// Meta returns a reference to the Metaa data this Step.
+func (st *AKSPoolStep) Meta() *Metaa {
+	return &st.Metaa
 }
 
 // Execute node pool upgrade for a cluster.
-func (st *AKSPoolStep) Execute(ctx context.Context, isink Infoer, usink Updater, _ terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
+func (st *AKSPoolStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
 	log = log.WithName("az").WithValues("cluster", st.Cluster)
 	log.Info("start")
 
@@ -39,8 +41,9 @@ func (st *AKSPoolStep) Execute(ctx context.Context, isink Infoer, usink Updater,
 	usink.Update(st)
 
 	// get the current state of the node pools.
-	azcli := az.CLI{ResourceGroup: st.ResourceGroup, Log: log}
-	pools, err := azcli.AKSNodepoolList(st.Cluster)
+	// TODO remove azcli := azure.AZ{ResourceGroup: st.ResourceGroup, Log: log}
+	azcli := st.Azure
+	pools, err := azcli.AKSNodepoolList(st.ResourceGroup, st.Cluster)
 	if err != nil {
 		log.Error(err, "az aks nodepool list")
 		isink.Warning(st.ID, "az aks nodepool list: "+err.Error())
@@ -56,7 +59,7 @@ func (st *AKSPoolStep) Execute(ctx context.Context, isink Infoer, usink Updater,
 		log := log.WithValues("pool", pool.Name)
 
 		switch pool.ProvisioningState {
-		case az.Succeeded:
+		case azure.Succeeded:
 			if pool.OrchestratorVersion == st.Version {
 				// already up-to-date
 				continue
@@ -88,10 +91,10 @@ func (st *AKSPoolStep) Execute(ctx context.Context, isink Infoer, usink Updater,
 	return st.State == v1.StateReady
 }
 
-func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, log logr.Logger) (*az.AKSNodepool, error) {
+func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, log logr.Logger) (*azure.AKSNodepool, error) {
 	stop := make(chan bool)
 
-	// start status poller
+	// start poller that provides status updates during the upgrade.
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
@@ -101,8 +104,8 @@ func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, l
 				stop <- true
 				return
 			case <-ticker.C:
-				c := az.CLI{ResourceGroup: st.ResourceGroup, Log: log}
-				p, err := c.AKSNodepool(st.Cluster, pool)
+				//TODO remove c := azure.AZ{ResourceGroup: st.ResourceGroup, Log: log}
+				p, err := st.Azure.AKSNodepool(st.ResourceGroup, st.Cluster, pool)
 				if err != nil {
 					log.Error(err, "poll nodepool")
 					continue
@@ -112,9 +115,9 @@ func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, l
 		}
 	}()
 
-	// start upgrade
-	c := az.CLI{ResourceGroup: st.ResourceGroup, Log: log}
-	p, err := c.AKSNodepoolUpgrade(st.Cluster, pool, st.Version)
+	// start upgrade (slow)
+	//TODO remove c := azure.AZ{ResourceGroup: st.ResourceGroup, Log: log}
+	p, err := st.Azure.AKSNodepoolUpgrade(st.ResourceGroup, st.Cluster, pool, st.Version)
 
 	// stop poller
 	stop <- true

@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// ApplyStep performs a terraform apply.
-type ApplyStep struct {
+// DestroyStep performs a terraform destroy.
+type DestroyStep struct {
 	Metaa
 
 	/* Parameters */
@@ -23,26 +23,26 @@ type ApplyStep struct {
 
 	/* Results */
 
-	// The number of objects added, changed and deleted (destroyed) on terraform apply completion.
+	// The number of objects added, changed and deleted (destroyed) on terraform destroy completion.
 	Added, Changed, Deleted int
 }
 
 // Meta returns a reference to the Metaa data this Step.
-func (st *ApplyStep) Meta() *Metaa {
+func (st *DestroyStep) Meta() *Metaa {
 	return &st.Metaa
 }
 
-// Execute terraform apply.
-func (st *ApplyStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+// Execute terraform destroy.
+func (st *DestroyStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run
-	cmd, ch, err := st.Terraform.StartApply(ctx, st.SourcePath)
+	cmd, ch, err := st.Terraform.StartDestroy(ctx, st.SourcePath)
 	if err != nil {
-		log.Error(err, "start terraform apply")
-		isink.Warning(st.ID, "start terraform apply:"+err.Error())
+		log.Error(err, "start terraform destroy")
+		isink.Warning(st.ID, "start terraform destroy:"+err.Error())
 		st.State = v1.StateError
-		st.Msg = "start terraform apply:" + err.Error()
+		st.Msg = "start terraform destroy:" + err.Error()
 		usink.Update(st)
 		return false
 	}
@@ -63,14 +63,14 @@ func (st *ApplyStep) Execute(ctx context.Context, isink Infoer, usink Updater, l
 		// real cmd (fakes are nil).
 		err := cmd.Wait()
 		if err != nil {
-			log.Error(err, "wait terraform apply")
+			log.Error(err, "wait terraform destroy")
 		}
 	}
 
 	// Return results.
 	if last == nil {
 		st.State = v1.StateError
-		st.Msg = "did not receive response from terraform apply"
+		st.Msg = "did not receive response from terraform destroy"
 		usink.Update(st)
 		return false
 	}
@@ -80,7 +80,7 @@ func (st *ApplyStep) Execute(ctx context.Context, isink Infoer, usink Updater, l
 		st.Msg = strings.Join(last.Errors, ", ")
 	} else {
 		st.State = v1.StateReady
-		st.Msg = fmt.Sprintf("terraform apply errors=0 added=%d changed=%d deleted=%d",
+		st.Msg = fmt.Sprintf("terraform destroy errors=0 added=%d changed=%d deleted=%d",
 			last.TotalAdded, last.TotalChanged, last.TotalDestroyed)
 	}
 

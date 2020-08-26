@@ -17,10 +17,11 @@ type Addonr interface {
 	// Start runs kubectl-tmplt concurrently in dir and returns a cmd and a channel of KTResults.
 	// The jobPath refers to a yaml file with resources to apply.
 	// The valuesPath refers to yaml file with values that parameterize the job resources.
-	// The kubeconfigPath refers to a kube config file with current-context refering to the target cluster.
+	// The kubeconfigPath refers to a kube config file with current-context referring to the target cluster.
+	// The masterVaultPath refers to a directory containing the config of the Vault to use for {{ vault }}.
 	// The channel will be closed when kubectl-tmplt exits.
 	// cmd.Wait() must be called to clean-up.
-	Start(ctx context.Context, dir, jobPath, valuesPath, kubeconfigPath string) (*exec.Cmd, chan KTResult, error)
+	Start(ctx context.Context, dir, jobPath, valuesPath, kubeconfigPath, masterVaultPath string) (*exec.Cmd, chan KTResult, error)
 }
 
 // KTResult
@@ -46,12 +47,13 @@ type Addon struct {
 }
 
 // Start implements Addonr.
-func (a *Addon) Start(ctx context.Context, dir, jobPath, valuesPath, kubeconfigPath string) (*exec.Cmd, chan KTResult, error) {
+func (a *Addon) Start(ctx context.Context, dir, jobPath, valuesPath, kubeconfigPath, masterVaultPath string) (*exec.Cmd, chan KTResult, error) {
 	cmd := exe.RunAsync(ctx, a.Log, &exe.Opt{Dir: dir}, "", "kubectl-tmplt",
-		"-m", "apply",
+		"-m", "apply-with-actions",
 		"--job-file", jobPath,
 		"--set-file", valuesPath,
-		"--kubeconfig", kubeconfigPath)
+		"--kubeconfig", kubeconfigPath,
+		"--master-vault-path", masterVaultPath)
 
 	o, err := cmd.StdoutPipe()
 	if err != nil {

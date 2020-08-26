@@ -20,11 +20,14 @@ type Terraformer interface {
 	Init(dir string) *TFResult
 	// Plan creates an execution plan for the terraform configuration files in dir.
 	Plan(dir string) *TFResult
-	// StartApply applies the plan in dir without waiting for the result.
+	// StartApply applies the plan in dir without waiting for completion.
 	// If a Cmd is returned cmd.Wait() should be called wait for completion and clean-up.
 	StartApply(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error)
-	// Output returns a map with output types and values.
-	// When outputs.tf contains output "xyz" { value = 7 } the returned map contains ["yxz"]["value"] == 1
+	// StartDestroy destroys the resources specified in the plan in dir without waiting for completion.
+	// If a Cmd is returned cmd.Wait() should be called wait for completion and clean-up.
+	StartDestroy(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error)
+	// Output gets terraform output values an returns them as a map of types and values.
+	// When outputs.tf contains output "xyz" { value = 7 } the returned map contains ["yxz"]["value"] == 7
 	Output(dir string) (map[string]interface{}, error)
 }
 
@@ -65,12 +68,16 @@ type TFApplyResult struct {
 
 // Terraform provisions infrastructure using terraform cli.
 type Terraform struct {
+	// Env are the environment variables passed to the terraform process.
+	// For example: ARM_ACCESS_KEY
+	Env []string
+
 	Log logr.Logger
 }
 
 // Init implements Terraformer.
 func (t *Terraform) Init(dir string) *TFResult {
-	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir}, "", "terraform", "init", "-input=false", "-no-color")
+	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: t.Env}, "", "terraform", "init", "-input=false", "-no-color")
 
 	return parseInitResponse(o, err)
 }
@@ -93,7 +100,7 @@ func parseInitResponse(text string, err error) *TFResult {
 
 // Plan implements Terraformer.
 func (t *Terraform) Plan(dir string) *TFResult {
-	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir}, "", "terraform", "plan",
+	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: t.Env}, "", "terraform", "plan",
 		"-out=newplan", "-detailed-exitcode", "-input=false", "-no-color")
 	return parsePlanResponse(o, err)
 }
@@ -144,8 +151,30 @@ func parsePlanResponse(text string, err error) *TFResult {
 
 // StartApply implements Terraformer.
 func (t *Terraform) StartApply(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error) {
-	cmd := exe.RunAsync(ctx, t.Log, &exe.Opt{Dir: dir}, "", "terraform", "apply",
+	cmd := exe.RunAsync(ctx, t.Log, &exe.Opt{Dir: dir, Env: t.Env}, "", "terraform", "apply",
 		"-auto-approve", "-input=false", "-no-color", "newplan")
+
+	o, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cmd.Stderr = cmd.Stdout // combine
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ch := t.parseAsyncApplyResponse(o)
+
+	return cmd, ch, nil
+}
+
+// StartDestroy implements Terraformer.
+func (t *Terraform) StartDestroy(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error) {
+	cmd := exe.RunAsync(ctx, t.Log, &exe.Opt{Dir: dir, Env: t.Env}, "", "terraform", "destroy",
+		"-auto-approve", "-no-color")
 
 	o, err := cmd.StdoutPipe()
 	if err != nil {
@@ -260,6 +289,16 @@ func parseApplyResponseLine(in *TFApplyResult, line string) *TFApplyResult {
 		}
 	}
 
+	if ss[0] == "Destroy" {
+		rre := regexp.MustCompile(`Destroy complete! Resources: (\d+) destroyed.`)
+		rs := rre.FindAllStringSubmatch(line, -1)
+		if len(rs) == 1 && len(rs[0]) == 2 {
+			// errors are ignored
+			r.TotalDestroyed, _ = strconv.Atoi(rs[0][1])
+			return &r
+		}
+	}
+
 	return nil
 }
 
@@ -272,7 +311,7 @@ func normalizeAction(s string) string {
 
 // Output implements Terraformer.
 func (t *Terraform) Output(dir string) (map[string]interface{}, error) {
-	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir}, "", "terraform", "output", "-json", "-no-color")
+	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: t.Env}, "", "terraform", "output", "-json", "-no-color")
 	if err != nil {
 		return nil, err
 	}

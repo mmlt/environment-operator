@@ -29,6 +29,10 @@ type EnvironmentSpec struct {
 	// +optional
 	Policy EnvironmentPolicy `json:"policy,omitempty"`
 
+	// Destroy is true when an environment needs to be removed.
+	// Typically used in cluster delete/create test cases.
+	Destroy bool `json:"destroy,omitempty"`
+
 	// Infra defines infrastructure that much exist before clusters can be created.
 	Infra InfraSpec `json:"infra,omitempty"`
 

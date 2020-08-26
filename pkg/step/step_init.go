@@ -11,7 +11,7 @@ import (
 
 // InitStep performs a terraform init
 type InitStep struct {
-	meta
+	Metaa
 
 	/* Parameters */
 
@@ -20,6 +20,9 @@ type InitStep struct {
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
 	// Hash is an opaque value passed to Update.
+
+	// Terraform is the terraform implementation to use.
+	Terraform terraform.Terraformer
 }
 
 // InfraValues hold the Specs that are needed during template expansion.
@@ -28,13 +31,13 @@ type InfraValues struct {
 	Clusters []v1.ClusterSpec
 }
 
-// Meta returns a reference to the meta data this Step.
-func (st *InitStep) Meta() *meta {
-	return &st.meta
+// Meta returns a reference to the Metaa data this Step.
+func (st *InitStep) Meta() *Metaa {
+	return &st.Metaa
 }
 
 // Run a step.
-func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer, log logr.Logger) bool {
+func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run.
@@ -49,7 +52,7 @@ func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf
 		return false
 	}
 
-	tfr := tf.Init(st.SourcePath)
+	tfr := st.Terraform.Init(st.SourcePath)
 
 	// Return results.
 	st.State = v1.StateReady

@@ -1,10 +1,12 @@
-// Package Planner analyses the Environment and decides what Step should be executed next.
+// Package Planner analyses the environment and decides what step should be executed next.
 package plan
 
 import (
 	"github.com/go-logr/logr"
-	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/addon"
+	"github.com/mmlt/environment-operator/pkg/client/azure"
+	"github.com/mmlt/environment-operator/pkg/client/kubectl"
+	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"k8s.io/apimachinery/pkg/types"
 	"sync"
@@ -18,21 +20,27 @@ import (
 type Planner struct {
 	sync.RWMutex
 
-	currentPlans map[types.NamespacedName]Plan
+	// currentPlans keeps a Plan for each environment managed so UpdateStatus can aggregate stats.
+	currentPlans map[types.NamespacedName]plan //TODO why do we keep this? for conditions?
 
-	// Dependencies
-
+	// Terraform is the terraform implementation to use.
+	Terraform terraform.Terraformer
+	// Kubectl is the kubectl implementation to use.
+	Kubectl kubectl.Kubectrler
+	// Azure is the azure cli implementation to use.
+	Azure azure.AZer
+	// Addon can deploy k8s addon resources.
 	Addon addon.Addonr
 
 	Log logr.Logger
 }
 
 // Plan is a sequence of steps to perform.
-type Plan []step.ID
+type plan []step.Step
 
 // CurrentPlan returns the Plan for nsn.
 // Return false if no plan has been selected yet for nsn.
-func (p *Planner) currentPlan(nsn types.NamespacedName) (Plan, bool) {
+func (p *Planner) currentPlan(nsn types.NamespacedName) (plan, bool) {
 	p.RLock()
 	defer p.RUnlock()
 
@@ -43,33 +51,4 @@ func (p *Planner) currentPlan(nsn types.NamespacedName) (Plan, bool) {
 	pl, ok := p.currentPlans[nsn]
 
 	return pl, ok
-}
-
-// SelectPlan decides what plan to use for environment nsn.
-func (p *Planner) selectPlan(nsn types.NamespacedName, cspec []v1.ClusterSpec) {
-	p.Lock()
-	defer p.Unlock()
-
-	if p.currentPlans == nil {
-		p.currentPlans = make(map[types.NamespacedName]Plan)
-	}
-
-	// The current naive implementation recalculates the steps of a plan on each invocation.
-	// Other implementations might switch a plan for a new one only when a certain step is reached.
-	r := make(Plan, 3+4*len(cspec))
-	r = append(r,
-		step.ID{Type: step.TypeInit},
-		step.ID{Type: step.TypePlan},
-		step.ID{Type: step.TypeApply},
-	)
-	for _, v := range cspec {
-		r = append(r,
-			step.ID{Type: step.TypeAKSPool, ClusterName: v.Name},
-			step.ID{Type: step.TypeKubeconfig, ClusterName: v.Name},
-			step.ID{Type: step.TypeAddons, ClusterName: v.Name},
-			//TODO step.ID{Type: step.TypeTest, ClusterName: v.Name},
-		)
-	}
-
-	p.currentPlans[nsn] = r
 }

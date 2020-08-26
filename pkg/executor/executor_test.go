@@ -1,7 +1,6 @@
 package executor
 
 import (
-	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"github.com/mmlt/testr"
 	"github.com/stretchr/testify/assert"
@@ -9,12 +8,9 @@ import (
 )
 
 func TestExecutor_Accept(t *testing.T) {
-	tf := &terraform.TerraformFake{Log: testr.New(t).WithName("tf")}
-	tf.SetupFakeResults(nil)
 	ex := Executor{
 		UpdateSink: &updaterFake{},
 		EventSink:  &infoerFake{},
-		Terraform:  tf,
 		Log:        testr.New(t),
 	}
 	stp := &step.InitStep{}

@@ -2,6 +2,7 @@ package tmplt
 
 import (
 	"fmt"
+	"github.com/Masterminds/sprig"
 	"github.com/rodaine/hclencoder"
 	"io"
 	"io/ioutil"
@@ -46,9 +47,11 @@ func ExpandFile(path, suffix string, values interface{}) error {
 // Expand takes an in string with https://golang.org/pkg/text/template/ directives and values
 // and writes the result to out.
 func Expand(name, in string, out io.Writer, values interface{}) error {
-	funcMap := template.FuncMap{
-		"toHCL": toHCL,
-	}
+	funcMap := sprig.TxtFuncMap()
+
+	// add extra functionality
+	funcMap["toHCL"] = toHCL
+
 	t, err := template.New(name).Funcs(funcMap).Parse(in)
 	if err != nil {
 		return err

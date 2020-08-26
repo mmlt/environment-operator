@@ -3,10 +3,16 @@ module github.com/mmlt/environment-operator
 go 1.14
 
 require (
+	github.com/Masterminds/goutils v1.1.0 // indirect
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/Masterminds/sprig v2.22.0+incompatible
+	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680
 	github.com/go-logr/logr v0.1.0
 	github.com/go-logr/stdr v0.0.0-20190808155957-db4f46c40425
+	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.9
+	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/hashstructure v1.0.0
 	github.com/mmlt/testr v0.0.0-20200331071714-d38912dd7e5a
 	github.com/onsi/ginkgo v1.8.0

@@ -18,6 +18,8 @@ package main
 import (
 	"flag"
 	"github.com/mmlt/environment-operator/pkg/client/addon"
+	"github.com/mmlt/environment-operator/pkg/client/azure"
+	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
@@ -53,8 +55,10 @@ func main() {
 		"The address the metric endpoint binds to.")
 	enableLeaderElection := flag.Bool("enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	selector := flag.String("selector", "clusterops.mmlt.nl/env=eu41tp",
-		"Select the CR's that are handled by this operator instance.")
+	selector := flag.String("selector", "",
+		"Select which environment resources are handled by this operator instance.\n"+
+			"When selector is not empty and the resource has a label 'clusterops.mmlt.nl/operator' that matches this flag the resource is handled.\n"+
+			"When selector is empty all resources are handled.")
 	syncPeriodInMin := flag.Int("sync-period-in-min", 10,
 		"The max. interval time to check external sources like git.")
 
@@ -97,20 +101,25 @@ func main() {
 		RootPath: filepath.Join(os.TempDir(), "envop"),
 		Log:      r.Log.WithName("source"),
 	}
-	ao := &addon.Addon{
-		Log: r.Log.WithName("addon"),
-	}
 	r.Planner = &plan.Planner{
-		Log:   r.Log.WithName("plan"),
-		Addon: ao,
-	}
-	tf := &terraform.Terraform{
-		Log: r.Log.WithName("tf"),
+		Log: r.Log.WithName("plan"),
+		Terraform: &terraform.Terraform{
+			Env: os.Environ(),
+			Log: r.Log.WithName("tf"),
+		},
+		Kubectl: &kubectl.Kubectl{
+			Log: r.Log.WithName("kubectl"),
+		},
+		Azure: &azure.AZ{
+			Log: r.Log.WithName("az"),
+		},
+		Addon: &addon.Addon{
+			Log: r.Log.WithName("addon"),
+		},
 	}
 	r.Executor = &executor.Executor{
 		UpdateSink: r,
 		EventSink:  r,
-		Terraform:  tf,
 		Log:        r.Log.WithName("executor"),
 	}
 

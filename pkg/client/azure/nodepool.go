@@ -1,32 +1,16 @@
 // Package az provides a simple wrapper around az cli.
-package az
+package azure
 
 import (
 	"encoding/json"
-	"github.com/go-logr/logr"
 	"github.com/mmlt/environment-operator/pkg/util/exe"
 )
-
-// CLI provides access to Azure resources via az cli.
-type CLI struct {
-	ResourceGroup string
-	Log           logr.Logger
-}
-
-// New creates a local environment at dir to Get data from a GIT repo at url/reference.
-// Argument reference can be master, refs/heads/my-branch etc, see https://git-scm.com/docs/git-show-ref
-func New(resourceGroup string, log logr.Logger) (*CLI, error) {
-	return &CLI{
-		ResourceGroup: resourceGroup,
-		Log:           log,
-	}, nil
-}
 
 // https://docs.microsoft.com/en-us/cli/azure/ext/aks-preview/aks/nodepool
 
 // AKSNodepoolList returns all the node pools of an AKS cluster.
-func (c *CLI) AKSNodepoolList(cluster string) ([]AKSNodepool, error) {
-	args := []string{"aks", "nodepool", "list", "--resource-group", c.ResourceGroup, "--cluster-name", cluster}
+func (c *AZ) AKSNodepoolList(resourceGroup, cluster string) ([]AKSNodepool, error) {
+	args := []string{"aks", "nodepool", "list", "--resource-group", resourceGroup, "--cluster-name", cluster}
 	o, _, err := exe.Run(c.Log, nil, "", "az", args...)
 	if err != nil {
 		return nil, err
@@ -41,9 +25,9 @@ func (c *CLI) AKSNodepoolList(cluster string) ([]AKSNodepool, error) {
 	return r, nil
 }
 
-// AKSNodepool returns the details an AKS cluster nodepool.
-func (c *CLI) AKSNodepool(cluster, nodepool string) (*AKSNodepool, error) {
-	args := []string{"aks", "nodepool", "show", "--resource-group", c.ResourceGroup, "--cluster-name", cluster,
+// AKSNodepool returns the details about an AKS cluster nodepool.
+func (c *AZ) AKSNodepool(resourceGroup, cluster, nodepool string) (*AKSNodepool, error) {
+	args := []string{"aks", "nodepool", "show", "--resource-group", resourceGroup, "--cluster-name", cluster,
 		"--name", nodepool}
 	o, _, err := exe.Run(c.Log, nil, "", "az", args...)
 	if err != nil {
@@ -60,9 +44,9 @@ func (c *CLI) AKSNodepool(cluster, nodepool string) (*AKSNodepool, error) {
 }
 
 // AKSNodepoolUpgrade upgrades the node pool in a managed Kubernetes cluster to Kubernetes version.
-// Expect this call to block for VM count * 10m.
-func (c *CLI) AKSNodepoolUpgrade(cluster, nodepool, version string) (*AKSNodepool, error) {
-	args := []string{"aks", "nodepool", "upgrade", "--resource-group", c.ResourceGroup, "--cluster-name", cluster,
+// Expect this call to block for 10m per VM.
+func (c *AZ) AKSNodepoolUpgrade(resourceGroup, cluster, nodepool, version string) (*AKSNodepool, error) {
+	args := []string{"aks", "nodepool", "upgrade", "--resource-group", resourceGroup, "--cluster-name", cluster,
 		"--name", nodepool, "--kubernetes-version", version}
 	o, _, err := exe.Run(c.Log, nil, "", "az", args...)
 	if err != nil {

@@ -6,16 +6,19 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
+	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
+	"github.com/mmlt/environment-operator/pkg/util/backoff"
 	"io/ioutil"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api/v1"
 	"sigs.k8s.io/yaml"
 	"strings"
+	"time"
 )
 
 // InitStep performs a terraform init
 type KubeconfigStep struct {
-	meta
+	Metaa
 
 	/* Parameters */
 
@@ -25,22 +28,27 @@ type KubeconfigStep struct {
 	ClusterName string
 	// KCPath is the place were the kube config file is written.
 	KCPath string
+
+	// Terraform is the terraform implementation to use.
+	Terraform terraform.Terraformer
+	// Kubectl is the kubectl implementation to use.
+	Kubectl kubectl.Kubectrler
 }
 
-// Meta returns a reference to the meta data this Step.
-func (st *KubeconfigStep) Meta() *meta {
-	return &st.meta
+// Meta returns a reference to the Metaa data this Step.
+func (st *KubeconfigStep) Meta() *Metaa {
+	return &st.Metaa
 }
 
 // Run a step.
-func (st *KubeconfigStep) Execute(ctx context.Context, isink Infoer, usink Updater, tf terraform.Terraformer /*TODO remove*/, log logr.Logger) bool {
+func (st *KubeconfigStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run.
 	st.State = v1.StateRunning
 	usink.Update(st)
 
-	o, err := tf.Output(st.TFPath)
+	o, err := st.Terraform.Output(st.TFPath)
 	if err != nil {
 		st.State = v1.StateError
 		st.Msg = fmt.Sprintf("terraform output: %v", err)
@@ -64,6 +72,17 @@ func (st *KubeconfigStep) Execute(ctx context.Context, isink Infoer, usink Updat
 		return false
 	}
 
+	// Wait for AKS to have resources deployed.
+	// On 20200821 when AKS provisioning is completed (according to terraform) it still takes 5 minutes or more for
+	// the default StorageClass to appear. During that time window PVC's that specify no storageClass: will fail.
+	err = st.waitForDefaultStorageClass(usink)
+	if err != nil {
+		st.State = v1.StateError
+		st.Msg = fmt.Sprintf("waiting for default StorageClass: %v", err)
+		usink.Update(st)
+		return false
+	}
+
 	// Return results.
 	st.State = v1.StateReady
 	// TODO return values
@@ -73,6 +92,41 @@ func (st *KubeconfigStep) Execute(ctx context.Context, isink Infoer, usink Updat
 	return st.State == v1.StateReady
 }
 
+// WaitForDefaultStorageClass waits until the target cluster contains a StorageClass with 'default' annotation.
+func (st *KubeconfigStep) waitForDefaultStorageClass(usink Updater) error {
+	var errTally int
+
+	end := time.Now().Add(10 * time.Minute)
+	for exp := backoff.NewExponential(30 * time.Second); !time.Now().After(end); exp.Sleep() {
+		scs, err := st.Kubectl.StorageClasses(st.KCPath)
+		if err != nil {
+			errTally++
+			if errTally > 3 {
+				return fmt.Errorf("kubectl: %w", err)
+			}
+			continue
+		}
+		for _, sc := range scs {
+			v := sc.Annotations["storageclass.kubernetes.io/is-default-class"]
+			if v == "" {
+				// AKS uses .beta.
+				v = sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"]
+			}
+			if v == "true" {
+				st.Msg = fmt.Sprintf("default StorageClass present")
+				usink.Update(st)
+				return nil
+			}
+		}
+
+		st.Msg = fmt.Sprintf("waiting for default StorageClass to appear")
+		usink.Update(st)
+	}
+
+	return fmt.Errorf("time-out")
+}
+
+// Kubeconfig returns a kube config from a terraform output value json.
 func kubeconfig(json map[string]interface{}, clusterName string) ([]byte, error) {
 	m, err := getMSIPath(json, "clusters", "value", clusterName, "kube_admin_config")
 	if err != nil {

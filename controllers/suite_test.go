@@ -18,6 +18,7 @@ package controllers
 import (
 	"github.com/go-logr/stdr"
 	"github.com/mmlt/environment-operator/pkg/client/addon"
+	"github.com/mmlt/environment-operator/pkg/client/azure"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
@@ -54,7 +55,8 @@ var (
 	testReconciler *EnvironmentReconciler
 )
 
-func TestE2E(t *testing.T) {
+// TestE2EWithFakes runs a test suite using envtest and fake terraform.
+func TestE2EWithFakes(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	RunSpecsWithDefaultAndCustomReporters(t,
@@ -113,12 +115,6 @@ var _ = BeforeSuite(func(done Done) {
 		RootPath: filepath.Join(os.TempDir(), "envop"),
 		Log:      testReconciler.Log.WithName("source"),
 	}
-	testReconciler.Planner = &plan.Planner{
-		Addon: &addon.Addon{
-			Log: testReconciler.Log.WithName("addon"),
-		},
-		Log: testReconciler.Log.WithName("plan"),
-	}
 	tf := &terraform.TerraformFake{
 		Log: testReconciler.Log.WithName("tffake"),
 	}
@@ -134,10 +130,20 @@ var _ = BeforeSuite(func(done Done) {
 			},
 		},
 	})
+	az := &azure.AZFake{}
+	az.SetupFakeResults()
+	testReconciler.Planner = &plan.Planner{
+		Terraform: tf,
+		//Kubectl: TODO
+		Azure: az,
+		Addon: &addon.Addon{
+			Log: testReconciler.Log.WithName("addon"),
+		},
+		Log: testReconciler.Log.WithName("planner"),
+	}
 	testReconciler.Executor = &executor.Executor{
 		UpdateSink: testReconciler,
 		EventSink:  testReconciler,
-		Terraform:  tf,
 		Log:        testReconciler.Log.WithName("executor"),
 	}
 

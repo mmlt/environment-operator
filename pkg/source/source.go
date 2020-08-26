@@ -3,6 +3,7 @@ package source
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
@@ -79,12 +80,12 @@ type user struct {
 type src struct {
 	spec           v1.SourceSpec
 	lastUpdateTime time.Time
-	lastUpdateHash hash.Hash
+	lastUpdateHash string
 }
 
 type Getter interface {
 	// Hash returns the hash of the source content.
-	Hash(nsn types.NamespacedName, name string) (hash.Hash, error)
+	Hash(nsn types.NamespacedName, name string) (string, error)
 	// Get copies the source content to a workdir and returns its path.
 	Get(nsn types.NamespacedName, name string) (string, error)
 }
@@ -93,14 +94,14 @@ type Getter interface {
 var timeNow = time.Now
 
 // Hash implements Getter.
-func (ss *Sources) Hash(nsn types.NamespacedName, name string) (hash.Hash, error) {
+func (ss *Sources) Hash(nsn types.NamespacedName, name string) (string, error) {
 	name = defaultName(name)
 
 	id := userID{nsn, name}
 
 	u, ok := ss.users[id]
 	if !ok {
-		return nil, fmt.Errorf("source user not found: %s", name)
+		return "", fmt.Errorf("source user not found: %s", name)
 	}
 
 	// Rate limit.
@@ -108,30 +109,30 @@ func (ss *Sources) Hash(nsn types.NamespacedName, name string) (hash.Hash, error
 		return u.src.lastUpdateHash, nil
 	}
 
-	var h hash.Hash
+	var hash string
 	switch u.src.spec.Type {
 	case v1.SourceTypeGIT:
 		var err error
-		h, err = ss.gitFetch(u.src.spec)
+		hash, err = ss.gitFetch(u.src.spec)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	case v1.SourceTypeLocal:
-		var err error
-		h, err = hashAll(u.src.spec.URL)
+		h, err := hashAll(u.src.spec.URL)
+		hash = hex.EncodeToString(h.Sum(nil))
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	case "":
-		return nil, fmt.Errorf("spec %s: source.type not set", name)
+		return "", fmt.Errorf("spec %s: source.type not set", name)
 	default:
-		return nil, fmt.Errorf("spec %s: source.type %s not supported", name, u.src.spec.Type)
+		return "", fmt.Errorf("spec %s: source.type %s not supported", name, u.src.spec.Type)
 	}
 
 	u.src.lastUpdateTime = timeNow()
-	u.src.lastUpdateHash = h
+	u.src.lastUpdateHash = hash
 
-	return h, nil
+	return hash, nil
 }
 
 // Get implements Getter.
@@ -208,7 +209,7 @@ func (ss *Sources) Register(nsn types.NamespacedName, name string, spec v1.Sourc
 	return nil
 }
 
-// SrcBySpec return a source matching spec.
+// SrcBySpec returns a source and true if spec is registered.
 func (ss *Sources) srcBySpec(spec v1.SourceSpec) (*src, bool) {
 	for i, s := range ss.srcs {
 		if spec.Type == s.spec.Type && spec.Ref == s.spec.Ref && spec.URL == s.spec.URL {
@@ -226,8 +227,7 @@ func (ss *Sources) workdirForID(id userID) (string, error) {
 }
 
 // GITFetch fetches content of a GIT repo and returns its hash.
-// NB. the returned hash is a function of the GIT hash but not the same.
-func (ss *Sources) gitFetch(spec v1.SourceSpec) (hash.Hash, error) {
+func (ss *Sources) gitFetch(spec v1.SourceSpec) (string, error) {
 	p := ss.gitPath(spec)
 	_, err := os.Stat(p)
 	if os.IsNotExist(err) {
@@ -235,36 +235,37 @@ func (ss *Sources) gitFetch(spec v1.SourceSpec) (hash.Hash, error) {
 		d, _ := filepath.Split(p)
 		err = os.MkdirAll(d, 0775)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 
 		_, _, err = exe.Run(ss.Log, &exe.Opt{Dir: d}, "", "git", "clone", spec.URL)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 
 		_, _, err = exe.Run(ss.Log, &exe.Opt{Dir: p}, "", "git", "checkout", spec.Ref)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		ss.Log.Info("GIT-clone", "url", spec.URL, "ref", spec.Ref)
 	} else {
 		// Pull existing repo content.
 		_, _, err = exe.Run(ss.Log, &exe.Opt{Dir: p}, "", "git", "pull", "origin", spec.Ref)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		ss.Log.V(2).Info("GIT-pull", "url", spec.URL, "ref", spec.Ref)
 	}
 
 	// Get hash.
-	o, _, err := exe.Run(ss.Log, &exe.Opt{Dir: p}, "", "git", "rev-parse")
+	h, _, err := exe.Run(ss.Log, &exe.Opt{Dir: p}, "", "git", "rev-parse", spec.Ref)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	o = strings.TrimRight(o, "\n\r")
-	h := sha1.New()
-	h.Write([]byte(o))
+	h = strings.TrimRight(h, "\n\r")
+	if len(h) == 0 {
+		return "", fmt.Errorf("expected git hash")
+	}
 
 	return h, nil
 }

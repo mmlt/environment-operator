@@ -329,7 +329,22 @@ func TestParseAsyncApplyResponse(t *testing.T) {
 				},
 			},
 		}, {
-			it: "must parse a succesful apply",
+			it: "must error on Error with StatusCode=400",
+			in: []string{
+				"module.aks1.azurerm_subnet.this: Destroying... [id=/subscriptions/ea365/resourceGroups/xxx-rg/providers/Microsoft.Network/virtualNetworks/yyy-vnet/subnets/cpe]\n",
+				"module.aks1.azurerm_subnet.this: Destruction complete after 0s\n",
+				"\n",
+				"Error: Error deleting Subnet \"intlb\" (Virtual Network \"yyy-vnet\" / Resource Group \"xxx-rg\"): network.SubnetsClient#Delete: Failure sending request: StatusCode=400 -- Original Error: Code=\"InUseSubnetCannotBeDeleted\" Message=\"Subnet intlb is in use by /subscriptions/ea365/resourceGroups/mc_xxx-rg_x_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes-internal/frontendIPConfigurations/a57-intlb and cannot be deleted. In order to delete the subnet, delete all the resources within the subnet. See aka.ms/deletesubnet.\" Details=[]\n",
+			},
+			want: []TFApplyResult{
+				{Destroying: 1, Object: "module.aks1.azurerm_subnet.this", Action: "destroying", Elapsed: ""},
+				{Destroying: 1, Object: "module.aks1.azurerm_subnet.this", Action: "destruction", Elapsed: "0s"},
+				{Destroying: 1,
+					Errors: []string{"Error deleting Subnet \"intlb\" (Virtual Network \"yyy-vnet\" / Resource Group \"xxx-rg\"): network.SubnetsClient#Delete: Failure sending request: StatusCode=400 -- Original Error: Code=\"InUseSubnetCannotBeDeleted\" Message=\"Subnet intlb is in use by /subscriptions/ea365/resourceGroups/mc_xxx-rg_x_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes-internal/frontendIPConfigurations/a57-intlb and cannot be deleted. In order to delete the subnet, delete all the resources within the subnet. See aka.ms/deletesubnet.\" Details=[]"},
+				},
+			},
+		}, {
+			it: "must parse a successful apply",
 			in: []string{
 				"azurerm_route_table.env: Modifying... [id=/subscriptions/ea363b8e/resourceGroups/xxx-rg/providers/Microsoft.Network/routeTables/yyy-routetable]\n",
 				"module.aks1.azurerm_kubernetes_cluster.this: Destroying... [id=/subscriptions/ea363b8e/resourcegroups/xxx-rg/providers/Microsoft.ContainerService/managedClusters/yyy-cpe]\n",
@@ -377,6 +392,25 @@ func TestParseAsyncApplyResponse(t *testing.T) {
 				{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creation", Elapsed: "6m22s"},
 				{Creating: 1, Modifying: 2, Destroying: 1, TotalAdded: 1, TotalChanged: 2, TotalDestroyed: 1, Object: "", Action: "", Elapsed: ""}},
 		}, {
+			it: "must parse a successful destroy",
+			in: []string{
+				"data.azurerm_resource_group.env: Refreshing state...\n",
+				"azurerm_virtual_network.env: Refreshing state... [id=/subscriptions/ea365/resourceGroups/xxx-rg/providers/Microsoft.Network/virtualNetworks/yyy-vnet]\n",
+				"azurerm_subnet.intlb: Refreshing state... [id=/subscriptions/ea365/resourceGroups/xxx-rg/providers/Microsoft.Network/virtualNetworks/yyy-vnet/subnets/intlb]\n",
+				"azurerm_subnet.intlb: Destroying... [id=/subscriptions/ea365/resourceGroups/xxx-rg/providers/Microsoft.Network/virtualNetworks/yyy-vnet/subnets/intlb]\n",
+				"azurerm_subnet.intlb: Destruction complete after 0s\n",
+				"azurerm_virtual_network.env: Destroying... [id=/subscriptions/ea365/resourceGroups/xxx-rg/providers/Microsoft.Network/virtualNetworks/yyy-vnet]\n",
+				"azurerm_virtual_network.env: Still destroying... [id=/subscriptions/ea365-...ft.Network/virtualNetworks/yyy-vnet, 10s elapsed]\n",
+				"azurerm_virtual_network.env: Destruction complete after 11s\n",
+				"\nDestroy complete! Resources: 2 destroyed.\n"},
+			want: []TFApplyResult{
+				{Destroying: 1, Object: "azurerm_subnet.intlb", Action: "destroying", Elapsed: ""},
+				{Destroying: 1, Object: "azurerm_subnet.intlb", Action: "destruction", Elapsed: "0s"},
+				{Destroying: 2, Object: "azurerm_virtual_network.env", Action: "destroying", Elapsed: ""},
+				{Destroying: 2, Object: "azurerm_virtual_network.env", Action: "destroying", Elapsed: "10s"},
+				{Destroying: 2, Object: "azurerm_virtual_network.env", Action: "destruction", Elapsed: "11s"},
+				{Creating: 0, Modifying: 0, Destroying: 2, TotalAdded: 0, TotalChanged: 0, TotalDestroyed: 2, Object: "", Action: "", Elapsed: ""}},
+		}, {
 			it:   "must handle empty input",
 			in:   []string{},
 			want: []TFApplyResult{},
@@ -388,26 +422,29 @@ func TestParseAsyncApplyResponse(t *testing.T) {
 	}
 
 	for _, tst := range tsts {
-		rd, wr := io.Pipe()
+		t.Run(tst.it, func(t *testing.T) {
 
-		// start parser
-		ch := tf.parseAsyncApplyResponse(rd)
+			rd, wr := io.Pipe()
 
-		// send input
-		go func() {
-			for _, s := range tst.in {
-				wr.Write([]byte(s))
+			// start parser
+			ch := tf.parseAsyncApplyResponse(rd)
+
+			// send input
+			go func() {
+				for _, s := range tst.in {
+					wr.Write([]byte(s))
+				}
+				wr.Close()
+			}()
+
+			// read output
+			rs := []TFApplyResult{}
+			for r := range ch {
+				rs = append(rs, r)
 			}
-			wr.Close()
-		}()
 
-		// read output
-		rs := []TFApplyResult{}
-		for r := range ch {
-			rs = append(rs, r)
-		}
-
-		assert.Equal(t, tst.want, rs, "It %s.", tst.it)
+			assert.Equal(t, tst.want, rs)
+		})
 	}
 }
 

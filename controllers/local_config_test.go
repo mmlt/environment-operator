@@ -56,7 +56,7 @@ var _ = ginkgo.Describe("Happy path tests", func() {
 		Expect(testutil.ToFloat64(executor.MetricSteps) - c).To(Equal(0.0))
 
 		ginkgo.By("Checking CR Status")
-		Expect(len(fetched.Status.Steps)).To(BeNumerically("==", 5))
+		Expect(len(fetched.Status.Steps)).To(BeNumerically("==", 6))
 
 		Expect(fetched.Status.Steps["Init"].State).To(Equal(v1.StateReady))
 		Expect(fetched.Status.Steps["Init"].Message).To(Equal("terraform init errors=0 warnings=0"))
