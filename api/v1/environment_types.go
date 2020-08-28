@@ -78,6 +78,11 @@ type InfraSpec struct {
 	// Typically a concatenation of region, cloud provider and environment type (test, production).
 	EnvName string `json:"envName,omitempty"`
 
+	// State is where Terraform state is stored.
+	// If omitted state is stored locally.
+	// +optional
+	State StateSpec `json:"state,omitempty"`
+
 	// AAD is the Azure Active Directory that is queried when a k8s user authorization is checked.
 	AAD AADSpec `json:"aad,omitempty"`
 
@@ -143,6 +148,12 @@ const (
 	// SourceTypeLocal specifies a source repository of type local filesystem.
 	SourceTypeLocal EnvironmentSourceType = "local"
 )
+
+// StateSpec specifies where to find the Terraform state storage.
+type StateSpec struct {
+	ResourceGroup  string `json:"resourceGroup,omitempty"`
+	StorageAccount string `json:"storageAccount,omitempty"`
+}
 
 // Azure Active Directory.
 type AADSpec struct {
@@ -301,8 +312,9 @@ const (
 )
 
 // +kubebuilder:object:root=true
-// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.synced`
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason"
+// +kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message"
 
 // Environment is an environment at a cloud-provider with one or more Kubernetes clusters, addons, conformance tested.
 type Environment struct {

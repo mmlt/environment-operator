@@ -9,8 +9,11 @@ metadata:
   name: environments.clusterops.mmlt.nl
 spec:
   additionalPrinterColumns:
-  - JSONPath: .status.synced
-    name: Synced
+  - JSONPath: .status.conditions[?(@.type=="Ready")].reason
+    name: Status
+    type: string
+  - JSONPath: .status.conditions[?(@.type=="Ready")].message
+    name: Message
     type: string
   group: clusterops.mmlt.nl
   names:
@@ -325,6 +328,15 @@ spec:
                     url:
                       description: URL is the URL of the repo. When Token is specified
                         the URL is expected to start with 'https://'.
+                      type: string
+                  type: object
+                state:
+                  description: State is where Terraform state is stored. If omitted
+                    state is stored locally.
+                  properties:
+                    resourceGroup:
+                      type: string
+                    storageAccount:
                       type: string
                   type: object
               type: object
