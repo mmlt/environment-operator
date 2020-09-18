@@ -84,7 +84,7 @@ func (p *Planner) UpdateStatusConditions(nsn types.NamespacedName, status *v1.En
 		Type:               "Ready", //TODO define in API types
 		Status:             state,
 		Reason:             reason,
-		Message:            fmt.Sprintf("%d of %d ready, %d running, %d error(s)", readyCnt, totalCnt, runningCnt, errorCnt),
+		Message:            fmt.Sprintf("%d/%d ready, %d running, %d error(s)", readyCnt, totalCnt, runningCnt, errorCnt),
 		LastTransitionTime: latestTime,
 	}
 
