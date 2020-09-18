@@ -19,6 +19,7 @@ import (
 	"github.com/go-logr/stdr"
 	"github.com/mmlt/environment-operator/pkg/client/addon"
 	"github.com/mmlt/environment-operator/pkg/client/azure"
+	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
@@ -55,7 +56,7 @@ var (
 	testReconciler *EnvironmentReconciler
 )
 
-// TestE2EWithFakes runs a test suite using envtest and fake terraform.
+// TestE2EWithFakes runs a test suite using envtest and fake clients.
 func TestE2EWithFakes(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -130,12 +131,13 @@ var _ = BeforeSuite(func(done Done) {
 			},
 		},
 	})
+	kc := &kubectl.KubectlFake{}
 	az := &azure.AZFake{}
 	az.SetupFakeResults()
 	testReconciler.Planner = &plan.Planner{
 		Terraform: tf,
-		//Kubectl: TODO
-		Azure: az,
+		Kubectl:   kc,
+		Azure:     az,
 		Addon: &addon.Addon{
 			Log: testReconciler.Log.WithName("addon"),
 		},

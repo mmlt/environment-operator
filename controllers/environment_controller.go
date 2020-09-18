@@ -75,7 +75,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	log.V(1).Info("Start Reconcile")
 
 	// TODO add Policy checks
-	// TODO enable/disable via annotations?
+	// TODO enable/disable operator via annotations?
 
 	// Get Environment.
 	cr := &v1.Environment{}
@@ -84,8 +84,8 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		return ctrl.Result{}, ignoreNotFound(err)
 	}
 
-	// TODO Server side filtering https://github.com/kubernetes-sigs/controller-runtime/issues/244
-	// For now do client side filtering...
+	// Ignore environments that do not match selector.
+	// For now client side filtering, for server side see https://github.com/kubernetes-sigs/controller-runtime/issues/244
 	if len(r.Selector) > 0 {
 		v, ok := cr.Labels[label]
 		if !ok || v != r.Selector {
@@ -124,8 +124,26 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, fmt.Errorf("accept step for execution: %w", err)
 	}
+	if !accepted {
+		return ctrl.Result{Requeue: true}, nil
+	}
 
-	return ctrl.Result{Requeue: !accepted}, nil
+	// While steps are running reconcile often.
+	if hasStepState(cr.Status.Steps, v1.StateRunning) {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+		//return ctrl.Result{Requeue: true}, nil
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func hasStepState(stps map[string]v1.StepStatus, state v1.StepState) bool {
+	for _, stp := range stps {
+		if stp.State == state {
+			return true
+		}
+	}
+	return false
 }
 
 // Update Environment status with step.

@@ -31,7 +31,7 @@ type InfraValues struct {
 	Clusters []v1.ClusterSpec
 }
 
-// Meta returns a reference to the Metaa data this Step.
+// Meta returns a reference to the Metaa data of this Step.
 func (st *InitStep) Meta() *Metaa {
 	return &st.Metaa
 }

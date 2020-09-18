@@ -2,7 +2,7 @@ package tmplt
 
 import (
 	"fmt"
-	"github.com/Masterminds/sprig"
+	sprig "github.com/Masterminds/sprig/v3"
 	"github.com/rodaine/hclencoder"
 	"io"
 	"io/ioutil"

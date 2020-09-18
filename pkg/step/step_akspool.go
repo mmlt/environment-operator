@@ -18,7 +18,7 @@ type AKSPoolStep struct {
 	// ResourceGroup that contains Cluster.
 	ResourceGroup string
 	// Cluster is the name of the AKS cluster to upgrade the node pool(s) of.
-	// NB. We prefix AZ resources with the environment name.
+	// NB. This is the AKS name (which is the short name with a prefix).
 	Cluster string
 	// Version is the Kubernetes version to upgrade the node pool(s) to.
 	Version string
@@ -27,7 +27,7 @@ type AKSPoolStep struct {
 	Azure azure.AZer
 }
 
-// Meta returns a reference to the Metaa data this Step.
+// Meta returns a reference to the Metaa data of this Step.
 func (st *AKSPoolStep) Meta() *Metaa {
 	return &st.Metaa
 }

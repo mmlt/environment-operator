@@ -1,4 +1,6 @@
 // Package executor performs steps to create environments.
+//
+// Executor accepts steps, runs them and keeps track of them.
 package executor
 
 import (
@@ -91,7 +93,7 @@ func (ex *Executor) Accept(stp step.Step) (bool, error) {
 	ex.running[stp.Meta().ID] = r
 	MetricSteps.Inc()
 	go func() {
-		log := ex.Log.WithName("Execute").WithValues("stepName", stp.Meta().ID.ShortName())
+		log := ex.Log.WithName(stp.Meta().ID.ShortName())
 		ok := stp.Execute(r.ctx, ex.EventSink, ex.UpdateSink, log)
 		if !ok {
 			MetricStepFailures.Inc()

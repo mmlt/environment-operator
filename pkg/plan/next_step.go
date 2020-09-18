@@ -148,7 +148,7 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src source.Getter, i
 			&step.AKSPoolStep{
 				Metaa:         stepMeta(nsn, cl.Name, step.TypeAKSPool, p.hash(tfHash, ispec.AZ.ResourceGroup, cl.Infra.Version)),
 				ResourceGroup: ispec.AZ.ResourceGroup,
-				Cluster:       ispec.EnvName + "-" + cl.Name, // we prefix AZ resources with env name.
+				Cluster:       prefixedClusterName("aks", ispec.EnvName, cl.Name),
 				Version:       cl.Infra.Version,
 				Azure:         p.Azure,
 			},
@@ -159,6 +159,11 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src source.Getter, i
 				KCPath:      kcPath,
 				Terraform:   p.Terraform,
 				Kubectl:     p.Kubectl,
+			},
+			&step.AKSAddonPreflightStep{
+				Metaa:   stepMeta(nsn, cl.Name, step.TypeAKSAddonPreflight, h),
+				KCPath:  kcPath,
+				Kubectl: p.Kubectl,
 			},
 			&step.AddonStep{
 				Metaa:           stepMeta(nsn, cl.Name, step.TypeAddons, p.hash(cHash, cl.Addons.Jobs, cl.Addons.X)),
@@ -191,6 +196,7 @@ func stepMeta(nsn types.NamespacedName, clusterName string, typ step.Type, hash 
 }
 
 // SelectStep returns the next step to execute from current plan.
+// NB. The returned Step might be in Running state (it's up to the executor to accept the step or not)
 func (p *Planner) selectStep(nsn types.NamespacedName, status v1.EnvironmentStatus) (step.Step, error) {
 	pl, ok := p.currentPlan(nsn)
 	if !ok {
@@ -217,10 +223,13 @@ func (p *Planner) selectStep(nsn types.NamespacedName, status v1.EnvironmentStat
 			continue
 		}
 
+		/*// Return a Step even if we know it's running, it's up to the executor to accept the step or not.
 		if current.State == v1.StateRunning {
 			//TODO running for a long time may indicate a problem; for example the step execution stopped without updating the status
 			return nil, nil
-		} else if current.State == v1.StateError {
+		}*/
+
+		if current.State == v1.StateError {
 			//TODO introduce error budgets && !enoughIssueBudget(currentStatus) to retry after error
 
 			// no budget to retry
@@ -242,4 +251,11 @@ func (p *Planner) hash(args ...interface{}) string {
 		return "hasherror"
 	}
 	return strconv.FormatUint(i, 16)
+}
+
+// PrefixedClusterName returns the name as it's used in Azure.
+// NB. the same algo is in terraform
+func prefixedClusterName(resource, env, name string) string {
+	t := env[len(env)-1:]
+	return fmt.Sprintf("%s%s001%s-%s", t, resource, env, name)
 }

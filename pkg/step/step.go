@@ -49,14 +49,15 @@ func (si *ID) ShortName() string {
 type Type string
 
 const (
-	TypeInit       Type = "Init"
-	TypePlan       Type = "Plan"
-	TypeApply      Type = "Apply"
-	TypeDestroy    Type = "Destroy"
-	TypeAKSPool    Type = "AKSPool"
-	TypeKubeconfig Type = "Kubeconfig"
-	TypeAddons     Type = "Addons"
-	TypeTest       Type = "Test"
+	TypeInit              Type = "Init"
+	TypePlan              Type = "Plan"
+	TypeApply             Type = "Apply"
+	TypeDestroy           Type = "Destroy"
+	TypeAKSPool           Type = "AKSPool"
+	TypeKubeconfig        Type = "Kubeconfig"
+	TypeAKSAddonPreflight Type = "AKSAddonPreflight"
+	TypeAddons            Type = "Addons"
+	TypeTest              Type = "Test"
 )
 
 // Updater is a third party that wants to know about Step state changes.

@@ -1,4 +1,7 @@
-// Package Planner analyses the environment and decides what step should be executed next.
+// Package planner decides what step needs to be taken next to move the environment to desired state.
+// Planner NextStep() uses the current and desired state of the environment as stored in the Environment custom resource
+// to determine the next step. Planner UpdateStatus*() methods write Step progress back to Environment.Status fields.
+// As such the planner is the one who reads/writes Environment custom resource fields.
 package plan
 
 import (
@@ -12,11 +15,7 @@ import (
 	"sync"
 )
 
-// Planner decides what next step needs to be taken to move the environment to desired state.
-// It can be viewed as a mediator between the Environment custom resource (containing current and desired state) and
-// the steps executor.
-// Planner NextStep() maps Environment.Spec and .Status to a Step to be executed next.
-// Planner Update() puts the result of a Step in the Environment.Status fields.
+// Planner analyses the environment and decides what step should be executed next.
 type Planner struct {
 	sync.RWMutex
 

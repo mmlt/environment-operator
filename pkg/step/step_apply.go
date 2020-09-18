@@ -27,7 +27,7 @@ type ApplyStep struct {
 	Added, Changed, Deleted int
 }
 
-// Meta returns a reference to the Metaa data this Step.
+// Meta returns a reference to the Metaa data of this Step.
 func (st *ApplyStep) Meta() *Metaa {
 	return &st.Metaa
 }

@@ -35,7 +35,7 @@ type KubeconfigStep struct {
 	Kubectl kubectl.Kubectrler
 }
 
-// Meta returns a reference to the Metaa data this Step.
+// Meta returns a reference to the Metaa data of this Step.
 func (st *KubeconfigStep) Meta() *Metaa {
 	return &st.Metaa
 }
