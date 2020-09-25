@@ -52,7 +52,7 @@ type Sources struct {
 	RootPath string
 
 	// Users contains all the source users.
-	// In this context an user is infra, a cluster or a test step.
+	// In this context an user is an infra, cluster or test step.
 	users map[userID]user
 
 	// Srcs tracks all the sources used by users (N users can refer to 1 src).
@@ -69,7 +69,7 @@ type userID struct {
 	user string
 }
 
-// User (TODO rename to src?)
+// User (TODO rename to alias? consumer?)
 type user struct {
 	// Path of the work directory.
 	path string
@@ -167,7 +167,7 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, error) {
 	return u.path, nil
 }
 
-// Register name as an user of the spec source.
+// Register name as an alias for the spec source.
 func (ss *Sources) Register(nsn types.NamespacedName, name string, spec v1.SourceSpec) error {
 	name = defaultName(name)
 

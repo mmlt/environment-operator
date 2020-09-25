@@ -27,7 +27,6 @@ import (
 	"k8s.io/klog"
 	"k8s.io/klog/klogr"
 	"os"
-	"path/filepath"
 	"time"
 
 	clusteropsv1 "github.com/mmlt/environment-operator/api/v1"
@@ -61,6 +60,8 @@ func main() {
 			"When selector is empty all resources are handled.")
 	syncPeriodInMin := flag.Int("sync-period-in-min", 10,
 		"The max. interval time to check external sources like git.")
+	workDir := flag.String("workdir", "/var/tmp/envop",
+		"Working directory")
 
 	// klog
 	klog.InitFlags(nil)
@@ -98,7 +99,7 @@ func main() {
 		Selector: *selector,
 	}
 	r.Sources = &source.Sources{
-		RootPath: filepath.Join(os.TempDir(), "envop"),
+		RootPath: *workDir,
 		Log:      r.Log.WithName("source"),
 	}
 	r.Planner = &plan.Planner{

@@ -31,7 +31,7 @@ func (p *Planner) NextStep(nsn types.NamespacedName, src source.Getter, destroy 
 	return st, err
 }
 
-// BuildPlan builds a plan with the steps to apply to the target environment.
+// BuildPlan builds a plan containing the steps to create/update/delete a target environment.
 // An environment is identified by nsn.
 func (p *Planner) buildPlan(nsn types.NamespacedName, src source.Getter, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
 	p.Lock()
@@ -50,7 +50,7 @@ func (p *Planner) buildPlan(nsn types.NamespacedName, src source.Getter, destroy
 	}
 }
 
-//
+// BuildDestroyPlan builds a plan to delete a target environment.
 func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
 	pl := make(plan, 0, 3+4*len(cspec))
 
@@ -88,7 +88,7 @@ func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src source.Getter, 
 	return nil
 }
 
-//
+// BuildCreatePlan builds a plan to create or update a target environment.
 func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
 	pl := make(plan, 0, 3+4*len(cspec))
 

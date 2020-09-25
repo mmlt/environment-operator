@@ -103,8 +103,16 @@ spec:
                           description: NodepoolSpec defines a cluster worker node
                             pool.
                           properties:
+                            maxScale:
+                              description: Max number of VM's. Setting MaxScale >
+                                Scale enables autoscaling.
+                              maximum: 100
+                              minimum: 1
+                              type: integer
                             scale:
                               description: Number of VM's.
+                              maximum: 100
+                              minimum: 1
                               type: integer
                             vmSize:
                               description: Type of VM's.
@@ -191,8 +199,16 @@ spec:
                       additionalProperties:
                         description: NodepoolSpec defines a cluster worker node pool.
                         properties:
+                          maxScale:
+                            description: Max number of VM's. Setting MaxScale > Scale
+                              enables autoscaling.
+                            maximum: 100
+                            minimum: 1
+                            type: integer
                           scale:
                             description: Number of VM's.
+                            maximum: 100
+                            minimum: 1
                             type: integer
                           vmSize:
                             description: Type of VM's.
@@ -246,6 +262,10 @@ spec:
                 az:
                   description: AZ values.
                   properties:
+                    availabilityZones:
+                      description: AvailabilityZones String of integers, for example
+                        "[1,2]"
+                      type: string
                     dns:
                       description: DNS is an optional list of custom DNS servers.
                         (VM's in VNet need to be restarted to propagate changes to
@@ -253,6 +273,13 @@ spec:
                       items:
                         type: string
                       type: array
+                    outbound:
+                      description: 'Outbound sets the network outbound type. Valid
+                        values are: - loadBalancer (default) - userDefinedRoute'
+                      enum:
+                      - loadBalancer
+                      - userDefinedRoute
+                      type: string
                     resourceGroup:
                       description: ResourceGroup
                       type: string
@@ -272,6 +299,13 @@ spec:
                             type: string
                         type: object
                       type: array
+                    sku:
+                      description: 'SKU (stock keeping unit) sets the SLA on the AKS
+                        control plane. Valid values are: - Free (default) - Paid'
+                      enum:
+                      - Free
+                      - Paid
+                      type: string
                     subnetNewbits:
                       description: Subnet newbits is the number of bits to add to
                         the VNet address mask to produce the subnet mask. IOW 2^subnetNewbits-1

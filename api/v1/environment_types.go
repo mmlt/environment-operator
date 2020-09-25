@@ -171,7 +171,20 @@ type AZSpec struct {
 	// ResourceGroup
 	ResourceGroup string `json:"resourceGroup,omitempty"`
 
-	// The VNet CIDR that connects one or more clusters.
+	// AvailabilityZones are the zones in a region over which nodes and control plane are spread.
+	// For example "[1,2,3]"
+	// +optional
+	AvailabilityZones string `json:"availabilityZones,omitempty"`
+
+	// SKU (stock keeping unit) sets the SLA on the AKS control plane.
+	// Valid values are:
+	// - Free (default)
+	// - Paid
+	// +optional
+	// +kubebuilder:validation:Enum=Free;Paid
+	SKU AZSKU `json:"sku,omitempty"`
+
+	// VNet CIDR is the network range used by one or more clusters.
 	VNetCIDR string `json:"vnetCIDR,omitempty"`
 
 	// DNS is an optional list of custom DNS servers.
@@ -184,6 +197,13 @@ type AZSpec struct {
 	// For example given a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
 	SubnetNewbits int `json:"subnetNewbits,omitempty"`
 
+	// Outbound sets the network outbound type.
+	// Valid values are:
+	// - loadBalancer (default)
+	// - userDefinedRoute
+	// +kubebuilder:validation:Enum=loadBalancer;userDefinedRoute
+	Outbound AZOutbound `json:"outbound,omitempty"`
+
 	// Routes is an optional list of routes
 	// +optional
 	Routes []AZRoute `json:"routes,omitempty"`
@@ -192,6 +212,22 @@ type AZSpec struct {
 	// +optional
 	X map[string]string `json:"x,omitempty"`
 }
+
+// AZOutbound sets the network outbound type.
+type AZOutbound string
+
+const (
+	OutboundLoadbalancer     AZOutbound = "loadBalancer"
+	OutboundUserDefinedRoute AZOutbound = "userDefinedRoute"
+)
+
+// AZSKU sets the SLA on the AKS control plane.
+type AZSKU string
+
+const (
+	SKUFree AZSKU = "Free"
+	SKUPaid AZSKU = "Paid"
+)
 
 // AZRoute is an entry in the routing table of the VNet.
 type AZRoute struct {
@@ -223,7 +259,15 @@ type ClusterInfraSpec struct {
 // NodepoolSpec defines a cluster worker node pool.
 type NodepoolSpec struct {
 	// Number of VM's.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
 	Scale int `json:"scale,omitempty"`
+
+	// Max number of VM's.
+	// Setting MaxScale > Scale enables autoscaling.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	MaxScale int `json:"maxScale,omitempty"`
 
 	// Type of VM's.
 	VMSize string `json:"vmSize,omitempty"`
