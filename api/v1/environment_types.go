@@ -172,9 +172,9 @@ type AZSpec struct {
 	ResourceGroup string `json:"resourceGroup,omitempty"`
 
 	// AvailabilityZones are the zones in a region over which nodes and control plane are spread.
-	// For example "[1,2,3]"
+	// For example [1,2,3]
 	// +optional
-	AvailabilityZones string `json:"availabilityZones,omitempty"`
+	AvailabilityZones []int `json:"serviceEndpoints,omitempty"`
 
 	// SKU (stock keeping unit) sets the SLA on the AKS control plane.
 	// Valid values are:
@@ -183,6 +183,13 @@ type AZSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=Free;Paid
 	SKU AZSKU `json:"sku,omitempty"`
+
+	// ServiceEndpoints provide direct connectivity to Azure services over the Azure backbone network.
+	// This is an optional list of one or more of the following values:
+	// Microsoft.AzureActiveDirectory, Microsoft.AzureCosmosDB, Microsoft.ContainerRegistry, Microsoft.EventHub,
+	// Microsoft.KeyVault, Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage and Microsoft.Web
+	// +optional
+	ServiceEndpoints []AZServiceEndpoint `json:"serviceEndpoints,omitempty"`
 
 	// VNet CIDR is the network range used by one or more clusters.
 	VNetCIDR string `json:"vnetCIDR,omitempty"`
@@ -200,8 +207,8 @@ type AZSpec struct {
 	// Outbound sets the network outbound type.
 	// Valid values are:
 	// - loadBalancer (default)
-	// - userDefinedRoute
-	// +kubebuilder:validation:Enum=loadBalancer;userDefinedRoute
+	// - userDefinedRouting
+	// +kubebuilder:validation:Enum=loadBalancer;userDefinedRouting
 	Outbound AZOutbound `json:"outbound,omitempty"`
 
 	// Routes is an optional list of routes
@@ -228,6 +235,9 @@ const (
 	SKUFree AZSKU = "Free"
 	SKUPaid AZSKU = "Paid"
 )
+
+// +kubebuilder:validation:Enum=Microsoft.AzureActiveDirectory;Microsoft.AzureCosmosDB;Microsoft.ContainerRegistry;Microsoft.EventHub;Microsoft.KeyVault;Microsoft.ServiceBus;Microsoft.Sql;Microsoft.Storage;Microsoft.Web
+type AZServiceEndpoint string
 
 // AZRoute is an entry in the routing table of the VNet.
 type AZRoute struct {
@@ -258,6 +268,14 @@ type ClusterInfraSpec struct {
 
 // NodepoolSpec defines a cluster worker node pool.
 type NodepoolSpec struct {
+	// Type of VM's.
+	VMSize string `json:"vmSize,omitempty"`
+
+	// Max number of Pods per VM.
+	// +kubebuilder:validation:Minimum=10
+	// +kubebuilder:validation:Maximum=250
+	MaxPods int `json:"maxPods,omitempty"`
+
 	// Number of VM's.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
@@ -268,9 +286,6 @@ type NodepoolSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	MaxScale int `json:"maxScale,omitempty"`
-
-	// Type of VM's.
-	VMSize string `json:"vmSize,omitempty"`
 }
 
 // ClusterAddonSpec defines what K8s resources needs to be deployed in a cluster after creation.

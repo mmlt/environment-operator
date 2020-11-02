@@ -103,6 +103,11 @@ spec:
                           description: NodepoolSpec defines a cluster worker node
                             pool.
                           properties:
+                            maxPods:
+                              description: Max number of Pods per VM.
+                              maximum: 250
+                              minimum: 10
+                              type: integer
                             maxScale:
                               description: Max number of VM's. Setting MaxScale >
                                 Scale enables autoscaling.
@@ -199,6 +204,11 @@ spec:
                       additionalProperties:
                         description: NodepoolSpec defines a cluster worker node pool.
                         properties:
+                          maxPods:
+                            description: Max number of Pods per VM.
+                            maximum: 250
+                            minimum: 10
+                            type: integer
                           maxScale:
                             description: Max number of VM's. Setting MaxScale > Scale
                               enables autoscaling.
@@ -263,9 +273,11 @@ spec:
                   description: AZ values.
                   properties:
                     availabilityZones:
-                      description: AvailabilityZones String of integers, for example
-                        "[1,2]"
-                      type: string
+                      description: AvailabilityZones are the zones in a region over
+                        which nodes and control plane are spread. For example [1,2,3]
+                      items:
+                        type: integer
+                      type: array
                     dns:
                       description: DNS is an optional list of custom DNS servers.
                         (VM's in VNet need to be restarted to propagate changes to
@@ -275,10 +287,10 @@ spec:
                       type: array
                     outbound:
                       description: 'Outbound sets the network outbound type. Valid
-                        values are: - loadBalancer (default) - userDefinedRoute'
+                        values are: - loadBalancer (default) - userDefinedRouting'
                       enum:
                       - loadBalancer
-                      - userDefinedRoute
+                      - userDefinedRouting
                       type: string
                     resourceGroup:
                       description: ResourceGroup
@@ -299,6 +311,26 @@ spec:
                             type: string
                         type: object
                       type: array
+                    serviceEndpoints:
+                      description: 'ServiceEndpoints provide direct connectivity to
+                        Azure services over the Azure backbone network. This is an
+                        optional list of one or more of the following values: Microsoft.AzureActiveDirectory,
+                        Microsoft.AzureCosmosDB, Microsoft.ContainerRegistry, Microsoft.EventHub,
+                        Microsoft.KeyVault, Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage
+                        and Microsoft.Web'
+                      items:
+                        enum:
+                        - Microsoft.AzureActiveDirectory
+                        - Microsoft.AzureCosmosDB
+                        - Microsoft.ContainerRegistry
+                        - Microsoft.EventHub
+                        - Microsoft.KeyVault
+                        - Microsoft.ServiceBus
+                        - Microsoft.Sql
+                        - Microsoft.Storage
+                        - Microsoft.Web
+                        type: string
+                      type: array
                     sku:
                       description: 'SKU (stock keeping unit) sets the SLA on the AKS
                         control plane. Valid values are: - Free (default) - Paid'
@@ -316,7 +348,8 @@ spec:
                       description: Subscription
                       type: string
                     vnetCIDR:
-                      description: The VNet CIDR that connects one or more clusters.
+                      description: VNet CIDR is the network range used by one or more
+                        clusters.
                       type: string
                     x:
                       additionalProperties:

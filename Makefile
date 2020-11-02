@@ -1,6 +1,7 @@
-
+# Version
+VERSION ?= 0.0.1-alpha
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= envop:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -55,8 +56,9 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Build the docker image
-docker-build: test
-	docker build . -t ${IMG}
+#TODO docker-build: test
+docker-build:
+	docker build . -t ${IMG} --build-arg VERSION=${VERSION}
 
 # Push the docker image
 docker-push:

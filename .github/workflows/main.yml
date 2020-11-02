@@ -1,0 +1,26 @@
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events that match tag pattern v*, i.e. v1.0, v20.15.10
+
+name: Release envop to dockerhub
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Get the version from tag
+        id: get_version
+        run: echo ::set-env name=VERSION::${GITHUB_REF#refs/tags/}
+
+      - name: Publish to Registry
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          name: pietere/envop
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          buildargs: VERSION
+          tags: "latest,${{ env.VERSION }}"
