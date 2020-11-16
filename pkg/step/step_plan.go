@@ -32,14 +32,16 @@ func (st *PlanStep) Meta() *Metaa {
 }
 
 // Run a step.
-func (st *PlanStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *PlanStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run.
 	st.State = v1.StateRunning
 	usink.Update(st)
 
-	tfr := st.Terraform.Plan(st.SourcePath)
+	tfr := st.Terraform.Plan(ctx, env, st.SourcePath)
+
+	writeText(st.SourcePath, "plan.txt", tfr.Text, log)
 
 	// Return results.
 	st.State = v1.StateReady

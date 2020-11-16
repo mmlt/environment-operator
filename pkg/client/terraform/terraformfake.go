@@ -60,19 +60,19 @@ type TerraformFake struct {
 //}
 
 // Init implements Terraformer.
-func (t *TerraformFake) Init(dir string) *TFResult {
+func (t *TerraformFake) Init(ctx context.Context, env []string, dir string) *TFResult {
 	t.InitTally++
 	return &t.InitResult
 }
 
 // Plan implements Terraformer.
-func (t *TerraformFake) Plan(dir string) *TFResult {
+func (t *TerraformFake) Plan(ctx context.Context, env []string, dir string) *TFResult {
 	t.PlanTally++
 	return &t.PlanResult
 }
 
 // StartApply implements Terraformer.
-func (t *TerraformFake) StartApply(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error) {
+func (t *TerraformFake) StartApply(ctx context.Context, env []string, dir string) (*exec.Cmd, chan TFApplyResult, error) {
 	t.ApplyTally++
 
 	out := make(chan TFApplyResult)
@@ -94,7 +94,7 @@ func (t *TerraformFake) StartApply(ctx context.Context, dir string) (*exec.Cmd, 
 }
 
 // StartDestroy implements Terraformer.
-func (t *TerraformFake) StartDestroy(ctx context.Context, dir string) (*exec.Cmd, chan TFApplyResult, error) {
+func (t *TerraformFake) StartDestroy(ctx context.Context, env []string, dir string) (*exec.Cmd, chan TFApplyResult, error) {
 	t.DestroyTally++
 
 	out := make(chan TFApplyResult)
@@ -116,7 +116,7 @@ func (t *TerraformFake) StartDestroy(ctx context.Context, dir string) (*exec.Cmd
 }
 
 // Output implements Terraformer.
-func (t *TerraformFake) Output(dir string) (map[string]interface{}, error) {
+func (t *TerraformFake) Output(ctx context.Context, env []string, dir string) (map[string]interface{}, error) {
 	t.OutputTally++
 	return t.OutputResult, nil
 }

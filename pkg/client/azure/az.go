@@ -5,6 +5,12 @@ import "github.com/go-logr/logr"
 
 // AZer is able to perform az cli commands.
 type AZer interface {
+	LoginSP(user, password, tenant string) error
+	Logout() error
+
+	// KeyvaultSecret reads name secret from vaultName KeyVault.
+	KeyvaultSecret(name, vaultName string) (string, error)
+
 	// AKSNodepoolList returns all the node pools of an AKS cluster.
 	AKSNodepoolList(resourceGroup, cluster string) ([]AKSNodepool, error)
 	// AKSNodepool returns the details about an AKS cluster nodepool.

@@ -272,12 +272,6 @@ spec:
                 az:
                   description: AZ values.
                   properties:
-                    availabilityZones:
-                      description: AvailabilityZones are the zones in a region over
-                        which nodes and control plane are spread. For example [1,2,3]
-                      items:
-                        type: integer
-                      type: array
                     dns:
                       description: DNS is an optional list of custom DNS servers.
                         (VM's in VNet need to be restarted to propagate changes to
@@ -345,7 +339,10 @@ spec:
                         a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
                       type: integer
                     subscription:
-                      description: Subscription
+                      description: Subscription user friendly name.
+                      type: string
+                    subscriptionID:
+                      description: SubscriptionID
                       type: string
                     vnetCIDR:
                       description: VNet CIDR is the network range used by one or more
@@ -368,7 +365,8 @@ spec:
                     (test, production).
                   type: string
                 main:
-                  description: Main is the path in the source tree to main.tf.
+                  description: Main is the path in the source tree to the directory
+                    containing main.tf.
                   type: string
                 source:
                   description: Source is the repository that contains Terraform infrastructure
@@ -401,8 +399,6 @@ spec:
                   description: State is where Terraform state is stored. If omitted
                     state is stored locally.
                   properties:
-                    resourceGroup:
-                      type: string
                     storageAccount:
                       type: string
                   type: object

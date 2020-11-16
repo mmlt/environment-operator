@@ -41,8 +41,6 @@ type EnvironmentSpec struct {
 
 	// Clusters defines the values specific for each cluster instance.
 	Clusters []ClusterSpec `json:"clusters,omitempty"`
-
-	//TODO implement Tests
 }
 
 // EnvironmentPolicy describes how the environment will be updated or deleted.
@@ -67,7 +65,7 @@ type InfraSpec struct {
 	// Source is the repository that contains Terraform infrastructure code.
 	Source SourceSpec `json:"source,omitempty"`
 
-	// Main is the path in the source tree to main.tf.
+	// Main is the path in the source tree to the directory containing main.tf.
 	Main string `json:"main,omitempty"`
 
 	// EnvDomain is the most significant part of the domain name for this environment.
@@ -101,16 +99,10 @@ type ClusterSpec struct {
 
 	// ClusterAddonSpec defines the Kubernetes resources to deploy to have a functioning cluster.
 	Addons ClusterAddonSpec `json:"addons,omitempty"`
-
-	// ClusterAddonSpec defines what conformance test to run.
-	Test ClusterTestSpec `json:"test,omitempty"`
 }
 
 // SourceSpec defines the location to fetch content like configuration scripts and tests from.
 type SourceSpec struct {
-	// Name is used to refer to this target when providing feedback to the user.
-	//TODO not needed Name string `json:"name,omitempty"`
-
 	// Type is the type of repository to use as a source.
 	// Valid values are:
 	// - "git" (default): GIT repository.
@@ -151,7 +143,6 @@ const (
 
 // StateSpec specifies where to find the Terraform state storage.
 type StateSpec struct {
-	ResourceGroup  string `json:"resourceGroup,omitempty"`
 	StorageAccount string `json:"storageAccount,omitempty"`
 }
 
@@ -165,8 +156,11 @@ type AADSpec struct {
 
 // AZSpec defines Azure specific infra structure settings.
 type AZSpec struct {
-	// Subscription
+	// Subscription user friendly name.
 	Subscription string `json:"subscription,omitempty"`
+
+	// SubscriptionID
+	SubscriptionID string `json:"subscriptionID,omitempty"`
 
 	// ResourceGroup
 	ResourceGroup string `json:"resourceGroup,omitempty"`
@@ -299,10 +293,6 @@ type ClusterAddonSpec struct {
 	// X are extension values (when regular values don't fit the need)
 	// +optional
 	X map[string]string `json:"x,omitempty"`
-}
-
-type ClusterTestSpec struct {
-	//TODO implement ClusterTestSpec
 }
 
 // EnvironmentStatus defines the observed state of an Environment.

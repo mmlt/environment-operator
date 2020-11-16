@@ -33,11 +33,11 @@ func (st *DestroyStep) Meta() *Metaa {
 }
 
 // Execute terraform destroy.
-func (st *DestroyStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run
-	cmd, ch, err := st.Terraform.StartDestroy(ctx, st.SourcePath)
+	cmd, ch, err := st.Terraform.StartDestroy(ctx, env, st.SourcePath)
 	if err != nil {
 		log.Error(err, "start terraform destroy")
 		isink.Warning(st.ID, "start terraform destroy:"+err.Error())

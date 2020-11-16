@@ -12,7 +12,7 @@ type Step interface {
 	// Meta returns a reference to the Metaa data of a Step.
 	Meta() *Metaa
 	// Execute a step, return true on success.
-	Execute(context.Context, Infoer, Updater, logr.Logger) bool
+	Execute(context.Context, []string, Infoer, Updater, logr.Logger) bool
 }
 
 // Metaa contains the fields that all steps have in common.
@@ -57,7 +57,6 @@ const (
 	TypeKubeconfig        Type = "Kubeconfig"
 	TypeAKSAddonPreflight Type = "AKSAddonPreflight"
 	TypeAddons            Type = "Addons"
-	TypeTest              Type = "Test"
 )
 
 // Updater is a third party that wants to know about Step state changes.

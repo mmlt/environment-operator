@@ -1,0 +1,4 @@
+#!/bin/bash
+cp -RL /tmp/git/.ssh /home/envop/
+chmod 600 .ssh/id_rsa
+exec envop "$@"

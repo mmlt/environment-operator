@@ -21,6 +21,7 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/azure"
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
+	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
@@ -116,6 +117,11 @@ var _ = BeforeSuite(func(done Done) {
 		RootPath: filepath.Join(os.TempDir(), "envop"),
 		Log:      testReconciler.Log.WithName("source"),
 	}
+	az := &azure.AZFake{}
+	az.SetupFakeResults()
+	testReconciler.Cloud = &cloud.Azure{
+		Client: az,
+	}
 	tf := &terraform.TerraformFake{
 		Log: testReconciler.Log.WithName("tffake"),
 	}
@@ -132,8 +138,6 @@ var _ = BeforeSuite(func(done Done) {
 		},
 	})
 	kc := &kubectl.KubectlFake{}
-	az := &azure.AZFake{}
-	az.SetupFakeResults()
 	testReconciler.Planner = &plan.Planner{
 		Terraform: tf,
 		Kubectl:   kc,

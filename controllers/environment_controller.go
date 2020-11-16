@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/imdario/mergo"
+	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
@@ -51,6 +52,9 @@ type EnvironmentReconciler struct {
 	// Sources fetches tf or yaml source code.
 	Sources *source.Sources
 
+	// Cloud provides generic cloud functions like login.
+	Cloud cloud.Cloud
+
 	// Planner decides on the next step to execute based on Environment.
 	Planner *plan.Planner
 
@@ -70,6 +74,8 @@ const label = "clusterops.mmlt.nl/operator"
 // Reconcile takes a k8s resource and attempts to adjust the underlying Environment to meet it's spec.
 // The status of the k8s resource is updated to match the observed state of the Enviroment.
 func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+	var requeue bool
+
 	ctx := context.Background()
 	log := r.Log.WithValues("request", req.NamespacedName)
 	log.V(1).Info("Start Reconcile")
@@ -97,20 +103,24 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	// Get ClusterSpecs with defaults.
 	cspec, err := flattenedClusterSpec(cr.Spec)
 	if err != nil {
-		// Spec contains error (needs user to fix it first so do noy retry).  TODO warn user via webhook
+		// Spec contains error (needs user to fix it first so do noy retry).  TODO warn user via Status
 		return ctrl.Result{}, fmt.Errorf("Spec: %w", err)
 	}
 
-	// Register sources.
+	// Register and fetch sources.
 	err = r.Sources.Register(req.NamespacedName, "", cr.Spec.Infra.Source)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, fmt.Errorf("register infra source: %w", err)
+		return ctrl.Result{Requeue: true}, fmt.Errorf("source: register infra: %w", err)
 	}
 	for _, sp := range cspec {
-		err := r.Sources.Register(req.NamespacedName, sp.Name, sp.Addons.Source)
+		err = r.Sources.Register(req.NamespacedName, sp.Name, sp.Addons.Source)
 		if err != nil {
-			return ctrl.Result{Requeue: true}, fmt.Errorf("register cluster source: %w", err)
+			return ctrl.Result{Requeue: true}, fmt.Errorf("source: register cluster: %w", err)
 		}
+	}
+	err = r.Sources.FetchAll()
+	if err != nil {
+		log.Error(err, "source: fetch")
 	}
 
 	// Ask Planner for next step.
@@ -118,6 +128,29 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, fmt.Errorf("plan next step: %w", err)
 	}
+
+	// When there is no work to do update the sources in the workspace.
+	if step == nil {
+		c, err := r.Sources.Get(req.NamespacedName, "")
+		if err != nil {
+			return ctrl.Result{Requeue: true}, fmt.Errorf("source: get infra: %w", err)
+		}
+		requeue = requeue || c
+		for _, sp := range cspec {
+			c, err = r.Sources.Get(req.NamespacedName, sp.Name)
+			if err != nil {
+				return ctrl.Result{Requeue: true}, fmt.Errorf("source: get cluster: %w", err)
+			}
+			requeue = requeue || c
+		}
+	}
+
+	// Cloud provider login.
+	env, err := r.Cloud.Login()
+	if err != nil {
+		return ctrl.Result{Requeue: true}, fmt.Errorf("cloud login: %w", err)
+	}
+	r.Executor.EnvironAdd(env)
 
 	// Try to run step.
 	accepted, err := r.Executor.Accept(step)
@@ -134,7 +167,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		//return ctrl.Result{Requeue: true}, nil
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{Requeue: requeue}, nil
 }
 
 func hasStepState(stps map[string]v1.StepStatus, state v1.StepState) bool {

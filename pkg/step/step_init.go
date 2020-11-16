@@ -7,6 +7,9 @@ import (
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/tmplt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 )
 
 // InitStep performs a terraform init
@@ -37,7 +40,7 @@ func (st *InitStep) Meta() *Metaa {
 }
 
 // Run a step.
-func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *InitStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run.
@@ -52,7 +55,9 @@ func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, lo
 		return false
 	}
 
-	tfr := st.Terraform.Init(st.SourcePath)
+	tfr := st.Terraform.Init(ctx, env, st.SourcePath)
+
+	writeText(st.SourcePath, "init.txt", tfr.Text, log)
 
 	// Return results.
 	st.State = v1.StateReady
@@ -67,4 +72,18 @@ func (st *InitStep) Execute(ctx context.Context, isink Infoer, usink Updater, lo
 	usink.Update(st)
 
 	return st.State == v1.StateReady
+}
+
+// WriteText writes text to dir/log/name.
+// Errors are logged.
+func writeText(dir, name, text string, log logr.Logger) {
+	p := filepath.Join(dir, "log")
+	err := os.MkdirAll(p, os.ModePerm)
+	if err != nil {
+		log.Info("InitStep", "error", err)
+	}
+	err = ioutil.WriteFile(filepath.Join(p, name), []byte(text), os.ModePerm)
+	if err != nil {
+		log.Info("InitStep", "error", err)
+	}
 }

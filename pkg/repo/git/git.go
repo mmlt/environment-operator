@@ -56,7 +56,7 @@ func New(url, reference, token, dir string, log logr.Logger) (*Repo, error) {
 }
 
 // Name is the fully qualified name of the repo in alphanumerical chars.
-// It includes the repo URL and Ref.
+// It includes a hash of the repo URL and Ref.
 // The last url path element is included verbatim.
 func (r *Repo) Name() string {
 	// url part is max 24 chars incl. 8 chars hash.
@@ -101,7 +101,6 @@ func (r *Repo) Remove() error {
 
 // SHAremote returns the SHA of the last commit to the remote repo.
 func (r *Repo) SHAremote() (string, error) {
-	//TODO consider returning cached value if called within 1 minute
 	args := []string{"ls-remote", r.url}
 	if r.reference != "" {
 		args = append(args, r.reference)

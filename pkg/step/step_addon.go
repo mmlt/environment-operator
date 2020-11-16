@@ -43,7 +43,7 @@ func (st *AddonStep) Meta() *Metaa {
 }
 
 // Execute addon apply for a cluster.
-func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *AddonStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	st.State = v1.StateRunning
@@ -63,7 +63,7 @@ func (st *AddonStep) Execute(ctx context.Context, isink Infoer, usink Updater, l
 	var totals []addon.KTResult
 	for _, job := range st.JobPaths {
 		// Run kubectl-tmplt
-		cmd, ch, err := st.Addon.Start(ctx, st.SourcePath, job, values, st.KCPath, st.MasterVaultPath)
+		cmd, ch, err := st.Addon.Start(ctx, env, st.SourcePath, job, values, st.KCPath, st.MasterVaultPath)
 		if err != nil {
 			log.Error(err, "start kubectl-tmplt")
 			isink.Warning(st.ID, "start kubectl-tmplt:"+err.Error())

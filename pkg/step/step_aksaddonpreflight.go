@@ -28,7 +28,7 @@ func (st *AKSAddonPreflightStep) Meta() *Metaa {
 }
 
 // Execute node pool upgrade for a cluster.
-func (st *AKSAddonPreflightStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *AKSAddonPreflightStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	const (
 		namespace = "kube-system"
 		name      = "preflight"

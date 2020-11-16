@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/go-logr/logr"
+	multierror "github.com/hashicorp/go-multierror"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/util/exe"
 	otia10copy "github.com/otiai10/copy"
@@ -21,214 +22,237 @@ import (
 )
 
 /*
-Implementation notes:
+Usage of this package involves the following steps:
+1. Workspace are Registered - typically each infra and cluster config has its own workspace directory.
+2. Remote repos (or filesystems) are fetched.
+3. When no steps are running the workspace sources are 'get' from the local repo.
+4. Steps run commands in the workspace directories.
 
-             fetch                  Get()
-remote repo --------> local source --------> workdir
-                         Hash()
+               fetch             get
+remote repo  --------->  repo  ------->  workspace
+filesystem
 
-Hash and Get are not atomic.
-Hash may return a value that is not equal to the hash Get is returning.
-For example:
-  1. local store has changed
-  2. Hash returns to value for 1 and because of that NextStep will detect a change and produce a Step.
-  3. local store change is undone
-  4. Step executes and Get's  unchanged data
-Effect: Step run on unchanged data (not an issue).
-
-Get and update of local source should be mutual exclusive.
-Updating the local source during Get copying to the workdir must be prevented.
-
-The case of an unknown party (for example a mounted ConfigMap) updating local source is not supported (would need some file locking protocol).
-The case of git fetch is solved by serializing fetch/Get.
+Change of filesystem during fetch might result in inconsistencies in repo content.
 */
 
-// Sources keeps a list of source repositories and maintains local copies of them.
-// Sources are added with Register() and retrieved with Getter.
+// Sources keeps a list of workspaces and associated the source repositories.
+// Sources are added with Register().
 type Sources struct {
-	// RootPath is the root of all "work" and "git" directories.
-	// Work directories are used by the steps, for example "work/namespace/name/infra" "work/namespace/name/clustername"
-	// Git directories contain the local
+	// RootPath is the root of "workspace" and "repo" directories.
+	// Workspaces have paths like "<RootPath>/workspace/namespace/name/_infra_" "work/namespace/name/clustername"
+	// Repo directory are in "<RootPath>/repo/"
 	RootPath string
 
-	// Users contains all the source users.
-	// In this context an user is an infra, cluster or test step.
-	users map[userID]user
+	// Workspaces map consumers to workspaces.
+	// In this context a consumer is an infra or cluster deployment configuration step.
+	workspaces map[consumerID]Workspace
 
-	// Srcs tracks all the sources used by users (N users can refer to 1 src).
-	srcs []*src
+	// Repos keeps tack of the remote repos/filesystems.
+	repos map[v1.SourceSpec]repo
 
 	Log logr.Logger
 }
 
-// UserID identifies the consumer of the source.
-type userID struct {
+// ConsumerID identifies the consumer of a workspace.
+type consumerID struct {
 	// NamespacedName identifies the environment.
 	types.NamespacedName
-	// User identifies the cluster within the environment.
-	user string
+	// consumer identifies the cluster within the environment or the environment itself.
+	consumer string
 }
 
-// User (TODO rename to alias? consumer?)
-type user struct {
+// Workspace is a copy of a repo dedicated to a consumer.
+type Workspace struct {
 	// Path of the work directory.
-	path string
-	src  *src
+	Path string
+	// Spec of the required repo.
+	Spec v1.SourceSpec
+	// Hash of the content.
+	Hash string
+	// Synced is true if the repo content is copied to the workspace.
+	// Synced is false as long as a repo hasn't been fetched or Get() isn't called or Get() has been called but new repo
+	// content is fetched.
+	Synced bool
 }
 
-// Src (TODO rename to spec?) is the meta data of a local copy of a source.
-type src struct {
-	spec           v1.SourceSpec
-	lastUpdateTime time.Time
-	lastUpdateHash string
+// Repo represents a local copy of a remote (GIT) repo or filesystem.
+type repo struct {
+	// LastFetched is the last time a repo has been fetched.
+	lastFetched time.Time
+
+	// Hash is the hash of the fetched content.
+	hash string
 }
 
-type Getter interface {
-	// Hash returns the hash of the source content.
-	Hash(nsn types.NamespacedName, name string) (string, error)
-	// Get copies the source content to a workdir and returns its path.
-	Get(nsn types.NamespacedName, name string) (string, error)
-}
-
-// For testing.
-var timeNow = time.Now
-
-// Hash implements Getter.
-func (ss *Sources) Hash(nsn types.NamespacedName, name string) (string, error) {
-	name = defaultName(name)
-
-	id := userID{nsn, name}
-
-	u, ok := ss.users[id]
-	if !ok {
-		return "", fmt.Errorf("source user not found: %s", name)
-	}
-
-	// Rate limit.
-	if timeNow().Before(u.src.lastUpdateTime.Add(time.Minute)) {
-		return u.src.lastUpdateHash, nil
-	}
-
-	var hash string
-	switch u.src.spec.Type {
-	case v1.SourceTypeGIT:
-		var err error
-		hash, err = ss.gitFetch(u.src.spec)
-		if err != nil {
-			return "", err
-		}
-	case v1.SourceTypeLocal:
-		h, err := hashAll(u.src.spec.URL)
-		hash = hex.EncodeToString(h.Sum(nil))
-		if err != nil {
-			return "", err
-		}
-	case "":
-		return "", fmt.Errorf("spec %s: source.type not set", name)
-	default:
-		return "", fmt.Errorf("spec %s: source.type %s not supported", name, u.src.spec.Type)
-	}
-
-	u.src.lastUpdateTime = timeNow()
-	u.src.lastUpdateHash = hash
-
-	return hash, nil
-}
-
-// Get implements Getter.
-func (ss *Sources) Get(nsn types.NamespacedName, name string) (string, error) {
-	name = defaultName(name)
-
-	id := userID{nsn, name}
-
-	u, ok := ss.users[id]
-	if !ok {
-		return "", fmt.Errorf("source user not found: %s", name)
-	}
-
-	switch u.src.spec.Type {
-	case v1.SourceTypeGIT:
-		p := ss.gitPath(u.src.spec)
-		// TODO sync with GIT fetch to prevent concurrent fetch and copy
-		err := otia10copy.Copy(p, u.path, otia10copy.Options{
-			Skip: func(p string) bool { return strings.HasSuffix(p, ".git") },
-		})
-		if err != nil {
-			return "", fmt.Errorf("source get(%s): %w", name, err)
-		}
-	case v1.SourceTypeLocal:
-		//TODO remove unused files from workdir?
-		err := otia10copy.Copy(u.src.spec.URL, u.path)
-		if err != nil {
-			return "", fmt.Errorf("source get(%s): %w", name, err)
-		}
-	}
-
-	return u.path, nil
-}
-
-// Register name as an alias for the spec source.
+// Register nsn + name as requiring a workspace with spec content.
 func (ss *Sources) Register(nsn types.NamespacedName, name string, spec v1.SourceSpec) error {
 	name = defaultName(name)
 
-	id := userID{nsn, name}
+	id := consumerID{nsn, name}
 
-	if ss.users == nil {
-		ss.users = make(map[userID]user)
+	if ss.workspaces == nil {
+		ss.workspaces = make(map[consumerID]Workspace)
 	}
 
-	// Get src.
-	s, ok := ss.srcBySpec(spec)
-	if !ok {
-		s = &src{spec: spec}
-		ss.srcs = append(ss.srcs, s)
-	}
-
-	// Get user.
-	if u, ok := ss.users[id]; ok {
-		if spec.Type == u.src.spec.Type && spec.Ref == u.src.spec.Ref && spec.URL == u.src.spec.URL {
-			// name/spec combination exists
+	// Check for existing workspace.
+	if w, ok := ss.workspaces[id]; ok {
+		if spec.Type == w.Spec.Type && spec.URL == w.Spec.URL && spec.Ref == w.Spec.Ref && spec.Token == w.Spec.Token {
 			return nil
 		}
-		// user exists but the spec has changed.
-		u.src = s
+		// workspace exists but the spec has changed.
+		w.Spec = spec
+		w.Synced = false
 
 		return nil
 	}
 
-	// Create new user.
-	p, err := ss.workdirForID(id)
+	// Create new workspace.
+	p := ss.workspacePath(id)
+	err := os.MkdirAll(p, 0755)
 	if err != nil {
 		return err
 	}
-	ss.users[id] = user{
-		path: p,
-		src:  s,
+	ss.workspaces[id] = Workspace{
+		Path: p,
+		Spec: spec,
 	}
 
 	return nil
 }
 
-// SrcBySpec returns a source and true if spec is registered.
-func (ss *Sources) srcBySpec(spec v1.SourceSpec) (*src, bool) {
-	for i, s := range ss.srcs {
-		if spec.Type == s.spec.Type && spec.Ref == s.spec.Ref && spec.URL == s.spec.URL {
-			return ss.srcs[i], true
-		}
+// Get copies the source content to a workspace and returns true if the workspace is changed.
+func (ss *Sources) Get(nsn types.NamespacedName, name string) (bool, error) {
+	name = defaultName(name)
+
+	id := consumerID{nsn, name}
+
+	w, ok := ss.workspaces[id]
+	if !ok {
+		return false, fmt.Errorf("source: workspace not found: %s", name)
 	}
-	return nil, false
+
+	r, ok := ss.repos[w.Spec]
+	if !ok {
+		return false, fmt.Errorf("source: get(%s): repo not fetched yet", name)
+	}
+
+	if w.Hash == r.hash {
+		return false, nil
+	}
+
+	ss.Log.Info("Get workspace", "request", nsn, "name", name)
+
+	p := ss.repoPath(w.Spec)
+	// TODO sync with fetch to prevent inconsistent copies
+	err := otia10copy.Copy(p, w.Path, otia10copy.Options{
+		Skip: func(p string) bool { return strings.HasSuffix(p, ".git") },
+	})
+	if err != nil {
+		return false, fmt.Errorf("source: get(%s): %w", name, err)
+	}
+
+	w.Hash = r.hash
+	w.Synced = true
+	ss.workspaces[id] = w
+
+	return true, nil
 }
 
-// WorkdirForID creates a workdir and returns its path.
-func (ss *Sources) workdirForID(id userID) (string, error) {
-	p := filepath.Join(ss.RootPath, "work", id.Namespace, id.Name, id.user)
+// Workspace returns the Workspace for a nsn + name.
+// Returns false if workspace is not found.
+func (ss *Sources) Workspace(nsn types.NamespacedName, name string) (Workspace, bool) {
+	name = defaultName(name)
 
-	return p, os.MkdirAll(p, 0755)
+	id := consumerID{nsn, name}
+
+	w, ok := ss.workspaces[id]
+
+	return w, ok
+}
+
+// FetchAll fetches all remote repo's or filesystems.
+func (ss *Sources) FetchAll() error {
+	var errs error
+	for _, w := range ss.workspaces {
+		err := ss.fetch(w.Spec)
+		if err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
+	return errs
+}
+
+// For testing.
+var timeNow = time.Now
+
+// Fetch fetches a remote repo or filesystem specified by spec into a local repo directory.
+// The fetch rate is limited to at most once per 2 minutes.
+func (ss *Sources) fetch(spec v1.SourceSpec) error {
+	if ss.repos == nil {
+		ss.repos = make(map[v1.SourceSpec]repo)
+	}
+
+	// rate limit
+	const rate = 5 * time.Minute
+	if r, ok := ss.repos[spec]; ok {
+		if timeNow().Before(r.lastFetched.Add(rate)) {
+			return nil
+		}
+	}
+
+	// fetch
+	var err error
+	var hash string
+	switch spec.Type {
+	case v1.SourceTypeGIT:
+		hash, err = ss.gitFetch(spec)
+	case v1.SourceTypeLocal:
+		hash, err = ss.localFetch(spec)
+	default:
+		err = fmt.Errorf("source: unknown type: %s", spec.Type)
+	}
+	if err != nil {
+		return err
+	}
+
+	ss.repos[spec] = repo{
+		lastFetched: timeNow(),
+		hash:        hash,
+	}
+
+	return nil
+}
+
+// LocalFetch fetches the content of a local source like a directory and returns its hash.
+func (ss *Sources) localFetch(spec v1.SourceSpec) (string, error) {
+	p := ss.repoPath(spec)
+	err := os.MkdirAll(p, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	//TODO prevent target directory from accumulating unused files
+	// remove all files before copy
+	// or
+	// walk target dir and diff with source dir
+
+	err = otia10copy.Copy(spec.URL, p)
+	if err != nil {
+		return "", fmt.Errorf("fetch: %w", err)
+	}
+
+	h, err := hashAll(spec.URL) // TODO use hashAll(p) when dir is properly synced (see previous to do)
+	if err != nil {
+		return "", err
+	}
+	hash := hex.EncodeToString(h.Sum(nil))
+
+	return hash, err
 }
 
 // GITFetch fetches content of a GIT repo and returns its hash.
 func (ss *Sources) gitFetch(spec v1.SourceSpec) (string, error) {
-	p := ss.gitPath(spec)
+	p := ss.repoPath(spec)
 	_, err := os.Stat(p)
 	if os.IsNotExist(err) {
 		// Clone new repo.
@@ -270,10 +294,10 @@ func (ss *Sources) gitFetch(spec v1.SourceSpec) (string, error) {
 	return h, nil
 }
 
-// GITPath returns a path to a local GIT repo.
-// The path is in the form /basepath/git/url/ref/name
-// (name is base element of the URL, url and ref elements are mangled)
-func (ss *Sources) gitPath(spec v1.SourceSpec) string {
+// RepoPath returns a path to a repo.
+// The path is in the form RootPath/repo/url/ref/name
+// where name is base element of the URL, url and ref elements are mangled.
+func (ss *Sources) repoPath(spec v1.SourceSpec) string {
 	// url part is an 8 chars hash followed by the URL base up to 24 chars in total.
 	const max = 24 - 8
 	h := fnv.New32a()
@@ -287,7 +311,12 @@ func (ss *Sources) gitPath(spec v1.SourceSpec) string {
 
 	r := strings.ReplaceAll(spec.Ref, "/", "")
 
-	return filepath.Join(ss.RootPath, "git", u, r, b)
+	return filepath.Join(ss.RootPath, "repo", u, r, b)
+}
+
+// WorkspacePath returns the path to a workspace dir.
+func (ss *Sources) workspacePath(id consumerID) string {
+	return filepath.Join(ss.RootPath, "workspace", id.Namespace, id.Name, id.consumer)
 }
 
 // HashAll returns a hash calculated over the directory tree rooted at path.
@@ -307,8 +336,8 @@ func hashAll(path string) (hash.Hash, error) {
 		if err != nil {
 			return err
 		}
+		defer r.Close()
 		_, err = io.Copy(h, r)
-		r.Close()
 		if err != nil {
 			return err
 		}

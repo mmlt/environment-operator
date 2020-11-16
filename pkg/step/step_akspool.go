@@ -33,7 +33,7 @@ func (st *AKSPoolStep) Meta() *Metaa {
 }
 
 // Execute node pool upgrade for a cluster.
-func (st *AKSPoolStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *AKSPoolStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	log = log.WithName("az").WithValues("cluster", st.Cluster)
 	log.Info("start")
 
@@ -41,7 +41,6 @@ func (st *AKSPoolStep) Execute(ctx context.Context, isink Infoer, usink Updater,
 	usink.Update(st)
 
 	// get the current state of the node pools.
-	// TODO remove azcli := azure.AZ{ResourceGroup: st.ResourceGroup, Log: log}
 	azcli := st.Azure
 	pools, err := azcli.AKSNodepoolList(st.ResourceGroup, st.Cluster)
 	if err != nil {
@@ -104,7 +103,6 @@ func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, l
 				stop <- true
 				return
 			case <-ticker.C:
-				//TODO remove c := azure.AZ{ResourceGroup: st.ResourceGroup, Log: log}
 				p, err := st.Azure.AKSNodepool(st.ResourceGroup, st.Cluster, pool)
 				if err != nil {
 					log.Error(err, "poll nodepool")
@@ -116,7 +114,6 @@ func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, l
 	}()
 
 	// start upgrade (slow)
-	//TODO remove c := azure.AZ{ResourceGroup: st.ResourceGroup, Log: log}
 	p, err := st.Azure.AKSNodepoolUpgrade(st.ResourceGroup, st.Cluster, pool, st.Version)
 
 	// stop poller

@@ -38,11 +38,9 @@ type Executor struct {
 	UpdateSink step.Updater
 	// EventSink is notified of Info and Warning events.
 	EventSink step.Infoer
-	//TODO remove
-	//// Terraform is the terraform implementation to use.
-	//Terraform terraform.Terraformer
-	//// Azure is the azure cli implementation to use.
-	//Azure azure.AZer
+
+	// Environ are the environment variables presented to the process.
+	Environ map[string]string
 
 	// Running is the map of running steps.
 	running map[step.ID]run
@@ -94,7 +92,7 @@ func (ex *Executor) Accept(stp step.Step) (bool, error) {
 	MetricSteps.Inc()
 	go func() {
 		log := ex.Log.WithName(stp.Meta().ID.ShortName())
-		ok := stp.Execute(r.ctx, ex.EventSink, ex.UpdateSink, log)
+		ok := stp.Execute(r.ctx, ex.environSlice(), ex.EventSink, ex.UpdateSink, log)
 		if !ok {
 			MetricStepFailures.Inc()
 		}
@@ -107,4 +105,24 @@ func (ex *Executor) Accept(stp step.Step) (bool, error) {
 	}()
 
 	return true, nil
+}
+
+// EnvironAdd adds env to the environment variables passed to the process under execution.
+func (ex *Executor) EnvironAdd(env map[string]string) {
+	if ex.Environ == nil {
+		ex.Environ = make(map[string]string)
+	}
+
+	for k, v := range env {
+		ex.Environ[k] = v
+	}
+}
+
+// EnvironSlice returns the receivers environ as a slice of k=v strings.
+func (ex *Executor) environSlice() []string {
+	var r []string
+	for k, v := range ex.Environ {
+		r = append(r, k+"="+v)
+	}
+	return r
 }

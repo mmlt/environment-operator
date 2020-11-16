@@ -22,16 +22,20 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags "-X m
 # Bake image
 FROM docker.io/ubuntu:20.04
 
-ARG VERSION_TERRAFORM=0.12.24
+ARG VERSION_TERRAFORM=0.13.5
 ARG VERSION_KUBECTL_TMPLT=v0.4.0
 ARG VERSION_KUBECTL=v1.18.1
 
 RUN apt update \
- && apt install -y curl unzip \
+ && apt install -y curl git jq unzip \
  && rm -rf /var/lib/apt/lists/*
 
 # Install environemnt-operator
 COPY --from=builder /workspace/manager /usr/local/bin/envop
+COPY envopwrap /usr/local/bin/envopwrap
+
+# Install Azure CLI
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
 # Install Terraform
 RUN curl -Lo terraform.zip https://releases.hashicorp.com/terraform/${VERSION_TERRAFORM}/terraform_${VERSION_TERRAFORM}_linux_amd64.zip \
@@ -49,7 +53,11 @@ RUN curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/$
  && chmod +x kubectl \
  && mv kubectl /usr/local/bin/kubectl
 
-WORKDIR /
+# Create user
+RUN groupadd envop -g 1000 \
+ && useradd --gid 1000 -u 1000 -s /bin/bash -m envop #--groups sudo
 USER 1000:1000
+WORKDIR /home/envop
+
 
 

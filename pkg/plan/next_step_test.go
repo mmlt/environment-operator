@@ -165,7 +165,7 @@ type fakeSource map[string]struct {
 	hash string
 }
 
-// FakeSource implements source.Getter
+// FakeSource implements source.Sourcer
 var _ source.Getter = fakeSource{}
 
 func (fs fakeSource) Hash(nsn types.NamespacedName, name string) (string, error) {

@@ -21,7 +21,7 @@ type Addonr interface {
 	// The masterVaultPath refers to a directory containing the config of the Vault to use for {{ vault }}.
 	// The channel will be closed when kubectl-tmplt exits.
 	// cmd.Wait() must be called to clean-up.
-	Start(ctx context.Context, dir, jobPath, valuesPath, kubeconfigPath, masterVaultPath string) (*exec.Cmd, chan KTResult, error)
+	Start(ctx context.Context, env []string, dir, jobPath, valuesPath, kubeconfigPath, masterVaultPath string) (*exec.Cmd, chan KTResult, error)
 }
 
 // KTResult
@@ -47,8 +47,8 @@ type Addon struct {
 }
 
 // Start implements Addonr.
-func (a *Addon) Start(ctx context.Context, dir, jobPath, valuesPath, kubeconfigPath, masterVaultPath string) (*exec.Cmd, chan KTResult, error) {
-	cmd := exe.RunAsync(ctx, a.Log, &exe.Opt{Dir: dir}, "", "kubectl-tmplt",
+func (a *Addon) Start(ctx context.Context, env []string, dir, jobPath, valuesPath, kubeconfigPath, masterVaultPath string) (*exec.Cmd, chan KTResult, error) {
+	cmd := exe.RunAsync(ctx, a.Log, &exe.Opt{Dir: dir, Env: env}, "", "kubectl-tmplt",
 		"-m", "apply-with-actions",
 		"--job-file", jobPath,
 		"--set-file", valuesPath,

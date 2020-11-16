@@ -11,21 +11,26 @@ import (
 	"strconv"
 )
 
+type Sourcer interface {
+	Workspace(nsn types.NamespacedName, name string) (source.Workspace, bool)
+}
+
 // NextStep decides what Step should be executed next.
+// A nil Step is returned when there is no work to do (because prerequisites like sources are missing or the target is
+// already up-to-date).
+//
 // Current state is stored as hashes of source code and parameters in the Environment kind status.
 // When a step hash doesn't match the hash stored in status the step will be executed.
-func (p *Planner) NextStep(nsn types.NamespacedName, src source.Getter, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (step.Step, error) {
-	log := p.Log.WithName("NextStep").V(2)
-
-	err := p.buildPlan(nsn, src, destroy, ispec, cspec)
-	if err != nil {
-		return nil, err
+func (p *Planner) NextStep(nsn types.NamespacedName, src Sourcer, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (step.Step, error) {
+	ok := p.buildPlan(nsn, src, destroy, ispec, cspec)
+	if !ok {
+		return nil, nil
 	}
 
 	st, err := p.selectStep(nsn, status)
 
 	if st != nil {
-		log.Info("success", "stepName", st.Meta().ID.ShortName())
+		p.Log.V(2).Info("NextStep", "nsn", nsn, "name", st.Meta().ID.ShortName())
 	}
 
 	return st, err
@@ -33,7 +38,8 @@ func (p *Planner) NextStep(nsn types.NamespacedName, src source.Getter, destroy 
 
 // BuildPlan builds a plan containing the steps to create/update/delete a target environment.
 // An environment is identified by nsn.
-func (p *Planner) buildPlan(nsn types.NamespacedName, src source.Getter, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
+// Returns false if not all prerequisites are fulfilled.
+func (p *Planner) buildPlan(nsn types.NamespacedName, src Sourcer, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec) bool {
 	p.Lock()
 	defer p.Unlock()
 
@@ -51,20 +57,17 @@ func (p *Planner) buildPlan(nsn types.NamespacedName, src source.Getter, destroy
 }
 
 // BuildDestroyPlan builds a plan to delete a target environment.
-func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
+// Returns false if workspaces are not prepped with sources.
+func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec) bool {
 	pl := make(plan, 0, 3+4*len(cspec))
 
-	tfPath, err := src.Get(nsn, "")
-	if err != nil {
-		return err
+	tfw, ok := src.Workspace(nsn, "")
+	if !ok || tfw.Hash == "" {
+		return false
 	}
+	tfPath := filepath.Join(tfw.Path, ispec.Main)
 
-	tfHash, err := src.Hash(nsn, "")
-	if err != nil {
-		return err
-	}
-
-	h := p.hash(tfHash)
+	h := p.hash(tfw.Hash)
 
 	pl = append(pl,
 		&step.InitStep{
@@ -85,28 +88,24 @@ func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src source.Getter, 
 
 	p.currentPlans[nsn] = pl
 
-	return nil
+	return true
 }
 
 // BuildCreatePlan builds a plan to create or update a target environment.
-func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src source.Getter, ispec v1.InfraSpec, cspec []v1.ClusterSpec) error {
+func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec) bool {
 	pl := make(plan, 0, 3+4*len(cspec))
 
-	tfPath, err := src.Get(nsn, "")
-	if err != nil {
-		return err
+	tfw, ok := src.Workspace(nsn, "")
+	if !ok || tfw.Hash == "" {
+		return false
 	}
+	tfPath := filepath.Join(tfw.Path, ispec.Main)
 
-	// infra hash
-	tfHash, err := src.Hash(nsn, "")
-	if err != nil {
-		return err
-	}
 	var cspecInfra []interface{}
 	for _, s := range cspec {
 		cspecInfra = append(cspecInfra, s.Infra)
 	}
-	h := p.hash(tfHash, ispec, cspecInfra)
+	h := p.hash(tfw.Hash, ispec, cspecInfra)
 
 	pl = append(pl,
 		&step.InitStep{
@@ -130,30 +129,24 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src source.Getter, i
 		})
 
 	for _, cl := range cspec {
-		//TODO Fix that Hash and Git have to be called in order (Get depends on Hash having run once)
-		cHash, err := src.Hash(nsn, cl.Name)
-		if err != nil {
-			return err
+		cw, ok := src.Workspace(nsn, cl.Name)
+		if !ok || cw.Hash == "" {
+			return false
 		}
 
-		cPath, err := src.Get(nsn, cl.Name)
-		if err != nil {
-			return err
-		}
-
-		kcPath := filepath.Join(cPath, "kubeconfig")
-		mvPath := filepath.Join(cPath, "mkv", "real") // TODO should be configurable in environment.yaml as it depends on k8s-cluster-addons repo layout
+		kcPath := filepath.Join(cw.Path, "kubeconfig")
+		mvPath := filepath.Join(cw.Path, "mkv", "real") // TODO should be configurable in environment.yaml as it depends on k8s-cluster-addons repo layout
 
 		pl = append(pl,
 			&step.AKSPoolStep{
-				Metaa:         stepMeta(nsn, cl.Name, step.TypeAKSPool, p.hash(tfHash, ispec.AZ.ResourceGroup, cl.Infra.Version)),
+				Metaa:         stepMeta(nsn, cl.Name, step.TypeAKSPool, p.hash(tfw.Hash, ispec.AZ.ResourceGroup, cl.Infra.Version)),
 				ResourceGroup: ispec.AZ.ResourceGroup,
 				Cluster:       prefixedClusterName("aks", ispec.EnvName, cl.Name),
 				Version:       cl.Infra.Version,
 				Azure:         p.Azure,
 			},
 			&step.KubeconfigStep{
-				Metaa:       stepMeta(nsn, cl.Name, step.TypeKubeconfig, p.hash(tfHash)),
+				Metaa:       stepMeta(nsn, cl.Name, step.TypeKubeconfig, p.hash(tfw.Hash)),
 				TFPath:      tfPath,
 				ClusterName: cl.Name,
 				KCPath:      kcPath,
@@ -166,21 +159,20 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src source.Getter, i
 				Kubectl: p.Kubectl,
 			},
 			&step.AddonStep{
-				Metaa:           stepMeta(nsn, cl.Name, step.TypeAddons, p.hash(cHash, cl.Addons.Jobs, cl.Addons.X)),
-				SourcePath:      cPath,
+				Metaa:           stepMeta(nsn, cl.Name, step.TypeAddons, p.hash(cw.Hash, cl.Addons.Jobs, cl.Addons.X)),
+				SourcePath:      cw.Path,
 				KCPath:          kcPath,
 				MasterVaultPath: mvPath,
 				JobPaths:        cl.Addons.Jobs,
 				Values:          cl.Addons.X,
 				Addon:           p.Addon,
 			},
-			//TODO step.TestStep
 		)
 	}
 
 	p.currentPlans[nsn] = pl
 
-	return nil
+	return true
 }
 
 func stepMeta(nsn types.NamespacedName, clusterName string, typ step.Type, hash string) step.Metaa {

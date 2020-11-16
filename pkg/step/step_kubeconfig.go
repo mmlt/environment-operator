@@ -41,14 +41,14 @@ func (st *KubeconfigStep) Meta() *Metaa {
 }
 
 // Run a step.
-func (st *KubeconfigStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *KubeconfigStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run.
 	st.State = v1.StateRunning
 	usink.Update(st)
 
-	o, err := st.Terraform.Output(st.TFPath)
+	o, err := st.Terraform.Output(ctx, env, st.TFPath)
 	if err != nil {
 		st.State = v1.StateError
 		st.Msg = fmt.Sprintf("terraform output: %v", err)
@@ -64,7 +64,7 @@ func (st *KubeconfigStep) Execute(ctx context.Context, isink Infoer, usink Updat
 		return false
 	}
 
-	ioutil.WriteFile(st.KCPath, kc, 0664)
+	err = ioutil.WriteFile(st.KCPath, kc, 0664)
 	if err != nil {
 		st.State = v1.StateError
 		st.Msg = fmt.Sprintf("write kubeconfig: %v", err)

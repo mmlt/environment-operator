@@ -48,7 +48,7 @@ func (c *AZFake) SetupFakeResults() {
 		{
 			AgentPoolType:       "VirtualMachineScaleSets",
 			Count:               2,
-			Mode:                "User",
+			Mode:                "clientID",
 			Name:                "default",
 			OrchestratorVersion: "1.16.0", // results in upgrade
 			OSType:              "Linux",
@@ -58,7 +58,7 @@ func (c *AZFake) SetupFakeResults() {
 		{
 			AgentPoolType:       "VirtualMachineScaleSets",
 			Count:               5,
-			Mode:                "User",
+			Mode:                "clientID",
 			Name:                "extra",
 			OrchestratorVersion: "1.16.0",
 			OSType:              "Linux",
@@ -75,7 +75,7 @@ func (c *AZFake) SetupFakeResults() {
 	c.AKSNodepoolUpgradeResult = AKSNodepool{
 		AgentPoolType:       "VirtualMachineScaleSets",
 		Count:               2,
-		Mode:                "User",
+		Mode:                "clientID",
 		Name:                "default",
 		OrchestratorVersion: "1.16.8",
 		OSType:              "Linux",

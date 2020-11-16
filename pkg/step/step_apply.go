@@ -33,11 +33,11 @@ func (st *ApplyStep) Meta() *Metaa {
 }
 
 // Execute terraform apply.
-func (st *ApplyStep) Execute(ctx context.Context, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *ApplyStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
 	// Run
-	cmd, ch, err := st.Terraform.StartApply(ctx, st.SourcePath)
+	cmd, ch, err := st.Terraform.StartApply(ctx, env, st.SourcePath)
 	if err != nil {
 		log.Error(err, "start terraform apply")
 		isink.Warning(st.ID, "start terraform apply:"+err.Error())
@@ -66,6 +66,8 @@ func (st *ApplyStep) Execute(ctx context.Context, isink Infoer, usink Updater, l
 			log.Error(err, "wait terraform apply")
 		}
 	}
+
+	writeText(st.SourcePath, "apply.txt", last.Text, log)
 
 	// Return results.
 	if last == nil {
