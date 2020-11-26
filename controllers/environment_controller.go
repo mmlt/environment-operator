@@ -199,9 +199,9 @@ func (r *EnvironmentReconciler) Update(step step.Step) {
 
 	r.updateTally++
 	if step.Meta().State == v1.StateError {
-		log.Info(string(step.Meta().State), "stepName", step.Meta().ID.ShortName(), "update", r.updateTally, "step", step)
+		log.Info(string(step.Meta().State), "step", step.Meta().ID.ShortName(), "update", r.updateTally, "step", step)
 	} else {
-		log.Info(string(step.Meta().State), "stepName", step.Meta().ID.ShortName(), "update", r.updateTally)
+		log.Info(string(step.Meta().State), "step", step.Meta().ID.ShortName(), "update", r.updateTally)
 	}
 
 	for i := 0; i < 10; i++ {

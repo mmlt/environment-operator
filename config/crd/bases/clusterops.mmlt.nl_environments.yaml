@@ -60,6 +60,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      schedule:
+                        description: Schedule is a CRON formatted string defining
+                          when changed can be applied. If the schedule is omitted
+                          then changes will be applied immediately.
+                        type: string
                       source:
                         description: Source is the repository that contains the k8s
                           addons resources.
@@ -105,17 +110,20 @@ spec:
                           properties:
                             maxPods:
                               description: Max number of Pods per VM.
+                              format: int32
                               maximum: 250
                               minimum: 10
                               type: integer
                             maxScale:
                               description: Max number of VM's. Setting MaxScale >
                                 Scale enables autoscaling.
+                              format: int32
                               maximum: 100
                               minimum: 1
                               type: integer
                             scale:
                               description: Number of VM's.
+                              format: int32
                               maximum: 100
                               minimum: 1
                               type: integer
@@ -128,6 +136,7 @@ spec:
                         type: object
                       subnetNum:
                         description: Cluster ordinal number starting at 1. (max 2^subnetNewbits-1)
+                        format: int32
                         minimum: 1
                         type: integer
                       version:
@@ -143,10 +152,6 @@ spec:
                   name:
                     description: Name is the cluster name.
                     type: string
-                  test:
-                    description: ClusterAddonSpec defines what conformance test to
-                      run.
-                    type: object
                 type: object
               type: array
             defaults:
@@ -162,6 +167,11 @@ spec:
                       items:
                         type: string
                       type: array
+                    schedule:
+                      description: Schedule is a CRON formatted string defining when
+                        changed can be applied. If the schedule is omitted then changes
+                        will be applied immediately.
+                      type: string
                     source:
                       description: Source is the repository that contains the k8s
                         addons resources.
@@ -206,17 +216,20 @@ spec:
                         properties:
                           maxPods:
                             description: Max number of Pods per VM.
+                            format: int32
                             maximum: 250
                             minimum: 10
                             type: integer
                           maxScale:
                             description: Max number of VM's. Setting MaxScale > Scale
                               enables autoscaling.
+                            format: int32
                             maximum: 100
                             minimum: 1
                             type: integer
                           scale:
                             description: Number of VM's.
+                            format: int32
                             maximum: 100
                             minimum: 1
                             type: integer
@@ -229,6 +242,7 @@ spec:
                       type: object
                     subnetNum:
                       description: Cluster ordinal number starting at 1. (max 2^subnetNewbits-1)
+                      format: int32
                       minimum: 1
                       type: integer
                     version:
@@ -244,9 +258,6 @@ spec:
                 name:
                   description: Name is the cluster name.
                   type: string
-                test:
-                  description: ClusterAddonSpec defines what conformance test to run.
-                  type: object
               type: object
             destroy:
               description: Destroy is true when an environment needs to be removed.
@@ -337,6 +348,7 @@ spec:
                         the VNet address mask to produce the subnet mask. IOW 2^subnetNewbits-1
                         is the max number of clusters in the VNet. For example given
                         a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
+                      format: int32
                       type: integer
                     subscription:
                       description: Subscription user friendly name.
@@ -355,6 +367,30 @@ spec:
                         fit the need)
                       type: object
                   type: object
+                budget:
+                  description: Budget defines how many changes the operator is allowed
+                    to apply to the infra. If the budget spec is omitted any number
+                    of changes is allowed.
+                  properties:
+                    addLimit:
+                      description: AddLimit is the maximum number of resources that
+                        the operator is allowed to add. Exceeded this number will
+                        result in an error.
+                      format: int32
+                      type: integer
+                    deleteLimit:
+                      description: DeleteLimit is the maximum number of resources
+                        that the operator is allowed to delete. Exceeded this number
+                        will result in an error.
+                      format: int32
+                      type: integer
+                    updateLimit:
+                      description: UpdateLimit is the maximum number of resources
+                        that the operator is allowed to update. Exceeded this number
+                        will result in an error.
+                      format: int32
+                      type: integer
+                  type: object
                 envDomain:
                   description: EnvDomain is the most significant part of the domain
                     name for this environment. For example; example.com
@@ -367,6 +403,11 @@ spec:
                 main:
                   description: Main is the path in the source tree to the directory
                     containing main.tf.
+                  type: string
+                schedule:
+                  description: Schedule is a CRON formatted string defining when changed
+                    can be applied. If the schedule is omitted then changes will be
+                    applied immediately.
                   type: string
                 source:
                   description: Source is the repository that contains Terraform infrastructure
@@ -396,23 +437,13 @@ spec:
                       type: string
                   type: object
                 state:
-                  description: State is where Terraform state is stored. If omitted
-                    state is stored locally.
+                  description: State is where Terraform state is stored. If the state
+                    spec is omitted the state is stored locally.
                   properties:
                     storageAccount:
                       type: string
                   type: object
               type: object
-            policy:
-              description: 'Policy specifies what operator behavior is allowed. Valid
-                values are: - "AllowAll" (default): allows create, update and delete
-                of environment and clusters; - "DenyDelete": forbids deletion of a
-                cluster; - "DenyUpdate": forbids update/delete of a cluster.'
-              enum:
-              - AllowAll
-              - DenyDelete
-              - DenyUpdate
-              type: string
           type: object
         status:
           description: EnvironmentStatus defines the observed state of an Environment.

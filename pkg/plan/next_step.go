@@ -30,7 +30,7 @@ func (p *Planner) NextStep(nsn types.NamespacedName, src Sourcer, destroy bool, 
 	st, err := p.selectStep(nsn, status)
 
 	if st != nil {
-		p.Log.V(2).Info("NextStep", "nsn", nsn, "name", st.Meta().ID.ShortName())
+		p.Log.V(2).Info("NextStep", "request", nsn, "name", st.Meta().ID.ShortName())
 	}
 
 	return st, err
@@ -70,18 +70,12 @@ func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src Sourcer, ispec 
 	h := p.hash(tfw.Hash)
 
 	pl = append(pl,
-		&step.InitStep{
-			Metaa: stepMeta(nsn, "", step.TypeInit, h),
+		&step.DestroyStep{
+			Metaa: stepMeta(nsn, "", step.TypeDestroy, h),
 			Values: step.InfraValues{
 				Infra:    ispec,
 				Clusters: cspec,
 			},
-			SourcePath: tfPath,
-			Terraform:  p.Terraform,
-		},
-		//TODO consider alternative of plan -destroy and apply
-		&step.DestroyStep{
-			Metaa:      stepMeta(nsn, "", step.TypeDestroy, h),
 			SourcePath: tfPath,
 			Terraform:  p.Terraform,
 		})
@@ -93,7 +87,7 @@ func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src Sourcer, ispec 
 
 // BuildCreatePlan builds a plan to create or update a target environment.
 func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec) bool {
-	pl := make(plan, 0, 3+4*len(cspec))
+	pl := make(plan, 0, 1+4*len(cspec))
 
 	tfw, ok := src.Workspace(nsn, "")
 	if !ok || tfw.Hash == "" {
@@ -108,22 +102,12 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 	h := p.hash(tfw.Hash, ispec, cspecInfra)
 
 	pl = append(pl,
-		&step.InitStep{
-			Metaa: stepMeta(nsn, "", step.TypeInit, h),
+		&step.InfraStep{
+			Metaa: stepMeta(nsn, "", step.TypeInfra, h),
 			Values: step.InfraValues{
 				Infra:    ispec,
 				Clusters: cspec,
 			},
-			SourcePath: tfPath,
-			Terraform:  p.Terraform,
-		},
-		&step.PlanStep{
-			Metaa:      stepMeta(nsn, "", step.TypePlan, h),
-			SourcePath: tfPath,
-			Terraform:  p.Terraform,
-		},
-		&step.ApplyStep{
-			Metaa:      stepMeta(nsn, "", step.TypeApply, h),
 			SourcePath: tfPath,
 			Terraform:  p.Terraform,
 		})
@@ -137,13 +121,15 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 		kcPath := filepath.Join(cw.Path, "kubeconfig")
 		mvPath := filepath.Join(cw.Path, "mkv", "real") // TODO should be configurable in environment.yaml as it depends on k8s-cluster-addons repo layout
 
+		az := p.Azure
+		az.SetSubscription(ispec.AZ.Subscription)
 		pl = append(pl,
 			&step.AKSPoolStep{
 				Metaa:         stepMeta(nsn, cl.Name, step.TypeAKSPool, p.hash(tfw.Hash, ispec.AZ.ResourceGroup, cl.Infra.Version)),
 				ResourceGroup: ispec.AZ.ResourceGroup,
 				Cluster:       prefixedClusterName("aks", ispec.EnvName, cl.Name),
 				Version:       cl.Infra.Version,
-				Azure:         p.Azure,
+				Azure:         az,
 			},
 			&step.KubeconfigStep{
 				Metaa:       stepMeta(nsn, cl.Name, step.TypeKubeconfig, p.hash(tfw.Hash)),
@@ -215,14 +201,8 @@ func (p *Planner) selectStep(nsn types.NamespacedName, status v1.EnvironmentStat
 			continue
 		}
 
-		/*// Return a Step even if we know it's running, it's up to the executor to accept the step or not.
-		if current.State == v1.StateRunning {
-			//TODO running for a long time may indicate a problem; for example the step execution stopped without updating the status
-			return nil, nil
-		}*/
-
 		if current.State == v1.StateError {
-			//TODO introduce error budgets && !enoughIssueBudget(currentStatus) to retry after error
+			//TODO introduce error budgets to allow retry after error
 
 			// no budget to retry
 			return nil, nil

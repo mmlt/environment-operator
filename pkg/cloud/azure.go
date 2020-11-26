@@ -10,8 +10,8 @@ import (
 
 type Azure struct {
 	Client azure.AZer
-	// CredentialsFile contains the client_id, client_secret and tenant of a ServicePrincipal that is allowed to access
-	// the MasterKeyVault and AzureRM.
+	// CredentialsFile is the path to a JSON formatted file containing client_id, client_secret and tenant of a
+	// ServicePrincipal that is allowed to access the MasterKeyVault and AzureRM.
 	CredentialsFile string
 
 	// TFStateSecretName is the name of a secret which value allows access to the the blob storage containing Terraform state.
@@ -21,7 +21,7 @@ type Azure struct {
 
 	Log logr.Logger
 
-	// LoggedIn is true after first successful login.
+	// LoggedIn is true after the first successful login.
 	loggedIn bool
 
 	// Environ is the collection of cloud specific environment variables that should me made available to steps.

@@ -6,6 +6,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
+	"github.com/mmlt/environment-operator/pkg/tmplt"
 	"strings"
 )
 
@@ -15,6 +16,8 @@ type DestroyStep struct {
 
 	/* Parameters */
 
+	// Values to use for terraform input variables.
+	Values InfraValues
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
 
@@ -36,7 +39,32 @@ func (st *DestroyStep) Meta() *Metaa {
 func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
 	log.Info("start")
 
-	// Run
+	// Init
+	st.State = v1.StateRunning
+	st.Msg = "terraform init"
+	usink.Update(st)
+
+	err := tmplt.ExpandAll(st.SourcePath, ".tmplt", st.Values)
+	if err != nil {
+		st.State = v1.StateError
+		st.Msg = err.Error()
+		usink.Update(st)
+		return false
+	}
+
+	tfr := st.Terraform.Init(ctx, env, st.SourcePath)
+	writeText(st.SourcePath, "init.txt", tfr.Text, log)
+	if len(tfr.Errors) > 0 {
+		st.State = v1.StateError
+		st.Msg = fmt.Sprintf("terraform init %s", tfr.Errors[0]) // first error only
+		usink.Update(st)
+		return false
+	}
+
+	// Destroy
+	st.Msg = "terraform destroy"
+	usink.Update(st)
+
 	cmd, ch, err := st.Terraform.StartDestroy(ctx, env, st.SourcePath)
 	if err != nil {
 		log.Error(err, "start terraform destroy")
@@ -66,6 +94,8 @@ func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, 
 			log.Error(err, "wait terraform destroy")
 		}
 	}
+
+	writeText(st.SourcePath, "destroy.txt", last.Text, log)
 
 	// Return results.
 	if last == nil {

@@ -5,6 +5,8 @@ import "github.com/go-logr/logr"
 
 // AZer is able to perform az cli commands.
 type AZer interface {
+	SetSubscription(sub string)
+
 	LoginSP(user, password, tenant string) error
 	Logout() error
 
@@ -22,5 +24,21 @@ type AZer interface {
 
 // AZ is able to perform az cli commands.
 type AZ struct {
+	// Subscription is the Name or ID of the Azure subscription.
+	Subscription string
+
 	Log logr.Logger
+}
+
+// SetSubscription sets the Name or ID of the Azure subscription to use.
+func (c *AZ) SetSubscription(sub string) {
+	c.Subscription = sub
+}
+
+// ExtraArgs appends global arguments to arg and returns the result.
+func (c *AZ) extraArgs(arg []string) []string {
+	if c.Subscription != "" {
+		arg = append(arg, "--subscription", c.Subscription)
+	}
+	return arg
 }

@@ -49,9 +49,7 @@ func (si *ID) ShortName() string {
 type Type string
 
 const (
-	TypeInit              Type = "Init"
-	TypePlan              Type = "Plan"
-	TypeApply             Type = "Apply"
+	TypeInfra             Type = "Infra"
 	TypeDestroy           Type = "Destroy"
 	TypeAKSPool           Type = "AKSPool"
 	TypeKubeconfig        Type = "Kubeconfig"

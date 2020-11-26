@@ -37,8 +37,10 @@ type TFResult struct {
 	Info int
 	// Warnings > 0 means command successful but something unexpected happened.
 	Warnings int
-	// Errors > 0 means the command failed.
-	Errors int
+
+	// Errors is a list of error messages.
+	// len > 0 means the command failed.
+	Errors []string
 
 	PlanAdded   int
 	PlanChanged int
@@ -89,16 +91,18 @@ func parseInitResponse(text string, err error) *TFResult {
 	r := &TFResult{
 		Text: text,
 	}
+
+	if err != nil {
+		r.Errors = append(r.Errors, err.Error())
+	}
+
 	ire := regexp.MustCompile("Terraform has been successfully initialized!")
 	r.Info = len(ire.FindAllStringIndex(text, -1))
 	wre := regexp.MustCompile("\nWarning: ")
 	r.Warnings = len(wre.FindAllStringIndex(text, -1))
-	ere := regexp.MustCompile(" errors |Terraform initialized in an empty directory!")
-	r.Errors = len(ere.FindAllStringIndex(text, -1))
-
-	if err != nil {
-		r.Errors++
-	}
+	//TODO
+	//ere := regexp.MustCompile(" errors |Terraform initialized in an empty directory!")
+	//r.Errors = append(r.Errors, ere.FindAllStringIndex(text, -1))
 
 	return r
 }
@@ -110,8 +114,8 @@ func (t *Terraform) Plan(ctx context.Context, env []string, dir string) *TFResul
 	return parsePlanResponse(o, err)
 }
 
-// ParsePlanResponse parses terraform stdout text and err and returns
-// Expect detailed exit codes as provided by 'terraform plan -detailed-exitcode'.
+// ParsePlanResponse parses terraform stdout text and err and returns tfresult.
+// Terraform should be run with flag '-detailed-exitcode'
 //	0 = Succeeded with empty diff (no changes)
 //  1 = Error
 //  2 = Succeeded with non-empty diff (changes present)
@@ -119,6 +123,7 @@ func parsePlanResponse(text string, err error) *TFResult {
 	r := &TFResult{
 		Text: text,
 	}
+
 	pre := regexp.MustCompile(`Plan: (\d+) to add, (\d+) to change, (\d+) to destroy.`)
 	ps := pre.FindAllStringSubmatch(text, -1)
 	if len(ps) == 1 && len(ps[0]) == 4 {
@@ -134,22 +139,18 @@ func parsePlanResponse(text string, err error) *TFResult {
 
 	wre := regexp.MustCompile("\nWarning: ")
 	r.Warnings = len(wre.FindAllStringIndex(text, -1))
-	ere := regexp.MustCompile("\nError: ")
-	r.Errors = len(ere.FindAllStringIndex(text, -1))
+	//TODO
+	//ere := regexp.MustCompile("\nError: ")
+	//r.Errors = len(ere.FindAllStringIndex(text, -1))
 
+	// terraform returns exitcode:
+	//	0 = Succeeded with empty diff (no changes)
+	//  1 = Error
+	//  2 = Succeeded with non-empty diff (changes present)
 	var ee *exec.ExitError
-	if errors.As(err, &ee) {
-		if ee.ExitCode() == 1 {
-			r.Errors++
-			r.Info = 0
-		}
-
-		return r
-	}
-
-	if err != nil {
-		// any other error then ExitError
-		r.Errors++
+	if errors.As(err, &ee) && ee.ExitCode() == 1 {
+		r.Info = 0
+		r.Errors = append(r.Errors, err.Error())
 	}
 
 	return r
