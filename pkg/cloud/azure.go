@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/mmlt/environment-operator/pkg/client/azure"
+	gocache "github.com/patrickmn/go-cache"
 	"io/ioutil"
+	"time"
 )
 
 type Azure struct {
@@ -13,24 +15,22 @@ type Azure struct {
 	// CredentialsFile is the path to a JSON formatted file containing client_id, client_secret and tenant of a
 	// ServicePrincipal that is allowed to access the MasterKeyVault and AzureRM.
 	CredentialsFile string
-
-	// TFStateSecretName is the name of a secret which value allows access to the the blob storage containing Terraform state.
-	TFStateSecretName string
-	// TFStateSecretVault is the name of the KeyVault that contains TFStateSecretName.
-	TFStateSecretVault string
+	// Vault is the name of the KeyVault to access.
+	Vault string
 
 	Log logr.Logger
 
-	// LoggedIn is true after the first successful login.
-	loggedIn bool
+	// Secret contains the envop SP after first successful login.
+	secret *ServicePrincipal
 
-	// Environ is the collection of cloud specific environment variables that should me made available to steps.
-	environ map[string]string
+	// Cache contains response values to support rate-limiting.
+	cache *gocache.Cache
 }
 
-func (a *Azure) Login() (map[string]string, error) {
-	if a.loggedIn {
-		return a.environ, nil
+// Login performs a cloud provider login (a prerequisite for most cli commands)
+func (a *Azure) Login() (*ServicePrincipal, error) {
+	if a.secret != nil {
+		return a.secret, nil
 	}
 
 	// get login secret
@@ -38,42 +38,66 @@ func (a *Azure) Login() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	secret := struct {
-		ClientID     string `json:"client_id"`
-		ClientSecret string `json:"client_secret"`
-		Tenant       string `json:"tenant"`
-	}{}
-	err = json.Unmarshal(b, &secret)
+	var sp ServicePrincipal
+	err = json.Unmarshal(b, &sp)
 	if err != nil {
 		return nil, err
 	}
-	if len(secret.ClientID) == 0 || len(secret.ClientSecret) == 0 || len(secret.Tenant) == 0 {
-		return nil, fmt.Errorf("login secret: user, password or tenant field not set")
+	if len(sp.ClientID) == 0 || len(sp.ClientSecret) == 0 || len(sp.Tenant) == 0 {
+		return nil, fmt.Errorf("login secret: client_id, cliebnt_secret or tenant field not set")
 	}
 
 	// login
-	err = a.Client.LoginSP(secret.ClientID, secret.ClientSecret, secret.Tenant)
+	err = a.Client.LoginSP(sp.ClientID, sp.ClientSecret, sp.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	// get environment
-	if a.environ == nil {
-		a.environ = make(map[string]string)
-	}
-	a.environ["ARM_CLIENT_ID"] = secret.ClientID
-	a.environ["ARM_CLIENT_SECRET"] = secret.ClientSecret
-	a.environ["ARM_TENANT_ID"] = secret.Tenant
+	a.secret = &sp
 
-	v, err := a.Client.KeyvaultSecret(a.TFStateSecretName, a.TFStateSecretVault)
+	a.Log.Info("Logged in")
+
+	return a.secret, nil
+}
+
+// VaultGet reads a secret from a vault.
+// Vault access is rate limited to once per 5m.
+func (a *Azure) VaultGet(name, field string) (string, error) {
+	_, err := a.Login()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	a.environ["ARM_ACCESS_KEY"] = v
 
-	a.loggedIn = true
+	if a.cache == nil {
+		a.cache = gocache.New(5*time.Minute, 10*time.Minute)
+	}
 
-	a.Log.Info("Login", "loggedin", a.loggedIn)
+	var v string
+	x, ok := a.cache.Get(name)
+	if ok {
+		v = x.(string)
+	} else {
+		v, err = a.Client.KeyvaultSecret(name, a.Vault)
+		if err != nil {
+			return "", err
+		}
+		a.cache.SetDefault(name, v)
+	}
 
-	return a.environ, nil
+	if field == "" || field == "." {
+		return v, nil
+	}
+
+	m := map[string]string{}
+	err = json.Unmarshal([]byte(v), &m)
+	if err != nil {
+		return "", err
+	}
+
+	if v := m[field]; v != "" {
+		return v, nil
+	}
+
+	err = fmt.Errorf("no field '%s' in secret %s", field, name)
+	return "", err
 }

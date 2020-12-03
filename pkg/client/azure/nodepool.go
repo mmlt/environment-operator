@@ -12,7 +12,7 @@ import (
 func (c *AZ) AKSNodepoolList(resourceGroup, cluster string) ([]AKSNodepool, error) {
 	args := []string{"aks", "nodepool", "list", "--resource-group", resourceGroup, "--cluster-name", cluster}
 	args = c.extraArgs(args)
-	o, _, err := exe.Run(c.Log, nil, "", "az", args...)
+	o, err := runAZ(c.Log, nil, "", args...)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (c *AZ) AKSNodepool(resourceGroup, cluster, nodepool string) (*AKSNodepool,
 	args := []string{"aks", "nodepool", "show", "--resource-group", resourceGroup, "--cluster-name", cluster,
 		"--name", nodepool}
 	args = c.extraArgs(args)
-	o, _, err := exe.Run(c.Log, nil, "", "az", args...)
+	o, err := runAZ(c.Log, nil, "", args...)
 	if err != nil {
 		return nil, err
 	}

@@ -6,7 +6,9 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
+	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/tmplt"
+	"github.com/mmlt/environment-operator/pkg/util"
 	"strings"
 )
 
@@ -21,6 +23,8 @@ type DestroyStep struct {
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
 
+	// Cloud provides generic cloud functionality.
+	Cloud cloud.Cloud
 	// Terraform is the terraform implementation to use.
 	Terraform terraform.Terraformer
 
@@ -35,11 +39,25 @@ func (st *DestroyStep) Meta() *Metaa {
 	return &st.Metaa
 }
 
+// DeleteLimitForDestroy is the number the budget.deleteLimit must have for the Destroy to proceed.
+// Any other number will deny Destroy.
+const deleteLimitForDestroy = 99
+
 // Execute terraform destroy.
 func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
+	// Check budget.
+	b := st.Values.Infra.Budget
+	if b.DeleteLimit == nil || int(*b.DeleteLimit) != deleteLimitForDestroy {
+		st.State = v1.StateError
+		st.Msg = fmt.Sprintf("destroy requires budget.deleteLimit=%d to proceed", deleteLimitForDestroy)
+		usink.Update(st)
+		return false
+	}
+
 	log.Info("start")
 
 	// Init
+	// TODO refactor; similar code in step_destroy.go
 	st.State = v1.StateRunning
 	st.Msg = "terraform init"
 	usink.Update(st)
@@ -52,8 +70,18 @@ func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, 
 		return false
 	}
 
+	sp, err := st.Cloud.Login()
+	if err != nil {
+		st.State = v1.StateError
+		st.Msg = err.Error()
+		usink.Update(st)
+		return false
+	}
+	xenv := terraformEnviron(sp, st.Values.Infra.State.Access)
+	env = util.KVSliceMergeMap(env, xenv)
+
 	tfr := st.Terraform.Init(ctx, env, st.SourcePath)
-	writeText(st.SourcePath, "init.txt", tfr.Text, log)
+	writeText(tfr.Text, st.SourcePath, "init.txt", log)
 	if len(tfr.Errors) > 0 {
 		st.State = v1.StateError
 		st.Msg = fmt.Sprintf("terraform init %s", tfr.Errors[0]) // first error only
@@ -95,7 +123,7 @@ func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, 
 		}
 	}
 
-	writeText(st.SourcePath, "destroy.txt", last.Text, log)
+	writeText(last.Text, st.SourcePath, "destroy.txt", log)
 
 	// Return results.
 	if last == nil {

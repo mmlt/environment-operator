@@ -2,13 +2,12 @@ package azure
 
 import (
 	"encoding/json"
-	"github.com/mmlt/environment-operator/pkg/util/exe"
 )
 
 // LoginSP performs an 'az login' by ServicePrincipal.
 func (c *AZ) LoginSP(user, password, tenant string) error {
 	args := []string{"login", "--service-principal", "-u", user, "-p", password, "--tenant", tenant}
-	_, _, err := exe.Run(c.Log, nil, "", "az", args...)
+	_, err := runAZ(c.Log, nil, "", args...)
 	if err != nil {
 		return err
 	}
@@ -19,7 +18,7 @@ func (c *AZ) LoginSP(user, password, tenant string) error {
 // Logout performs an 'az logout'.
 func (c *AZ) Logout() error {
 	args := []string{"logout"}
-	_, _, err := exe.Run(c.Log, nil, "", "az", args...)
+	_, err := runAZ(c.Log, nil, "", args...)
 	if err != nil {
 		return err
 	}
@@ -31,7 +30,7 @@ func (c *AZ) Logout() error {
 // An error is returned when no account is logged in.
 func (c *AZ) AccountStatus() ([]AccountStatus, error) {
 	args := []string{"account", "show"}
-	o, _, err := exe.Run(c.Log, nil, "", "az", args...)
+	o, err := runAZ(c.Log, nil, "", args...)
 	if err != nil {
 		return nil, err
 	}

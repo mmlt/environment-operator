@@ -7,6 +7,7 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	"github.com/mmlt/environment-operator/pkg/step"
+	"github.com/mmlt/environment-operator/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sync"
@@ -74,7 +75,7 @@ func (ex *Executor) Accept(stp step.Step) (bool, error) {
 	}
 
 	if len(ex.running) > 5 {
-		// no worker available (max number reached)
+		// no worker available (max number of parallel steps reached)
 		return false, nil
 	}
 
@@ -120,9 +121,5 @@ func (ex *Executor) EnvironAdd(env map[string]string) {
 
 // EnvironSlice returns the receivers environ as a slice of k=v strings.
 func (ex *Executor) environSlice() []string {
-	var r []string
-	for k, v := range ex.Environ {
-		r = append(r, k+"="+v)
-	}
-	return r
+	return util.KVSliceFromMap(ex.Environ)
 }

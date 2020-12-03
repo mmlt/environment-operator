@@ -8,6 +8,8 @@ import (
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
+	"github.com/mmlt/environment-operator/pkg/cloud"
+	"github.com/mmlt/environment-operator/pkg/util"
 	"github.com/mmlt/environment-operator/pkg/util/backoff"
 	"io/ioutil"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api/v1"
@@ -28,7 +30,11 @@ type KubeconfigStep struct {
 	ClusterName string
 	// KCPath is the place were the kube config file is written.
 	KCPath string
+	// Access is the token access terraform state with.
+	Access string
 
+	// Cloud provides generic cloud functionality.
+	Cloud cloud.Cloud
 	// Terraform is the terraform implementation to use.
 	Terraform terraform.Terraformer
 	// Kubectl is the kubectl implementation to use.
@@ -47,6 +53,16 @@ func (st *KubeconfigStep) Execute(ctx context.Context, env []string, isink Infoe
 	// Run.
 	st.State = v1.StateRunning
 	usink.Update(st)
+
+	sp, err := st.Cloud.Login()
+	if err != nil {
+		st.State = v1.StateError
+		st.Msg = err.Error()
+		usink.Update(st)
+		return false
+	}
+	xenv := terraformEnviron(sp, st.Access)
+	env = util.KVSliceMergeMap(env, xenv)
 
 	o, err := st.Terraform.Output(ctx, env, st.TFPath)
 	if err != nil {
@@ -85,7 +101,6 @@ func (st *KubeconfigStep) Execute(ctx context.Context, env []string, isink Infoe
 
 	// Return results.
 	st.State = v1.StateReady
-	// TODO return values
 
 	usink.Update(st)
 

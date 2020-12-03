@@ -19,6 +19,7 @@ type AddonStep struct {
 	Addon addon.Addonr
 
 	/* Parameters */
+
 	// KCPath is the path of the kube config file.
 	KCPath string
 	// MasterVaultPath is the path to a directory containing the config of the Vault to use.

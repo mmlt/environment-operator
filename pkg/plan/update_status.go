@@ -34,12 +34,6 @@ func (p *Planner) UpdateStatusStep(status *v1.EnvironmentStatus, stp step.Step) 
 // UpdateStatusConditions updates Status.Conditions to reflects the current state of the world.
 // Ready = True when all steps are in ready state, Ready = False when some are not ready.
 func (p *Planner) UpdateStatusConditions(nsn types.NamespacedName, status *v1.EnvironmentStatus) error {
-	//steps := []step.ID{
-	//	{Type: step.TypeInit},
-	//	{Type: step.TypePlan},
-	//	{Type: step.TypeApply},
-	//}
-
 	plan, ok := p.currentPlan(nsn)
 	if !ok {
 		return fmt.Errorf("expected plan for: %v", nsn)
@@ -47,7 +41,7 @@ func (p *Planner) UpdateStatusConditions(nsn types.NamespacedName, status *v1.En
 
 	var runningCnt, readyCnt, errorCnt, stateCnt, totalCnt int
 	var latestTime metav1.Time
-	for _, st := range plan { //steps /*TODO get allSteps(cspec) from Planner? needs nsn to get the right steps*/
+	for _, st := range plan {
 		totalCnt++
 		if s, ok := status.Steps[st.Meta().ID.ShortName()]; ok {
 			stateCnt++

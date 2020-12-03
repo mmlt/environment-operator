@@ -10,6 +10,7 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/azure"
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
+	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"k8s.io/apimachinery/pkg/types"
 	"sync"
@@ -19,9 +20,14 @@ import (
 type Planner struct {
 	sync.RWMutex
 
-	// currentPlans keeps a Plan for each environment managed so UpdateStatus can aggregate stats.
-	currentPlans map[types.NamespacedName]plan //TODO why do we keep this? for conditions?
+	// currentPlans keeps the most recent build Plan per environment.
+	currentPlans map[types.NamespacedName]plan
 
+	// AllowedStepTypes is a set of step types that are allowed to execute.
+	// A nil set allows all steps.
+	AllowedStepTypes map[step.Type]struct{}
+	// Cloud provides generic cloud functions.
+	Cloud cloud.Cloud
 	// Terraform is the terraform implementation to use.
 	Terraform terraform.Terraformer
 	// Kubectl is the kubectl implementation to use.
@@ -38,7 +44,7 @@ type Planner struct {
 type plan []step.Step
 
 // CurrentPlan returns the Plan for nsn.
-// Return false if no plan has been selected yet for nsn.
+// Return false if no plan has been build for nsn yet.
 func (p *Planner) currentPlan(nsn types.NamespacedName) (plan, bool) {
 	p.RLock()
 	defer p.RUnlock()
@@ -50,4 +56,21 @@ func (p *Planner) currentPlan(nsn types.NamespacedName) (plan, bool) {
 	pl, ok := p.currentPlans[nsn]
 
 	return pl, ok
+}
+
+// CurrentPlanStep returns a Step by its short-name.
+// Returns false if no such step is present (yet).
+func (p *Planner) currentPlanStep(nsn types.NamespacedName, stepName string) (step.Step, bool) {
+	pl, ok := p.currentPlan(nsn)
+	if !ok {
+		return nil, false
+	}
+
+	for _, st := range pl {
+		if st.Meta().ID.ShortName() == stepName {
+			return st, true
+		}
+	}
+
+	return nil, false
 }

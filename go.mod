@@ -17,7 +17,9 @@ require (
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/otiai10/copy v1.1.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v0.9.2
+	github.com/robfig/cron/v3 v3.0.0
 	github.com/rodaine/hclencoder v0.0.0-20190213202847-fb9757bb536e
 	github.com/stretchr/testify v1.5.1
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect

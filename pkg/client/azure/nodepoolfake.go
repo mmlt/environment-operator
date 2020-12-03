@@ -7,13 +7,34 @@ import (
 // TerraformFake provides a Terraformer for testing.
 type AZFake struct {
 	// Tally is the number of times a method has been called.
-	AKSNodepoolListTally, AKSNodepoolTally, AKSNodepoolUpgradeTally int
+	AKSNodepoolListTally, AKSNodepoolTally, AKSNodepoolUpgradeTally, KeyvaultSecretTally int
 
 	// Results that are returned by the fake implementations.
 	AKSNodepoolListResult []AKSNodepool
 	// AKSNodepoolResult is a list of results of which one is returned on each subsequent call.
 	AKSNodepoolResult        []AKSNodepool
 	AKSNodepoolUpgradeResult AKSNodepool
+
+	KeyvaultSecretResult string
+}
+
+func (c *AZFake) SetSubscription(sub string) {
+	return
+}
+
+func (c *AZFake) LoginSP(user, password, tenant string) error {
+	return nil
+}
+
+func (c *AZFake) Logout() error {
+	return nil
+}
+
+// KeyvaultSecret reads name secret from vaultName KeyVault.
+func (c *AZFake) KeyvaultSecret(name, vaultName string) (string, error) {
+	c.KeyvaultSecretTally++
+	time.Sleep(15 * time.Second)
+	return c.KeyvaultSecretResult, nil
 }
 
 // AKSNodepoolList returns all the node pools of an AKS cluster.

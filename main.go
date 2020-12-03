@@ -17,6 +17,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/mmlt/environment-operator/pkg/client/addon"
 	"github.com/mmlt/environment-operator/pkg/client/azure"
@@ -26,6 +27,7 @@ import (
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
+	"github.com/mmlt/environment-operator/pkg/step"
 	"github.com/mmlt/environment-operator/pkg/util"
 	"k8s.io/klog"
 	"k8s.io/klog/klogr"
@@ -53,24 +55,29 @@ func init() {
 }
 
 func main() {
+	requiredFlags := []string{"credentials-file", "vault", "workdir"}
+
 	credentialsFile := flag.String("credentials-file", "",
-		"A JSON file with client_id, client_secret and tenant of a ServicePrincipal that is allowed to access the MasterKeyVault and AzureRM.")
-	enableLeaderElection := flag.Bool("enable-leader-election", false,
-		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	metricsAddr := flag.String("metrics-addr", ":8080",
-		"The address the metric endpoint binds to.")
-	selector := flag.String("selector", "",
-		"Select which environment resources are handled by this operator instance.\n"+
-			"When selector is not empty and the resource has a label 'clusterops.mmlt.nl/operator' that matches this flag the resource is handled.\n"+
-			"When selector is empty all resources are handled.")
-	syncPeriodInMin := flag.Int("sync-period-in-min", 10,
-		"The max. interval time to check external sources like git.")
-	tfStateSecretName := flag.String("tfstate-secret-name", "",
-		"The name of a secret which value allows access to the the blob storage containing Terraform state.")
-	tfStateSecretVault := flag.String("tfstate-secret-vault", "",
-		"The name of the KeyVault that contains tfstate-secret-name.")
+		"file with JSON fields client_id, client_secret and tenant of a ServicePrincipal that is allowed to access the MasterKeyVault and AzureRM.")
+	vault := flag.String("vault", "",
+		"name of the KeyVault that contains secrets referenced from environment yaml.")
 	workDir := flag.String("workdir", "/var/tmp/envop",
-		"Working directory")
+		"working directory")
+
+	selector := flag.String("selector", "",
+		"select which environment resources are handled by this operator instance.\n"+
+			"when selector is not empty and the resource has a label 'clusterops.mmlt.nl/operator' that matches this flag the resource is handled.\n"+
+			"when selector is empty all resources are handled.")
+	syncPeriodInMin := flag.Int("sync-period-in-min", 10,
+		"the max. interval time to check external sources like git.")
+	allowedSteps := flag.String("allowed-steps", "",
+		"a comma separated list of steps that are allowed to executed, empty allows all steps\n"+
+			fmt.Sprintf("valid values: %v", step.Types))
+
+	enableLeaderElection := flag.Bool("enable-leader-election", false,
+		"enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	metricsAddr := flag.String("metrics-addr", ":8080",
+		"address the metric endpoint binds to.")
 
 	// klog
 	klog.InitFlags(nil)
@@ -78,7 +85,13 @@ func main() {
 	ctrl.SetLogger(log)
 
 	flag.Parse()
-	if !flagsSet(log, "credentials-file", "tfstate-secret-name", "tfstate-secret-vault", "workdir") {
+	if !flagsSet(log, requiredFlags...) {
+		os.Exit(1)
+	}
+
+	steps, err := step.TypesFromString(*allowedSteps)
+	if err != nil {
+		log.Error(err, "flag --allowed-steps")
 		os.Exit(1)
 	}
 
@@ -91,7 +104,6 @@ func main() {
 		LeaderElection:     *enableLeaderElection,
 		Port:               9443,
 		SyncPeriod:         &p,
-		//TODO Add RateLimiter that starts at 1m to max 10m see https://github.com/kubernetes-sigs/controller-runtime/issues/631
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -110,17 +122,17 @@ func main() {
 		RootPath: *workDir,
 		Log:      r.Log.WithName("source"),
 	}
-	r.Cloud = &cloud.Azure{
-		CredentialsFile:    *credentialsFile,
-		TFStateSecretName:  *tfStateSecretName,
-		TFStateSecretVault: *tfStateSecretVault,
-		Client: &azure.AZ{
-			Log: r.Log.WithName("az"),
-		},
-		Log: r.Log.WithName("cloud"),
-	}
 	r.Planner = &plan.Planner{
-		Log: r.Log.WithName("plan"),
+		AllowedStepTypes: steps,
+		Log:              r.Log.WithName("plan"),
+		Cloud: &cloud.Azure{
+			CredentialsFile: *credentialsFile,
+			Vault:           *vault,
+			Client: &azure.AZ{
+				Log: r.Log.WithName("az"),
+			},
+			Log: r.Log.WithName("cloud"),
+		},
 		Terraform: &terraform.Terraform{
 			Log: r.Log.WithName("tf"),
 		},

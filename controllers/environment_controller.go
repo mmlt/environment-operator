@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/imdario/mergo"
-	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
+	"github.com/robfig/cron/v3"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,9 +52,6 @@ type EnvironmentReconciler struct {
 	// Sources fetches tf or yaml source code.
 	Sources *source.Sources
 
-	// Cloud provides generic cloud functions like login.
-	Cloud cloud.Cloud
-
 	// Planner decides on the next step to execute based on Environment.
 	Planner *plan.Planner
 
@@ -80,9 +77,6 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	log := r.Log.WithValues("request", req.NamespacedName)
 	log.V(1).Info("Start Reconcile")
 
-	// TODO add Policy checks
-	// TODO enable/disable operator via annotations?
-
 	// Get Environment.
 	cr := &v1.Environment{}
 	if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
@@ -91,7 +85,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	}
 
 	// Ignore environments that do not match selector.
-	// For now client side filtering, for server side see https://github.com/kubernetes-sigs/controller-runtime/issues/244
+	// (implemented as client side filtering, for server side see https://github.com/kubernetes-sigs/controller-runtime/issues/244)
 	if len(r.Selector) > 0 {
 		v, ok := cr.Labels[label]
 		if !ok || v != r.Selector {
@@ -100,10 +94,22 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		}
 	}
 
+	// Ignore when not within time schedule.
+	// TODO consider moving to planner (when new step needs to be selected)
+	ok, err := inSchedule(cr.Spec.Infra.Schedule, time.Now())
+	if err != nil {
+		// Schedule contains error (needs user to fix it first so do noy retry).  TODO warn user via Status, Event or Metric
+		return ctrl.Result{}, fmt.Errorf("spec.infra.schedule: %w", err)
+	}
+	if !ok {
+		log.V(2).Info("outside schedule", "schedule", cr.Spec.Infra.Schedule)
+		return ctrl.Result{}, nil
+	}
+
 	// Get ClusterSpecs with defaults.
 	cspec, err := flattenedClusterSpec(cr.Spec)
 	if err != nil {
-		// Spec contains error (needs user to fix it first so do noy retry).  TODO warn user via Status
+		// Spec contains error (needs user to fix it first so do noy retry).  TODO warn user via Status, Event or Metric
 		return ctrl.Result{}, fmt.Errorf("Spec: %w", err)
 	}
 
@@ -145,13 +151,6 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		}
 	}
 
-	// Cloud provider login.
-	env, err := r.Cloud.Login()
-	if err != nil {
-		return ctrl.Result{Requeue: true}, fmt.Errorf("cloud login: %w", err)
-	}
-	r.Executor.EnvironAdd(env)
-
 	// Try to run step.
 	accepted, err := r.Executor.Accept(step)
 	if err != nil {
@@ -168,6 +167,36 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	}
 
 	return ctrl.Result{Requeue: requeue}, nil
+}
+
+// InSchedule returns true when time now is in CRON schedule.
+//
+//  Field name   | Mandatory? | Allowed values  | Allowed special characters
+//  ----------   | ---------- | --------------  | --------------------------
+//  Minutes      | Yes        | 0-59            | * / , -
+//  Hours        | Yes        | 0-23            | * / , -
+//  Day of month | Yes        | 1-31            | * / , - ?
+//  Month        | Yes        | 1-12 or JAN-DEC | * / , -
+//  Day of week  | Yes        | 0-6 or SUN-SAT  | * / , - ?
+//
+// Special characters:
+//   * always
+//   / interval, for example */5 is every 5m
+//   , list, for example MON,FRI in DayOfWeek field
+//   - range, for example 20-04 in hour field
+// See https://godoc.org/github.com/robfig/cron#Parser
+func inSchedule(schedule string, now time.Time) (bool, error) {
+	p := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	sc, err := p.Parse(schedule)
+	if err != nil {
+		return false, err
+	}
+
+	next := sc.Next(now)
+
+	ok := next.Sub(now).Minutes() < 10.0
+
+	return ok, nil
 }
 
 func hasStepState(stps map[string]v1.StepStatus, state v1.StepState) bool {
@@ -298,7 +327,7 @@ func flattenedClusterSpec(in v1.EnvironmentSpec) ([]v1.ClusterSpec, error) {
 	for _, c := range in.Clusters {
 		cs := in.Defaults.DeepCopy()
 		mergo.Merge(cs, c, mergo.WithOverride)
-		//TODO assert that required values are set and valid.
+		//TODO validation; assert that required values are set and valid.
 		r = append(r, *cs)
 	}
 

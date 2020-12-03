@@ -22,9 +22,39 @@ type Sourcer interface {
 // Current state is stored as hashes of source code and parameters in the Environment kind status.
 // When a step hash doesn't match the hash stored in status the step will be executed.
 func (p *Planner) NextStep(nsn types.NamespacedName, src Sourcer, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec, status v1.EnvironmentStatus) (step.Step, error) {
+	if len(stepFilter(status, v1.StateError)) > 0 {
+		// a step is in error state (it needs to be reset to continue)
+		return nil, nil
+	}
+
+	running := stepFilter(status, v1.StateRunning)
+	if len(running) > 0 {
+		// a step is already running, return it.
+		st, ok := p.currentPlanStep(nsn, running[0])
+		if ok {
+			return st, nil
+		}
+		// currentPlan maybe empty due to program restart.
+	}
+
+	// Replace references to secret values with the value from vault.
+	ispec, err := vaultInfraValues(ispec, p.Cloud)
+	if err != nil {
+		return nil, fmt.Errorf("vault ref: %w", err)
+	}
+
 	ok := p.buildPlan(nsn, src, destroy, ispec, cspec)
 	if !ok {
 		return nil, nil
+	}
+
+	if len(running) > 0 {
+		// a step is already running and current plan is just built.
+		st, ok := p.currentPlanStep(nsn, running[0])
+		if ok {
+			return st, nil
+		}
+		p.Log.Info("NextStep unexpected step name %s in status.steps", running[0])
 	}
 
 	st, err := p.selectStep(nsn, status)
@@ -47,28 +77,36 @@ func (p *Planner) buildPlan(nsn types.NamespacedName, src Sourcer, destroy bool,
 		p.currentPlans = make(map[types.NamespacedName]plan)
 	}
 
+	var pl plan
+	var ok bool
 	switch {
 	case destroy:
-		return p.buildDestroyPlan(nsn, src, ispec, cspec)
+		pl, ok = p.buildDestroyPlan(nsn, src, ispec, cspec)
 
 	default:
-		return p.buildCreatePlan(nsn, src, ispec, cspec)
+		pl, ok = p.buildCreatePlan(nsn, src, ispec, cspec)
 	}
+	if !ok {
+		return false
+	}
+
+	p.currentPlans[nsn] = planFilter(pl, p.AllowedStepTypes)
+
+	return true
 }
 
 // BuildDestroyPlan builds a plan to delete a target environment.
 // Returns false if workspaces are not prepped with sources.
-func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec) bool {
-	pl := make(plan, 0, 3+4*len(cspec))
-
+func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec) (plan, bool) {
 	tfw, ok := src.Workspace(nsn, "")
 	if !ok || tfw.Hash == "" {
-		return false
+		return nil, false
 	}
 	tfPath := filepath.Join(tfw.Path, ispec.Main)
 
 	h := p.hash(tfw.Hash)
 
+	pl := make(plan, 0, 1)
 	pl = append(pl,
 		&step.DestroyStep{
 			Metaa: stepMeta(nsn, "", step.TypeDestroy, h),
@@ -77,21 +115,18 @@ func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src Sourcer, ispec 
 				Clusters: cspec,
 			},
 			SourcePath: tfPath,
+			Cloud:      p.Cloud,
 			Terraform:  p.Terraform,
 		})
 
-	p.currentPlans[nsn] = pl
-
-	return true
+	return pl, true
 }
 
 // BuildCreatePlan builds a plan to create or update a target environment.
-func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec) bool {
-	pl := make(plan, 0, 1+4*len(cspec))
-
+func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec) (plan, bool) {
 	tfw, ok := src.Workspace(nsn, "")
-	if !ok || tfw.Hash == "" {
-		return false
+	if !ok || !tfw.Synced {
+		return nil, false
 	}
 	tfPath := filepath.Join(tfw.Path, ispec.Main)
 
@@ -101,6 +136,7 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 	}
 	h := p.hash(tfw.Hash, ispec, cspecInfra)
 
+	pl := make(plan, 0, 1+4*len(cspec))
 	pl = append(pl,
 		&step.InfraStep{
 			Metaa: stepMeta(nsn, "", step.TypeInfra, h),
@@ -109,17 +145,18 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 				Clusters: cspec,
 			},
 			SourcePath: tfPath,
+			Cloud:      p.Cloud,
 			Terraform:  p.Terraform,
 		})
 
 	for _, cl := range cspec {
 		cw, ok := src.Workspace(nsn, cl.Name)
 		if !ok || cw.Hash == "" {
-			return false
+			return nil, false
 		}
 
 		kcPath := filepath.Join(cw.Path, "kubeconfig")
-		mvPath := filepath.Join(cw.Path, "mkv", "real") // TODO should be configurable in environment.yaml as it depends on k8s-cluster-addons repo layout
+		mvPath := filepath.Join(cw.Path, cl.Addons.MKV)
 
 		az := p.Azure
 		az.SetSubscription(ispec.AZ.Subscription)
@@ -136,6 +173,8 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 				TFPath:      tfPath,
 				ClusterName: cl.Name,
 				KCPath:      kcPath,
+				Access:      ispec.State.Access,
+				Cloud:       p.Cloud,
 				Terraform:   p.Terraform,
 				Kubectl:     p.Kubectl,
 			},
@@ -156,9 +195,7 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 		)
 	}
 
-	p.currentPlans[nsn] = pl
-
-	return true
+	return pl, true
 }
 
 func stepMeta(nsn types.NamespacedName, clusterName string, typ step.Type, hash string) step.Metaa {
@@ -202,7 +239,7 @@ func (p *Planner) selectStep(nsn types.NamespacedName, status v1.EnvironmentStat
 		}
 
 		if current.State == v1.StateError {
-			//TODO introduce error budgets to allow retry after error
+			//TODO consider introducing error retry budgets to allow retry after error
 
 			// no budget to retry
 			return nil, nil
@@ -230,4 +267,32 @@ func (p *Planner) hash(args ...interface{}) string {
 func prefixedClusterName(resource, env, name string) string {
 	t := env[len(env)-1:]
 	return fmt.Sprintf("%s%s001%s-%s", t, resource, env, name)
+}
+
+// StepFilter returns the names of the steps that match state.
+func stepFilter(status v1.EnvironmentStatus, state v1.StepState) []string {
+	var r []string
+	for n, s := range status.Steps {
+		if s.State == state {
+			r = append(r, n)
+		}
+	}
+	return r
+}
+
+// PlanFilter returns plan with only the steps that are allowed.
+// If allowed is nil plan is returned as-is.
+func planFilter(pl plan, allowed map[step.Type]struct{}) plan {
+	if len(allowed) == 0 {
+		return pl
+	}
+
+	r := make(plan, 0, len(pl))
+	for _, v := range pl {
+		if _, ok := allowed[v.Meta().ID.Type]; ok {
+			r = append(r, v)
+		}
+	}
+
+	return r
 }

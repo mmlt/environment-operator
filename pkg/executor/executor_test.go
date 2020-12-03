@@ -13,7 +13,7 @@ func TestExecutor_Accept(t *testing.T) {
 		EventSink:  &infoerFake{},
 		Log:        testr.New(t),
 	}
-	stp := &step.InitStep{}
+	stp := &step.InfraStep{}
 	ok, err := ex.Accept(stp)
 	assert.NoError(t, err)
 	assert.Equal(t, true, ok)

@@ -2,8 +2,10 @@ package step
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
+	"strings"
 	"time"
 )
 
@@ -32,7 +34,7 @@ type Metaa struct {
 
 // ID uniquely identifies a Step.
 type ID struct {
-	// Type is the type of step, for example; init, plan, apply.
+	// Type is the type of step, for example; Infra, Destroy, Addons.
 	Type Type
 	// Namespace Name identifies the plan to which the step belongs.
 	Namespace, Name string
@@ -57,6 +59,9 @@ const (
 	TypeAddons            Type = "Addons"
 )
 
+// Types is an enumeration of all types.
+var Types = []Type{TypeInfra, TypeDestroy, TypeAKSPool, TypeKubeconfig, TypeAKSAddonPreflight, TypeAddons}
+
 // Updater is a third party that wants to know about Step state changes.
 type Updater interface {
 	Update(Step)
@@ -67,4 +72,35 @@ type Updater interface {
 type Infoer interface {
 	Info(id ID, msg string) error
 	Warning(id ID, msg string) error
+}
+
+// TypeFromString converts a comma separated list of type names to a set of Type.
+// On empty input an empty set is returned.
+func TypesFromString(s string) (map[Type]struct{}, error) {
+	r := make(map[Type]struct{})
+
+	if s == "" {
+		return r, nil
+	}
+
+	valid := make(map[string]struct{}, len(Types))
+	for _, v := range Types {
+		valid[string(v)] = struct{}{}
+	}
+
+	var e []string
+	for _, v := range strings.Split(s, ",") {
+		if _, ok := valid[v]; ok {
+			r[Type(v)] = struct{}{}
+		} else {
+			e = append(e, v)
+		}
+	}
+
+	var err error
+	if len(e) > 0 {
+		err = fmt.Errorf("unknown step type(s): %v", e)
+	}
+
+	return r, err
 }

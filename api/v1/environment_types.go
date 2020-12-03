@@ -21,14 +21,6 @@ import (
 
 // EnvironmentSpec defines the desired state of an Environment.
 type EnvironmentSpec struct {
-	// Policy specifies what operator behavior is allowed.
-	// Valid values are:
-	// - "AllowAll" (default): allows create, update and delete of environment and clusters;
-	// - "DenyDelete": forbids deletion of a cluster;
-	// - "DenyUpdate": forbids update/delete of a cluster.
-	// +optional
-	Policy EnvironmentPolicy `json:"policy,omitempty"`
-
 	// Destroy is true when an environment needs to be removed.
 	// Typically used in cluster delete/create test cases.
 	Destroy bool `json:"destroy,omitempty"`
@@ -43,41 +35,34 @@ type EnvironmentSpec struct {
 	Clusters []ClusterSpec `json:"clusters,omitempty"`
 }
 
-// EnvironmentPolicy describes how the environment will be updated or deleted.
-// Only one of the following policies may be specified.
-// If none is specified, the default one AllowAll.
-// +kubebuilder:validation:Enum=AllowAll;DenyDelete;DenyUpdate
-type EnvironmentPolicy string
-
-const (
-	// AllowAll allows create, update and delete of cluster add-ons.
-	PolicyAllowAll EnvironmentPolicy = "AllowAll"
-
-	// DenyDelete forbids delete of cluster add-ons when ClusterAddon resource is deleted.
-	PolicyDenyDelete EnvironmentPolicy = "DenyDelete"
-
-	// DenyUpdate forbids update/delete of cluster add-ons when ClusterAddon or repo changes.
-	PolicyDenyUpdate EnvironmentPolicy = "DenyUpdate"
-)
-
 // InfraSpec defines the infrastructure that the clusters depend on.
 type InfraSpec struct {
+	// EnvName is the name of this environment.
+	// Typically a concatenation of region, cloud provider and environment type (test, production).
+	EnvName string `json:"envName,omitempty"`
+
+	// EnvDomain is the most significant part of the domain name for this environment.
+	// For example; example.com
+	EnvDomain string `json:"envDomain,omitempty"`
+
+	// Budget defines how many changes the operator is allowed to apply to the infra.
+	// If the budget spec is omitted any number of changes is allowed.
+	// +optional
+	Budget InfraBudget `json:"budget,omitempty"`
+
+	// Schedule is a CRON formatted string defining when changed can be applied.
+	// If the schedule is omitted then changes will be applied immediately.
+	// +optional
+	Schedule string `json:"schedule,omitempty"`
+
 	// Source is the repository that contains Terraform infrastructure code.
 	Source SourceSpec `json:"source,omitempty"`
 
 	// Main is the path in the source tree to the directory containing main.tf.
 	Main string `json:"main,omitempty"`
 
-	// EnvDomain is the most significant part of the domain name for this environment.
-	// For example; example.com
-	EnvDomain string `json:"envDomain,omitempty"`
-
-	// EnvName is the name of this environment.
-	// Typically a concatenation of region, cloud provider and environment type (test, production).
-	EnvName string `json:"envName,omitempty"`
-
 	// State is where Terraform state is stored.
-	// If omitted state is stored locally.
+	// If the state spec is omitted the state is stored locally.
 	// +optional
 	State StateSpec `json:"state,omitempty"`
 
@@ -87,6 +72,24 @@ type InfraSpec struct {
 	// AZ values.
 	// +optional
 	AZ AZSpec `json:"az,omitempty"`
+}
+
+// InfraBudget defines how many changes the operator is allowed to make.
+type InfraBudget struct {
+	// AddLimit is the maximum number of resources that the operator is allowed to add.
+	// Exceeded this number will result in an error.
+	// +optional
+	AddLimit *int32 `json:"addLimit,omitempty"`
+
+	// UpdateLimit is the maximum number of resources that the operator is allowed to update.
+	// Exceeded this number will result in an error.
+	// +optional
+	UpdateLimit *int32 `json:"updateLimit,omitempty"`
+
+	// DeleteLimit is the maximum number of resources that the operator is allowed to delete.
+	// Exceeded this number will result in an error.
+	// +optional
+	DeleteLimit *int32 `json:"deleteLimit,omitempty"`
 }
 
 // ClusterSpec defines cluster specific infra, K8s resources and tests.
@@ -142,16 +145,27 @@ const (
 )
 
 // StateSpec specifies where to find the Terraform state storage.
+// +optional
 type StateSpec struct {
+	// StorageAccount is the name of the Storage Account.
 	StorageAccount string `json:"storageAccount,omitempty"`
+	// Access is the secret that allows access to the storage account
+	// or a reference to that secret in the form "vault secret-name field-name"
+	Access string `json:"access,omitempty"`
 }
 
 // Azure Active Directory.
 type AADSpec struct {
-	TenantID        string `json:"tenantID,omitempty"`
-	ServerAppID     string `json:"serverAppID,omitempty"`
+	// TenantID is the AD tenant or a reference to that value in the form "vault name field"
+	TenantID string `json:"tenantID,omitempty"`
+	// ServerAppID is an app registration allowed to query AD for user data
+	// or a reference to that value in the form "vault name field"
+	ServerAppID string `json:"serverAppID,omitempty"`
+	// ServerAppSecret is the secret of an app registration allowed to query AD for user data
+	// or a reference to that value in the form "vault name field"
 	ServerAppSecret string `json:"serverAppSecret,omitempty"`
-	ClientAppID     string `json:"clientAppID,omitempty"`
+	// ClientAppID is the app registration used by kubectl or a reference to that value in the form "vault name field"
+	ClientAppID string `json:"clientAppID,omitempty"`
 }
 
 // AZSpec defines Azure specific infra structure settings.
@@ -168,7 +182,7 @@ type AZSpec struct {
 	// AvailabilityZones are the zones in a region over which nodes and control plane are spread.
 	// For example [1,2,3]
 	// +optional
-	AvailabilityZones []int `json:"serviceEndpoints,omitempty"`
+	AvailabilityZones []int32 `json:"serviceEndpoints,omitempty"`
 
 	// SKU (stock keeping unit) sets the SLA on the AKS control plane.
 	// Valid values are:
@@ -196,7 +210,7 @@ type AZSpec struct {
 	// Subnet newbits is the number of bits to add to the VNet address mask to produce the subnet mask.
 	// IOW 2^subnetNewbits-1 is the max number of clusters in the VNet.
 	// For example given a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
-	SubnetNewbits int `json:"subnetNewbits,omitempty"`
+	SubnetNewbits int32 `json:"subnetNewbits,omitempty"`
 
 	// Outbound sets the network outbound type.
 	// Valid values are:
@@ -246,7 +260,7 @@ type ClusterInfraSpec struct {
 	// Cluster ordinal number starting at 1.
 	// (max 2^subnetNewbits-1)
 	// +kubebuilder:validation:Minimum=1
-	SubnetNum int `json:"subnetNum,omitempty"`
+	SubnetNum int32 `json:"subnetNum,omitempty"`
 
 	// Kubernetes version.
 	Version string `json:"version,omitempty"`
@@ -268,27 +282,35 @@ type NodepoolSpec struct {
 	// Max number of Pods per VM.
 	// +kubebuilder:validation:Minimum=10
 	// +kubebuilder:validation:Maximum=250
-	MaxPods int `json:"maxPods,omitempty"`
+	MaxPods int32 `json:"maxPods,omitempty"`
 
 	// Number of VM's.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
-	Scale int `json:"scale,omitempty"`
+	Scale int32 `json:"scale,omitempty"`
 
 	// Max number of VM's.
 	// Setting MaxScale > Scale enables autoscaling.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
-	MaxScale int `json:"maxScale,omitempty"`
+	MaxScale int32 `json:"maxScale,omitempty"`
 }
 
 // ClusterAddonSpec defines what K8s resources needs to be deployed in a cluster after creation.
 type ClusterAddonSpec struct {
+	// Schedule is a CRON formatted string defining when changed can be applied.
+	// If the schedule is omitted then changes will be applied immediately.
+	// +optional
+	Schedule string `json:"schedule,omitempty"`
+
 	// Source is the repository that contains the k8s addons resources.
 	Source SourceSpec `json:"source,omitempty"`
 
 	// Jobs is an array of paths to job files in the source tree.
 	Jobs []string `json:"jobs,omitempty"`
+
+	// MKV is the path to a directory in the source tree that specifies the master key vault to use.
+	MKV string `json:"mkv,omitempty"`
 
 	// X are extension values (when regular values don't fit the need)
 	// +optional

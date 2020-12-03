@@ -60,6 +60,10 @@ spec:
                         items:
                           type: string
                         type: array
+                      mkv:
+                        description: MKV is the path to a directory in the source
+                          tree that specifies the master key vault to use.
+                        type: string
                       schedule:
                         description: Schedule is a CRON formatted string defining
                           when changed can be applied. If the schedule is omitted
@@ -167,6 +171,10 @@ spec:
                       items:
                         type: string
                       type: array
+                    mkv:
+                      description: MKV is the path to a directory in the source tree
+                        that specifies the master key vault to use.
+                      type: string
                     schedule:
                       description: Schedule is a CRON formatted string defining when
                         changed can be applied. If the schedule is omitted then changes
@@ -272,12 +280,22 @@ spec:
                     a k8s user authorization is checked.
                   properties:
                     clientAppID:
+                      description: ClientAppID is the app registration used by kubectl
+                        or a reference to that value in the form "vault name field"
                       type: string
                     serverAppID:
+                      description: ServerAppID is an app registration allowed to query
+                        AD for user data or a reference to that value in the form
+                        "vault name field"
                       type: string
                     serverAppSecret:
+                      description: ServerAppSecret is the secret of an app registration
+                        allowed to query AD for user data or a reference to that value
+                        in the form "vault name field"
                       type: string
                     tenantID:
+                      description: TenantID is the AD tenant or a reference to that
+                        value in the form "vault name field"
                       type: string
                   type: object
                 az:
@@ -440,7 +458,13 @@ spec:
                   description: State is where Terraform state is stored. If the state
                     spec is omitted the state is stored locally.
                   properties:
+                    access:
+                      description: Access is the secret that allows access to the
+                        storage account or a reference to that secret in the form
+                        "vault secret-name field-name"
+                      type: string
                     storageAccount:
+                      description: StorageAccount is the name of the Storage Account.
                       type: string
                   type: object
               type: object

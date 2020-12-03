@@ -1,7 +1,12 @@
 // packe az provides a simple wrapper around the Azure CLI.
 package azure
 
-import "github.com/go-logr/logr"
+import (
+	"fmt"
+	"github.com/go-logr/logr"
+	"github.com/mmlt/environment-operator/pkg/util/exe"
+	"strings"
+)
 
 // AZer is able to perform az cli commands.
 type AZer interface {
@@ -41,4 +46,17 @@ func (c *AZ) extraArgs(arg []string) []string {
 		arg = append(arg, "--subscription", c.Subscription)
 	}
 	return arg
+}
+
+// RunAZ runs the az cli.
+func runAZ(log logr.Logger, options *exe.Opt, stdin string, args ...string) (string, error) {
+	stdout, stderr, err := exe.Run(log, options, stdin, "az", args...)
+	if err != nil {
+		return "", err
+	}
+	// don't rely on az cli exit code for error detection.
+	if stderr != "" {
+		return "", fmt.Errorf("%s: %s", strings.Join(args, " "), stderr)
+	}
+	return stdout, err
 }
