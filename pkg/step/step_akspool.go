@@ -6,6 +6,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/azure"
+	"sort"
 	"time"
 )
 
@@ -52,7 +53,8 @@ func (st *AKSPoolStep) Execute(ctx context.Context, env []string, isink Infoer, 
 		return false
 	}
 
-	//TODO make sure the pools are updated in a predictable order.
+	// make sure the pools are updated in a predictable (alphabetical) order.
+	sort.Slice(pools, func(i, j int) bool { return pools[i].Name < pools[j].Name })
 
 	for _, pool := range pools {
 		log := log.WithValues("pool", pool.Name)
@@ -69,6 +71,12 @@ func (st *AKSPoolStep) Execute(ctx context.Context, env []string, isink Infoer, 
 			continue
 		}
 
+		// Disable autoscaling during upgrade.
+		if pool.EnableAutoScaling {
+			err = st.Azure.Autoscaler(false, st.Cluster, pool)
+			log.Error(err, "disable autoscaler on cluster %s pool %s", st.Cluster, pool.Name)
+		}
+
 		// Upgrade a pool
 		p, err := st.upgrade(ctx, pool.Name, isink, log)
 		if err != nil {
@@ -80,6 +88,11 @@ func (st *AKSPoolStep) Execute(ctx context.Context, env []string, isink Infoer, 
 			return false
 		}
 		_ = p //TODO collect the results?
+
+		if pool.EnableAutoScaling {
+			err = st.Azure.Autoscaler(true, st.Cluster, pool)
+			log.Error(err, "enable autoscaler on cluster %s pool %s", st.Cluster, pool.Name)
+		}
 	}
 
 	st.State = v1.StateReady
@@ -90,6 +103,7 @@ func (st *AKSPoolStep) Execute(ctx context.Context, env []string, isink Infoer, 
 	return st.State == v1.StateReady
 }
 
+//
 func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, log logr.Logger) (*azure.AKSNodepool, error) {
 	stop := make(chan bool)
 

@@ -77,7 +77,7 @@ func (r *Repo) Update() error {
 	}
 	src := filepath.Join(wd, r.url)
 
-	r.log.Info("copy", "src", src, "dest", r.RepoDir())
+	r.log.Info("Copy repo", "src", src, "dest", r.RepoDir())
 	return copy2.Copy(src, r.RepoDir())
 }
 

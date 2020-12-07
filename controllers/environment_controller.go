@@ -89,7 +89,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	if len(r.Selector) > 0 {
 		v, ok := cr.Labels[label]
 		if !ok || v != r.Selector {
-			log.V(2).Info("label selector doesn't match", "label", label, "value", v, "selector", r.Selector)
+			log.V(2).Info("ignored, label selector doesn't match", "label", label, "value", v, "selector", r.Selector)
 			return ctrl.Result{}, nil
 		}
 	}
@@ -169,7 +169,7 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	return ctrl.Result{Requeue: requeue}, nil
 }
 
-// InSchedule returns true when time now is in CRON schedule.
+// InSchedule returns true when time now is in CRON schedule or the schedule is empty.
 //
 //  Field name   | Mandatory? | Allowed values  | Allowed special characters
 //  ----------   | ---------- | --------------  | --------------------------
@@ -186,6 +186,10 @@ func (r *EnvironmentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 //   - range, for example 20-04 in hour field
 // See https://godoc.org/github.com/robfig/cron#Parser
 func inSchedule(schedule string, now time.Time) (bool, error) {
+	if schedule == "" {
+		return true, nil
+	}
+
 	p := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	sc, err := p.Parse(schedule)
 	if err != nil {

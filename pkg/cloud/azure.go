@@ -41,7 +41,7 @@ func (a *Azure) Login() (*ServicePrincipal, error) {
 	var sp ServicePrincipal
 	err = json.Unmarshal(b, &sp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("SP JSON: %w", err)
 	}
 	if len(sp.ClientID) == 0 || len(sp.ClientSecret) == 0 || len(sp.Tenant) == 0 {
 		return nil, fmt.Errorf("login secret: client_id, cliebnt_secret or tenant field not set")
@@ -65,7 +65,7 @@ func (a *Azure) Login() (*ServicePrincipal, error) {
 func (a *Azure) VaultGet(name, field string) (string, error) {
 	_, err := a.Login()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("login: %w", err)
 	}
 
 	if a.cache == nil {

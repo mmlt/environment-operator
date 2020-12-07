@@ -25,6 +25,8 @@ type AZer interface {
 	// AKSNodepoolUpgrade upgrades the node pool in a managed Kubernetes cluster to Kubernetes version.
 	// Expect this call to block for VM count * 10m.
 	AKSNodepoolUpgrade(resourceGroup, cluster, nodepool, version string) (*AKSNodepool, error)
+	// Autoscaling enables or disables the autoscaler.
+	Autoscaler(enable bool, cluster string, pool AKSNodepool) error
 }
 
 // AZ is able to perform az cli commands.

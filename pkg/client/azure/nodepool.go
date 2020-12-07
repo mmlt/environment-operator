@@ -71,6 +71,14 @@ type AKSNodepool struct {
 	AgentPoolType string `json:"agentPoolType"`
 	// Count is the number of VM's in the pool.
 	Count int `json:"count"`
+	// EnableAutoScaling is true when the node autoscaler is active.
+	EnableAutoScaling bool `json:"enableAutoScaling"`
+	// MaxCount is the maximum number of autoscaling nodes.
+	MaxCount int `json:"maxCount"`
+	// MaxPods is the maximum number of pods on a node.
+	MaxPods int `json:"maxPods"`
+	// MinCount is the minimum number of autoscaling nodes.
+	MinCount int `json:"minCount"`
 	// Mode defines the primary function of the pool.
 	// If set as "System", AKS prefers system pods scheduling to the pool. https://aka.ms/aks/nodepool/mode.
 	Mode string `json:"mode"`
@@ -82,6 +90,8 @@ type AKSNodepool struct {
 	OSType string `json:"osType"`
 	// ProvisioningState is the current state of the pool.
 	ProvisioningState ProvisioningState `json:"provisioningState"`
+	// ResourceGroup
+	ResourceGroup string `json:"resourceGroup"`
 	// VMSize is the type of VM used in the pool.
 	VMSize string `json:"vmSize"`
 }
