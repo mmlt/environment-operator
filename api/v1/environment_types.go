@@ -113,8 +113,10 @@ type SourceSpec struct {
 	// +optional
 	Type EnvironmentSourceType `json:"type,omitempty"`
 
-	// URL is the URL of the repo.
+	// For type=git URL is the URL of the repo.
 	// When Token is specified the URL is expected to start with 'https://'.
+	//
+	// For type=local URL is path to a directory.
 	// +optional
 	URL string `json:"url"`
 
@@ -124,8 +126,8 @@ type SourceSpec struct {
 	Ref string `json:"ref"`
 
 	// Token is used to authenticate with the remote server.
-	// For Type=git;
-	// - Token or ~/.ssh key should be specified (azure devops requires the token to be prefixed with 'x:')
+	// For Type=git a token should be specified (azure devops requires the token to be prefixed with 'x:')
+	// or an ~/.ssh key should be present.
 	// +optional
 	Token string `json:"token,omitempty"`
 }

@@ -27,7 +27,7 @@ ARG VERSION_KUBECTL_TMPLT=v0.4.0
 ARG VERSION_KUBECTL=v1.18.1
 
 RUN apt update \
- && apt install -y curl git jq unzip \
+ && apt install -y curl git jq unzip vim-tiny \
  && rm -rf /var/lib/apt/lists/*
 
 # Install environemnt-operator
