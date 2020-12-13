@@ -12,12 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
-      - name: Get the version from tag
-        id: get_version
-        run: echo ::set-env name=VERSION::${GITHUB_REF#refs/tags/}
+      - name: Get tag
+        id: tag
+        uses: dawidd6/action-get-tag@v1
 
       - name: Publish to Registry
         uses: elgohr/Publish-Docker-Github-Action@master
+        env:
+          VERSION: ${{steps.tag.outputs.tag}}
         with:
           name: pietere/envop
           username: ${{ secrets.DOCKER_USERNAME }}
