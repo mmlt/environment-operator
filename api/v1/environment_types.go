@@ -35,7 +35,7 @@ type EnvironmentSpec struct {
 	Clusters []ClusterSpec `json:"clusters,omitempty"`
 }
 
-// InfraSpec defines the infrastructure that the clusters depend on.
+// InfraSpec defines the infrastructure that is used by all clusters.
 type InfraSpec struct {
 	// EnvName is the name of this environment.
 	// Typically a concatenation of region, cloud provider and environment type (test, production).
@@ -69,9 +69,13 @@ type InfraSpec struct {
 	// AAD is the Azure Active Directory that is queried when a k8s user authorization is checked.
 	AAD AADSpec `json:"aad,omitempty"`
 
-	// AZ values.
+	// AZ contains Azure specific values.
 	// +optional
 	AZ AZSpec `json:"az,omitempty"`
+
+	// X are extension values (when regular values don't fit the need)
+	// +optional
+	X map[string]string `json:"x,omitempty"`
 }
 
 // InfraBudget defines how many changes the operator is allowed to make.
@@ -92,7 +96,7 @@ type InfraBudget struct {
 	DeleteLimit *int32 `json:"deleteLimit,omitempty"`
 }
 
-// ClusterSpec defines cluster specific infra, K8s resources and tests.
+// ClusterSpec defines cluster specific infra and k8s resources.
 type ClusterSpec struct {
 	// Name is the cluster name.
 	Name string `json:"name,omitempty"`
@@ -181,26 +185,6 @@ type AZSpec struct {
 	// ResourceGroup
 	ResourceGroup string `json:"resourceGroup,omitempty"`
 
-	// AvailabilityZones are the zones in a region over which nodes and control plane are spread.
-	// For example [1,2,3]
-	// +optional
-	AvailabilityZones []int32 `json:"serviceEndpoints,omitempty"`
-
-	// SKU (stock keeping unit) sets the SLA on the AKS control plane.
-	// Valid values are:
-	// - Free (default)
-	// - Paid
-	// +optional
-	// +kubebuilder:validation:Enum=Free;Paid
-	SKU AZSKU `json:"sku,omitempty"`
-
-	// ServiceEndpoints provide direct connectivity to Azure services over the Azure backbone network.
-	// This is an optional list of one or more of the following values:
-	// Microsoft.AzureActiveDirectory, Microsoft.AzureCosmosDB, Microsoft.ContainerRegistry, Microsoft.EventHub,
-	// Microsoft.KeyVault, Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage and Microsoft.Web
-	// +optional
-	ServiceEndpoints []AZServiceEndpoint `json:"serviceEndpoints,omitempty"`
-
 	// VNet CIDR is the network range used by one or more clusters.
 	VNetCIDR string `json:"vnetCIDR,omitempty"`
 
@@ -224,10 +208,6 @@ type AZSpec struct {
 	// Routes is an optional list of routes
 	// +optional
 	Routes []AZRoute `json:"routes,omitempty"`
-
-	// X are extension values (when regular values don't fit the need)
-	// +optional
-	X map[string]string `json:"x,omitempty"`
 }
 
 // AZOutbound sets the network outbound type.
@@ -271,6 +251,10 @@ type ClusterInfraSpec struct {
 	// NB. For AKS a pool named 'default' must be defined.
 	Pools map[string]NodepoolSpec `json:"pools,omitempty"`
 
+	// AZ contains Azure specific values for clusters.
+	// +optional
+	AZ ClusterAZSpec `json:"az,omitempty"`
+
 	// X are extension values (when regular values don't fit the need)
 	// +optional
 	X map[string]string `json:"x,omitempty"`
@@ -296,6 +280,29 @@ type NodepoolSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	MaxScale int32 `json:"maxScale,omitempty"`
+}
+
+// ClusterAZSpec contains Azure specific values for clusters.
+type ClusterAZSpec struct {
+	// AvailabilityZones are the zones in a region over which nodes and control plane are spread.
+	// For example [1,2,3]
+	// +optional
+	AvailabilityZones []int32 `json:"availabilityZones,omitempty"`
+
+	// SKU (stock keeping unit) sets the SLA on the AKS control plane.
+	// Valid values are:
+	// - Free (default)
+	// - Paid
+	// +optional
+	// +kubebuilder:validation:Enum=Free;Paid
+	SKU AZSKU `json:"sku,omitempty"`
+
+	// ServiceEndpoints provide direct connectivity to Azure services over the Azure backbone network.
+	// This is an optional list of one or more of the following values:
+	// Microsoft.AzureActiveDirectory, Microsoft.AzureCosmosDB, Microsoft.ContainerRegistry, Microsoft.EventHub,
+	// Microsoft.KeyVault, Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage and Microsoft.Web
+	// +optional
+	ServiceEndpoints []AZServiceEndpoint `json:"serviceEndpoints,omitempty"`
 }
 
 // ClusterAddonSpec defines what K8s resources needs to be deployed in a cluster after creation.

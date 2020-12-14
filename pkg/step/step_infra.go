@@ -2,6 +2,7 @@ package step
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
@@ -62,6 +63,8 @@ func (st *InfraStep) Execute(ctx context.Context, env []string, isink Infoer, us
 	st.State = v1.StateRunning
 	st.Msg = "terraform init"
 	usink.Update(st)
+
+	writeJSON(st.Values, st.SourcePath, "values.json", log)
 
 	err := tmplt.ExpandAll(st.SourcePath, ".tmplt", st.Values)
 	if err != nil {
@@ -214,11 +217,12 @@ func writeText(text, dir, name string, log logr.Logger) {
 	p := filepath.Join(dir, "log")
 	err := os.MkdirAll(p, os.ModePerm)
 	if err != nil {
-		log.Info("InitStep", "error", err)
+		log.Info("writeText", "error", err)
+		return
 	}
 	err = ioutil.WriteFile(filepath.Join(p, name), []byte(text), os.ModePerm)
 	if err != nil {
-		log.Info("InitStep", "error", err)
+		log.Info("writeText", "error", err)
 	}
 }
 
@@ -230,4 +234,15 @@ func writeEnv(env map[string]string, dir, name string, log logr.Logger) {
 		s = fmt.Sprintf("%s %s=%s", s, k, v)
 	}
 	writeText(s, dir, name, log)
+}
+
+// WriteJSON writes json to dir/log/name.
+// Errors are logged.
+func writeJSON(js interface{}, dir, name string, log logr.Logger) {
+	b, err := json.MarshalIndent(js, "", "  ")
+	if err != nil {
+		log.Info("writeJSON", "error", err)
+		return
+	}
+	writeText(string(b), dir, name, log)
 }

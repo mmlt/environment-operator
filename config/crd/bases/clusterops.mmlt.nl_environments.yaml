@@ -47,8 +47,7 @@ spec:
             clusters:
               description: Clusters defines the values specific for each cluster instance.
               items:
-                description: ClusterSpec defines cluster specific infra, K8s resources
-                  and tests.
+                description: ClusterSpec defines cluster specific infra and k8s resources.
                 properties:
                   addons:
                     description: ClusterAddonSpec defines the Kubernetes resources
@@ -80,9 +79,9 @@ spec:
                             type: string
                           token:
                             description: Token is used to authenticate with the remote
-                              server. For Type=git; - Token or ~/.ssh key should be
-                              specified (azure devops requires the token to be prefixed
-                              with 'x:')
+                              server. For Type=git a token should be specified (azure
+                              devops requires the token to be prefixed with 'x:')
+                              or an ~/.ssh key should be present.
                             type: string
                           type:
                             description: 'Type is the type of repository to use as
@@ -93,8 +92,10 @@ spec:
                             - local
                             type: string
                           url:
-                            description: URL is the URL of the repo. When Token is
-                              specified the URL is expected to start with 'https://'.
+                            description: "For type=git URL is the URL of the repo.
+                              When Token is specified the URL is expected to start
+                              with 'https://'. \n For type=local URL is path to a
+                              directory."
                             type: string
                         type: object
                       x:
@@ -107,6 +108,47 @@ spec:
                   infra:
                     description: Infra defines cluster specific infrastructure.
                     properties:
+                      az:
+                        description: AZ contains Azure specific values for clusters.
+                        properties:
+                          availabilityZones:
+                            description: AvailabilityZones are the zones in a region
+                              over which nodes and control plane are spread. For example
+                              [1,2,3]
+                            items:
+                              format: int32
+                              type: integer
+                            type: array
+                          serviceEndpoints:
+                            description: 'ServiceEndpoints provide direct connectivity
+                              to Azure services over the Azure backbone network. This
+                              is an optional list of one or more of the following
+                              values: Microsoft.AzureActiveDirectory, Microsoft.AzureCosmosDB,
+                              Microsoft.ContainerRegistry, Microsoft.EventHub, Microsoft.KeyVault,
+                              Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage
+                              and Microsoft.Web'
+                            items:
+                              enum:
+                              - Microsoft.AzureActiveDirectory
+                              - Microsoft.AzureCosmosDB
+                              - Microsoft.ContainerRegistry
+                              - Microsoft.EventHub
+                              - Microsoft.KeyVault
+                              - Microsoft.ServiceBus
+                              - Microsoft.Sql
+                              - Microsoft.Storage
+                              - Microsoft.Web
+                              type: string
+                            type: array
+                          sku:
+                            description: 'SKU (stock keeping unit) sets the SLA on
+                              the AKS control plane. Valid values are: - Free (default)
+                              - Paid'
+                            enum:
+                            - Free
+                            - Paid
+                            type: string
+                        type: object
                       pools:
                         additionalProperties:
                           description: NodepoolSpec defines a cluster worker node
@@ -191,9 +233,9 @@ spec:
                           type: string
                         token:
                           description: Token is used to authenticate with the remote
-                            server. For Type=git; - Token or ~/.ssh key should be
-                            specified (azure devops requires the token to be prefixed
-                            with 'x:')
+                            server. For Type=git a token should be specified (azure
+                            devops requires the token to be prefixed with 'x:') or
+                            an ~/.ssh key should be present.
                           type: string
                         type:
                           description: 'Type is the type of repository to use as a
@@ -204,8 +246,9 @@ spec:
                           - local
                           type: string
                         url:
-                          description: URL is the URL of the repo. When Token is specified
-                            the URL is expected to start with 'https://'.
+                          description: "For type=git URL is the URL of the repo. When
+                            Token is specified the URL is expected to start with 'https://'.
+                            \n For type=local URL is path to a directory."
                           type: string
                       type: object
                     x:
@@ -218,6 +261,47 @@ spec:
                 infra:
                   description: Infra defines cluster specific infrastructure.
                   properties:
+                    az:
+                      description: AZ contains Azure specific values for clusters.
+                      properties:
+                        availabilityZones:
+                          description: AvailabilityZones are the zones in a region
+                            over which nodes and control plane are spread. For example
+                            [1,2,3]
+                          items:
+                            format: int32
+                            type: integer
+                          type: array
+                        serviceEndpoints:
+                          description: 'ServiceEndpoints provide direct connectivity
+                            to Azure services over the Azure backbone network. This
+                            is an optional list of one or more of the following values:
+                            Microsoft.AzureActiveDirectory, Microsoft.AzureCosmosDB,
+                            Microsoft.ContainerRegistry, Microsoft.EventHub, Microsoft.KeyVault,
+                            Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage
+                            and Microsoft.Web'
+                          items:
+                            enum:
+                            - Microsoft.AzureActiveDirectory
+                            - Microsoft.AzureCosmosDB
+                            - Microsoft.ContainerRegistry
+                            - Microsoft.EventHub
+                            - Microsoft.KeyVault
+                            - Microsoft.ServiceBus
+                            - Microsoft.Sql
+                            - Microsoft.Storage
+                            - Microsoft.Web
+                            type: string
+                          type: array
+                        sku:
+                          description: 'SKU (stock keeping unit) sets the SLA on the
+                            AKS control plane. Valid values are: - Free (default)
+                            - Paid'
+                          enum:
+                          - Free
+                          - Paid
+                          type: string
+                      type: object
                     pools:
                       additionalProperties:
                         description: NodepoolSpec defines a cluster worker node pool.
@@ -299,7 +383,7 @@ spec:
                       type: string
                   type: object
                 az:
-                  description: AZ values.
+                  description: AZ contains Azure specific values.
                   properties:
                     dns:
                       description: DNS is an optional list of custom DNS servers.
@@ -334,33 +418,6 @@ spec:
                             type: string
                         type: object
                       type: array
-                    serviceEndpoints:
-                      description: 'ServiceEndpoints provide direct connectivity to
-                        Azure services over the Azure backbone network. This is an
-                        optional list of one or more of the following values: Microsoft.AzureActiveDirectory,
-                        Microsoft.AzureCosmosDB, Microsoft.ContainerRegistry, Microsoft.EventHub,
-                        Microsoft.KeyVault, Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage
-                        and Microsoft.Web'
-                      items:
-                        enum:
-                        - Microsoft.AzureActiveDirectory
-                        - Microsoft.AzureCosmosDB
-                        - Microsoft.ContainerRegistry
-                        - Microsoft.EventHub
-                        - Microsoft.KeyVault
-                        - Microsoft.ServiceBus
-                        - Microsoft.Sql
-                        - Microsoft.Storage
-                        - Microsoft.Web
-                        type: string
-                      type: array
-                    sku:
-                      description: 'SKU (stock keeping unit) sets the SLA on the AKS
-                        control plane. Valid values are: - Free (default) - Paid'
-                      enum:
-                      - Free
-                      - Paid
-                      type: string
                     subnetNewbits:
                       description: Subnet newbits is the number of bits to add to
                         the VNet address mask to produce the subnet mask. IOW 2^subnetNewbits-1
@@ -378,12 +435,6 @@ spec:
                       description: VNet CIDR is the network range used by one or more
                         clusters.
                       type: string
-                    x:
-                      additionalProperties:
-                        type: string
-                      description: X are extension values (when regular values don't
-                        fit the need)
-                      type: object
                   type: object
                 budget:
                   description: Budget defines how many changes the operator is allowed
@@ -438,8 +489,9 @@ spec:
                       type: string
                     token:
                       description: Token is used to authenticate with the remote server.
-                        For Type=git; - Token or ~/.ssh key should be specified (azure
-                        devops requires the token to be prefixed with 'x:')
+                        For Type=git a token should be specified (azure devops requires
+                        the token to be prefixed with 'x:') or an ~/.ssh key should
+                        be present.
                       type: string
                     type:
                       description: 'Type is the type of repository to use as a source.
@@ -450,8 +502,9 @@ spec:
                       - local
                       type: string
                     url:
-                      description: URL is the URL of the repo. When Token is specified
-                        the URL is expected to start with 'https://'.
+                      description: "For type=git URL is the URL of the repo. When
+                        Token is specified the URL is expected to start with 'https://'.
+                        \n For type=local URL is path to a directory."
                       type: string
                   type: object
                 state:
@@ -466,6 +519,12 @@ spec:
                     storageAccount:
                       description: StorageAccount is the name of the Storage Account.
                       type: string
+                  type: object
+                x:
+                  additionalProperties:
+                    type: string
+                  description: X are extension values (when regular values don't fit
+                    the need)
                   type: object
               type: object
           type: object
