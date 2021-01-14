@@ -146,8 +146,6 @@ func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, 
 	st.Changed = last.TotalChanged
 	st.Deleted = last.TotalDestroyed
 
-	// TODO return values (or check policies now and flag a warning)
-
 	usink.Update(st)
 
 	return st.State == v1.StateReady

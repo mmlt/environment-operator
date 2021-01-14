@@ -23,6 +23,7 @@ import (
 type EnvironmentSpec struct {
 	// Destroy is true when an environment needs to be removed.
 	// Typically used in cluster delete/create test cases.
+	// (in addition to destroy: true a budget.deleteLimit: 99 is required)
 	Destroy bool `json:"destroy,omitempty"`
 
 	// Infra defines infrastructure that much exist before clusters can be created.
@@ -229,6 +230,16 @@ const (
 // +kubebuilder:validation:Enum=Microsoft.AzureActiveDirectory;Microsoft.AzureCosmosDB;Microsoft.ContainerRegistry;Microsoft.EventHub;Microsoft.KeyVault;Microsoft.ServiceBus;Microsoft.Sql;Microsoft.Storage;Microsoft.Web
 type AZServiceEndpoint string
 
+// LogAnalyticsWorkspace defines a sink for Kubernetes control plane log data.
+type LogAnalyticsWorkspace struct {
+	// SubscriptionID of the Log Analytics workspace.
+	SubscriptionID string `json:"subscriptionID,omitempty"`
+	// ResourceGroup name of the Log Analytics workspace.
+	ResourceGroupName string `json:"resourceGroupName,omitempty"`
+	// Name of the Log Analytics workspace.
+	Name string `json:"name,omitempty"`
+}
+
 // AZRoute is an entry in the routing table of the VNet.
 type AZRoute struct {
 	Name               string `json:"name,omitempty" hcl:"name"`
@@ -303,6 +314,11 @@ type ClusterAZSpec struct {
 	// Microsoft.KeyVault, Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage and Microsoft.Web
 	// +optional
 	ServiceEndpoints []AZServiceEndpoint `json:"serviceEndpoints,omitempty"`
+
+	// LogAnalyticsWorkspace is a sink for Kubernetes control plane log data.
+	// This is an optional value.
+	// +optional
+	LogAnalyticsWorkspace *LogAnalyticsWorkspace `json:"logAnalyticsWorkspace,omitempty"`
 }
 
 // ClusterAddonSpec defines what K8s resources needs to be deployed in a cluster after creation.

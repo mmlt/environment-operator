@@ -166,7 +166,7 @@ func main() {
 	}
 }
 
-// FlagsOK returns true when all required flags are set.
+// FlagsSet returns true when all required flags are set.
 // It logs flags with values and flags that are missing.
 func flagsSet(log logr.Logger, flags ...string) bool {
 	set := make(map[string]bool, len(flags))

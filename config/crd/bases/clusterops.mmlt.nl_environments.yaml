@@ -119,6 +119,21 @@ spec:
                               format: int32
                               type: integer
                             type: array
+                          logAnalyticsWorkspace:
+                            description: LogAnalyticsWorkspace is a sink for Kubernetes
+                              control plane log data. This is an optional value.
+                            properties:
+                              name:
+                                description: Name of the Log Analytics workspace.
+                                type: string
+                              resourceGroupName:
+                                description: ResourceGroup name of the Log Analytics
+                                  workspace.
+                                type: string
+                              subscriptionID:
+                                description: SubscriptionID of the Log Analytics workspace.
+                                type: string
+                            type: object
                           serviceEndpoints:
                             description: 'ServiceEndpoints provide direct connectivity
                               to Azure services over the Azure backbone network. This
@@ -272,6 +287,21 @@ spec:
                             format: int32
                             type: integer
                           type: array
+                        logAnalyticsWorkspace:
+                          description: LogAnalyticsWorkspace is a sink for Kubernetes
+                            control plane log data. This is an optional value.
+                          properties:
+                            name:
+                              description: Name of the Log Analytics workspace.
+                              type: string
+                            resourceGroupName:
+                              description: ResourceGroup name of the Log Analytics
+                                workspace.
+                              type: string
+                            subscriptionID:
+                              description: SubscriptionID of the Log Analytics workspace.
+                              type: string
+                          type: object
                         serviceEndpoints:
                           description: 'ServiceEndpoints provide direct connectivity
                             to Azure services over the Azure backbone network. This
@@ -352,8 +382,9 @@ spec:
                   type: string
               type: object
             destroy:
-              description: Destroy is true when an environment needs to be removed.
-                Typically used in cluster delete/create test cases.
+              description: 'Destroy is true when an environment needs to be removed.
+                Typically used in cluster delete/create test cases. (in addition to
+                destroy: true a budget.deleteLimit: 99 is required)'
               type: boolean
             infra:
               description: Infra defines infrastructure that much exist before clusters

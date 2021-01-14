@@ -23,8 +23,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags "-X m
 FROM docker.io/ubuntu:20.04
 
 ARG VERSION_TERRAFORM=0.13.5
-ARG VERSION_KUBECTL_TMPLT=v0.4.0
-ARG VERSION_KUBECTL=v1.18.1
+ARG VERSION_KUBECTL_TMPLT=v0.4.2
+ARG VERSION_KUBECTL=v1.18.10
 
 RUN apt update \
  && apt install -y curl git jq unzip vim-tiny \
