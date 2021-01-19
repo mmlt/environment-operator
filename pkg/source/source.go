@@ -236,7 +236,11 @@ func (ss *Sources) localFetch(spec v1.SourceSpec) (string, error) {
 	// or
 	// walk target dir and diff with source dir
 
-	err = otia10copy.Copy(spec.URL, p)
+	// Copy local dir to repo path.
+	// Ignore .git directory.
+	err = otia10copy.Copy(spec.URL, p, otia10copy.Options{Skip: func(src string) bool {
+		return filepath.Base(src) == ".git"
+	}})
 	if err != nil {
 		return "", fmt.Errorf("fetch: %w", err)
 	}

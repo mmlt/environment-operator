@@ -130,8 +130,10 @@ spec:
                                 description: ResourceGroup name of the Log Analytics
                                   workspace.
                                 type: string
-                              subscriptionID:
-                                description: SubscriptionID of the Log Analytics workspace.
+                              subscriptionName:
+                                description: SubscriptionName of the Log Analytics
+                                  workspace. This name refers to infra.az.subscription
+                                  list of subscriptions.
                                 type: string
                             type: object
                           serviceEndpoints:
@@ -170,7 +172,8 @@ spec:
                             pool.
                           properties:
                             maxPods:
-                              description: Max number of Pods per VM.
+                              description: Max number of Pods per VM. Changing this
+                                forces a new resource to be created.
                               format: int32
                               maximum: 250
                               minimum: 10
@@ -182,6 +185,19 @@ spec:
                               maximum: 100
                               minimum: 1
                               type: integer
+                            nodeLabels:
+                              additionalProperties:
+                                type: string
+                              description: An optional map of Kubernetes node labels.
+                                Changing this forces a new resource to be created.
+                              type: object
+                            nodeTaints:
+                              description: An optional list of Kubernetes node taints
+                                (e.g key=value:NoSchedule). Changing this forces a
+                                new resource to be created.
+                              items:
+                                type: string
+                              type: array
                             scale:
                               description: Number of VM's.
                               format: int32
@@ -189,7 +205,8 @@ spec:
                               minimum: 1
                               type: integer
                             vmSize:
-                              description: Type of VM's.
+                              description: Type of VM's. Changing this forces a new
+                                resource to be created.
                               type: string
                           type: object
                         description: Cluster worker pools. NB. For AKS a pool named
@@ -298,8 +315,10 @@ spec:
                               description: ResourceGroup name of the Log Analytics
                                 workspace.
                               type: string
-                            subscriptionID:
-                              description: SubscriptionID of the Log Analytics workspace.
+                            subscriptionName:
+                              description: SubscriptionName of the Log Analytics workspace.
+                                This name refers to infra.az.subscription list of
+                                subscriptions.
                               type: string
                           type: object
                         serviceEndpoints:
@@ -337,7 +356,8 @@ spec:
                         description: NodepoolSpec defines a cluster worker node pool.
                         properties:
                           maxPods:
-                            description: Max number of Pods per VM.
+                            description: Max number of Pods per VM. Changing this
+                              forces a new resource to be created.
                             format: int32
                             maximum: 250
                             minimum: 10
@@ -349,6 +369,19 @@ spec:
                             maximum: 100
                             minimum: 1
                             type: integer
+                          nodeLabels:
+                            additionalProperties:
+                              type: string
+                            description: An optional map of Kubernetes node labels.
+                              Changing this forces a new resource to be created.
+                            type: object
+                          nodeTaints:
+                            description: An optional list of Kubernetes node taints
+                              (e.g key=value:NoSchedule). Changing this forces a new
+                              resource to be created.
+                            items:
+                              type: string
+                            type: array
                           scale:
                             description: Number of VM's.
                             format: int32
@@ -356,7 +389,8 @@ spec:
                             minimum: 1
                             type: integer
                           vmSize:
-                            description: Type of VM's.
+                            description: Type of VM's. Changing this forces a new
+                              resource to be created.
                             type: string
                         type: object
                       description: Cluster worker pools. NB. For AKS a pool named
@@ -457,11 +491,20 @@ spec:
                       format: int32
                       type: integer
                     subscription:
-                      description: Subscription user friendly name.
-                      type: string
-                    subscriptionID:
-                      description: SubscriptionID
-                      type: string
+                      description: Subscription is a list of one or more subscriptions
+                        used during provisioning. The first subscription is the default
+                        subscription.
+                      items:
+                        description: AZSubscription is an Azure Subscription.
+                        properties:
+                          id:
+                            description: ID of the subscription.
+                            type: string
+                          name:
+                            description: Name of the subscription.
+                            type: string
+                        type: object
+                      type: array
                     vnetCIDR:
                       description: VNet CIDR is the network range used by one or more
                         clusters.

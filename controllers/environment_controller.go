@@ -316,7 +316,7 @@ func (r *EnvironmentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // IgnoreNotFound makes NotFound errors disappear.
 // We generally want to ignore (not requeue) NotFound errors, since we'll get a
-// reconciliation request once the object exists, and requeuing in the meantime
+// reconciliation request once the object exists, and re-queuing in the meantime
 // won't help.
 func ignoreNotFound(err error) error {
 	if apierrors.IsNotFound(err) {
@@ -326,14 +326,44 @@ func ignoreNotFound(err error) error {
 }
 
 // FlattenedClusterSpec returns []ClusterSpec merged with default values.
+// Return an error on spec validation issues.
 func flattenedClusterSpec(in v1.EnvironmentSpec) ([]v1.ClusterSpec, error) {
+	err := validateSpec(&in)
+	if err != nil {
+		return nil, fmt.Errorf("validate spec: %w", err)
+	}
+
 	var r []v1.ClusterSpec
 	for _, c := range in.Clusters {
 		cs := in.Defaults.DeepCopy()
-		mergo.Merge(cs, c, mergo.WithOverride)
-		//TODO validation; assert that required values are set and valid.
+
+		err = mergo.Merge(cs, c, mergo.WithOverride)
+		if err != nil {
+			return nil, fmt.Errorf("merge spec.cluster %s: %w", c.Name, err)
+		}
+
+		err = validateClusterSpec(cs)
+		if err != nil {
+			return nil, fmt.Errorf("validate spec.cluster %s: %w", c.Name, err)
+		}
+
 		r = append(r, *cs)
 	}
 
 	return r, nil
+}
+
+// ValidateSpec returns an error when spec values are missing or wrong.
+func validateSpec(es *v1.EnvironmentSpec) error {
+	if len(es.Infra.AZ.Subscription) == 0 {
+		return fmt.Errorf("spec.infra.az.subscription: at least 1 subscription expected")
+	}
+	//TODO logAnalyticsWorkspace.subscriptionName must be in spec.infra.subscription[]
+	return nil
+}
+
+// ValidateClusterSpec returns an error when cluster values are missing or wrong.
+func validateClusterSpec(cs *v1.ClusterSpec) error {
+	//TODO add validations
+	return nil
 }

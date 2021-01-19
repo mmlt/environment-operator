@@ -159,7 +159,7 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 		mvPath := filepath.Join(cw.Path, cl.Addons.MKV)
 
 		az := p.Azure
-		az.SetSubscription(ispec.AZ.Subscription)
+		az.SetSubscription(ispec.AZ.Subscription[0].Name) // already validated
 		pl = append(pl,
 			&step.AKSPoolStep{
 				Metaa:         stepMeta(nsn, cl.Name, step.TypeAKSPool, p.hash(tfw.Hash, ispec.AZ.ResourceGroup, cl.Infra.Version)),

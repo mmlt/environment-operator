@@ -177,11 +177,9 @@ type AADSpec struct {
 
 // AZSpec defines Azure specific infra structure settings.
 type AZSpec struct {
-	// Subscription user friendly name.
-	Subscription string `json:"subscription,omitempty"`
-
-	// SubscriptionID
-	SubscriptionID string `json:"subscriptionID,omitempty"`
+	// Subscription is a list of one or more subscriptions used during provisioning.
+	// The first subscription is the default subscription.
+	Subscription []AZSubscription `json:"subscription,omitempty"`
 
 	// ResourceGroup
 	ResourceGroup string `json:"resourceGroup,omitempty"`
@@ -211,6 +209,15 @@ type AZSpec struct {
 	Routes []AZRoute `json:"routes,omitempty"`
 }
 
+// AZSubscription is an Azure Subscription.
+type AZSubscription struct {
+	// Name of the subscription.
+	Name string `json:"name,omitempty"`
+
+	// ID of the subscription.
+	ID string `json:"id,omitempty"`
+}
+
 // AZOutbound sets the network outbound type.
 type AZOutbound string
 
@@ -230,10 +237,11 @@ const (
 // +kubebuilder:validation:Enum=Microsoft.AzureActiveDirectory;Microsoft.AzureCosmosDB;Microsoft.ContainerRegistry;Microsoft.EventHub;Microsoft.KeyVault;Microsoft.ServiceBus;Microsoft.Sql;Microsoft.Storage;Microsoft.Web
 type AZServiceEndpoint string
 
-// LogAnalyticsWorkspace defines a sink for Kubernetes control plane log data.
+// AZLogAnalyticsWorkspace defines a sink for Kubernetes control plane log data.
 type LogAnalyticsWorkspace struct {
-	// SubscriptionID of the Log Analytics workspace.
-	SubscriptionID string `json:"subscriptionID,omitempty"`
+	// SubscriptionName of the Log Analytics workspace.
+	// This name refers to infra.az.subscription list of subscriptions.
+	SubscriptionName string `json:"subscriptionName,omitempty"`
 	// ResourceGroup name of the Log Analytics workspace.
 	ResourceGroupName string `json:"resourceGroupName,omitempty"`
 	// Name of the Log Analytics workspace.
@@ -273,10 +281,22 @@ type ClusterInfraSpec struct {
 
 // NodepoolSpec defines a cluster worker node pool.
 type NodepoolSpec struct {
+	// An optional map of Kubernetes node labels.
+	// Changing this forces a new resource to be created.
+	// +optional
+	NodeLabels map[string]string `json:"nodeLabels,omitempty"`
+
+	// An optional list of Kubernetes node taints (e.g key=value:NoSchedule).
+	// Changing this forces a new resource to be created.
+	// +optional
+	NodeTaints []string `json:"nodeTaints,omitempty"`
+
 	// Type of VM's.
+	// Changing this forces a new resource to be created.
 	VMSize string `json:"vmSize,omitempty"`
 
 	// Max number of Pods per VM.
+	// Changing this forces a new resource to be created.
 	// +kubebuilder:validation:Minimum=10
 	// +kubebuilder:validation:Maximum=250
 	MaxPods int32 `json:"maxPods,omitempty"`
@@ -288,6 +308,7 @@ type NodepoolSpec struct {
 
 	// Max number of VM's.
 	// Setting MaxScale > Scale enables autoscaling.
+	// +optional
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	MaxScale int32 `json:"maxScale,omitempty"`
