@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// AKSPoolStep can upgrade AKS node pools to the desired kubernetes version.
+// AKSPoolStep can upgrade AKS node pools to the desired Kubernetes version.
 type AKSPoolStep struct {
 	Metaa
 
@@ -28,41 +28,31 @@ type AKSPoolStep struct {
 	Azure azure.AZer
 }
 
-// Meta returns a reference to the Metaa data of this Step.
-func (st *AKSPoolStep) Meta() *Metaa {
-	return &st.Metaa
-}
-
 // Execute node pool upgrade for a cluster.
-func (st *AKSPoolStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *AKSPoolStep) Execute(ctx context.Context, _ []string, log logr.Logger) {
 	log = log.WithName("az").WithValues("cluster", st.Cluster)
 	log.Info("start")
 
-	st.State = v1.StateRunning
-	usink.Update(st)
+	st.update(v1.StateRunning, "upgrade k8s version")
 
 	// get the current state of the node pools.
-	azcli := st.Azure
-	pools, err := azcli.AKSNodepoolList(st.ResourceGroup, st.Cluster)
+	pools, err := st.Azure.AKSNodepoolList(st.ResourceGroup, st.Cluster)
 	if err != nil {
-		log.Error(err, "az aks nodepool list")
-		isink.Warning(st.ID, "az aks nodepool list: "+err.Error())
-		st.State = v1.StateError
-		st.Msg = "az aks nodepool list:" + err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "az aks nodepool list")
+		return
 	}
 
 	// make sure the pools are updated in a predictable (alphabetical) order.
 	sort.Slice(pools, func(i, j int) bool { return pools[i].Name < pools[j].Name })
 
+	var alreadyAtRightVersion int
 	for _, pool := range pools {
 		log := log.WithValues("pool", pool.Name)
 
 		switch pool.ProvisioningState {
 		case azure.Succeeded:
 			if pool.OrchestratorVersion == st.Version {
-				// already up-to-date
+				alreadyAtRightVersion++
 				continue
 			}
 		//case az.Failed: TODO retry?
@@ -78,33 +68,25 @@ func (st *AKSPoolStep) Execute(ctx context.Context, env []string, isink Infoer, 
 		}
 
 		// Upgrade a pool
-		p, err := st.upgrade(ctx, pool.Name, isink, log)
+		p, err := st.upgrade(ctx, pool.Name, log)
 		if err != nil {
-			log.Error(err, "upgrade")
-			isink.Warning(st.ID, "upgrade:"+err.Error())
-			st.State = v1.StateError
-			st.Msg = "upgrade:" + err.Error()
-			usink.Update(st)
-			return false
+			st.error2(err, "upgrade k8s version")
+			return
 		}
-		_ = p //TODO collect the results?
+		_ = p // we might want to show the pool after upgrade
 
 		if pool.EnableAutoScaling {
 			err = st.Azure.Autoscaler(true, st.Cluster, pool)
-			log.Error(err, "enable autoscaler on cluster %s pool %s", st.Cluster, pool.Name)
+			log.Error(err, "enable autoscaler", "cluster", st.Cluster, "pool", pool.Name)
 		}
 	}
 
-	st.State = v1.StateReady
-	//TODO st.Msg = fmt.Sprintf("kubectl-tmplt errors=0 added=%d changed=%d deleted=%d", tA, tC, tD)
-
-	usink.Update(st)
-
-	return st.State == v1.StateReady
+	st.update(v1.StateReady, fmt.Sprintf("pools upgraded=%d, alreadyAtRightVersion=%d",
+		len(pools)-alreadyAtRightVersion, alreadyAtRightVersion))
 }
 
-//
-func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, log logr.Logger) (*azure.AKSNodepool, error) {
+// Upgrade
+func (st *AKSPoolStep) upgrade(_ context.Context, pool string, log logr.Logger) (*azure.AKSNodepool, error) {
 	stop := make(chan bool)
 
 	// start poller that provides status updates during the upgrade.
@@ -122,7 +104,7 @@ func (st *AKSPoolStep) upgrade(ctx context.Context, pool string, isink Infoer, l
 					log.Error(err, "poll nodepool")
 					continue
 				}
-				isink.Info(st.ID, fmt.Sprintf("%s %s %s", st.Cluster, pool, p.ProvisioningState))
+				log.Info("pool status", "cluster", st.Cluster, "pool", pool, "state", p.ProvisioningState)
 			}
 		}
 	}()

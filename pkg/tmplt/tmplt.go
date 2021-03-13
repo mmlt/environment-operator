@@ -2,7 +2,7 @@ package tmplt
 
 import (
 	"fmt"
-	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/rodaine/hclencoder"
 	"io"
 	"io/ioutil"
@@ -41,7 +41,12 @@ func ExpandFile(path, suffix string, values interface{}) error {
 	}
 	defer out.Close()
 
-	return Expand(path, string(in), out, values)
+	err = Expand(path, string(in), out, values)
+	if err != nil {
+		return err
+	}
+
+	return out.Close()
 }
 
 // Expand takes an in string with https://golang.org/pkg/text/template/ directives and values

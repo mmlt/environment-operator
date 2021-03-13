@@ -4,6 +4,7 @@ package azure
 import (
 	"fmt"
 	"github.com/go-logr/logr"
+	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/util/exe"
 	"strings"
 )
@@ -25,8 +26,10 @@ type AZer interface {
 	// AKSNodepoolUpgrade upgrades the node pool in a managed Kubernetes cluster to Kubernetes version.
 	// Expect this call to block for VM count * 10m.
 	AKSNodepoolUpgrade(resourceGroup, cluster, nodepool, version string) (*AKSNodepool, error)
-	// Autoscaling enables or disables the autoscaler.
+	// Autoscaling enables or disables a Node autoscaler.
 	Autoscaler(enable bool, cluster string, pool AKSNodepool) error
+	// AllAutoscalers enables or disables the Node autoscalers of multiple clusters.
+	AllAutoscalers(enable bool, clusters []v1.ClusterSpec, resourceGroup string, log logr.Logger) error
 }
 
 // AZ is able to perform az cli commands.

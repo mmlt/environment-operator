@@ -37,7 +37,7 @@ type KTResult struct {
 	// The sequence number of the object.
 	ObjectID string
 	// Most recently logged action being performed; creating (creation), modifying (modification), destroying (destruction).
-	// *ing means in-progress, *tion means completed. TODO consider normalizing *tion to *ed
+	// *ing means in-progress, *tion means completed.
 	Action string
 }
 
@@ -78,15 +78,18 @@ func (a *Addon) parseAsyncAddonResponse(in io.ReadCloser) chan KTResult {
 	out := make(chan KTResult)
 
 	// hold running totals.
-	result := &KTResult{}
+	changed := 0
 
 	go func() {
 		sc := bufio.NewScanner(in)
 		for sc.Scan() {
 			s := sc.Text()
 			a.Log.V(3).Info("RunAsync-result", "text", s)
-			r := parseAddonResponseLine(result, s)
+			r := parseAddonResponseLine(s)
 			if r != nil {
+				// every line counts as a change.
+				changed++
+				r.Changed = changed
 				out <- *r
 			}
 		}
@@ -100,16 +103,15 @@ func (a *Addon) parseAsyncAddonResponse(in io.ReadCloser) chan KTResult {
 	return out
 }
 
-// ParseAddonResponseLine parses a line.
-// If content can be extracted from line it returns an updated shallow copy of in, otherwise it returns nil.
-// It increments in running counters.
-func parseAddonResponseLine(in *KTResult, line string) *KTResult {
+// ParseAddonResponseLine parses a line and returns the result.
+// If parsing fails it returns nil.
+func parseAddonResponseLine(line string) *KTResult {
 	if len(line) < 3 {
 		// not interesting.
 		return nil
 	}
 
-	r := *in
+	r := KTResult{}
 
 	if line[0] == 'E' {
 		r.Errors = append(r.Errors, line[2:])
@@ -128,7 +130,7 @@ func parseAddonResponseLine(in *KTResult, line string) *KTResult {
 			r.Action = v
 		case "id":
 			r.ObjectID = v
-			// not used: "tpl" "level"
+			// case "tpl" "level" are ignored.
 		}
 	})
 
@@ -151,7 +153,6 @@ func kvDo(line string, do func(k, v string)) {
 			return false
 		default:
 			return unicode.IsSpace(c)
-
 		}
 	})
 	for _, s := range ss {

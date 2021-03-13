@@ -1,6 +1,8 @@
 package azure
 
 import (
+	"github.com/go-logr/logr"
+	v1 "github.com/mmlt/environment-operator/api/v1"
 	"time"
 )
 
@@ -17,6 +19,8 @@ type AZFake struct {
 
 	KeyvaultSecretResult string
 }
+
+var _ AZer = &AZFake{}
 
 func (c *AZFake) SetSubscription(sub string) {
 	return
@@ -59,7 +63,7 @@ func (c *AZFake) AKSNodepool(resourceGroup, cluster, nodepool string) (*AKSNodep
 // Expect this call to block for 10m per VM.
 func (c *AZFake) AKSNodepoolUpgrade(resourceGroup, cluster, nodepool, version string) (*AKSNodepool, error) {
 	c.AKSNodepoolUpgradeTally++
-	time.Sleep(15 * time.Second)
+	time.Sleep(2 * time.Second)
 	return &c.AKSNodepoolUpgradeResult, nil
 }
 
@@ -103,4 +107,12 @@ func (c *AZFake) SetupFakeResults() {
 		ProvisioningState:   "Succeeded",
 		VMSize:              "Standard_DS2_v2",
 	}
+}
+
+func (c *AZFake) Autoscaler(enable bool, cluster string, pool AKSNodepool) error {
+	return nil
+}
+
+func (c *AZFake) AllAutoscalers(enable bool, clusters []v1.ClusterSpec, resourceGroup string, log logr.Logger) error {
+	return nil
 }

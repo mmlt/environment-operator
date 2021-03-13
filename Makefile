@@ -50,6 +50,7 @@ fmt:
 # Run go vet against code
 vet:
 	go vet ./...
+	gosec -quiet -exclude=G204,G304,G401,G505 ./...
 
 # Generate code
 generate: controller-gen
@@ -87,7 +88,7 @@ endif
 
 # Install developer tools.
 install-tools:
-	grep _ tools.go | cut -d'"' -f2 | xargs go install
+	grep _ pkg/internal/tools/tools.go | cut -d'"' -f2 | xargs go install
 
 gogenerate:
 	go generate

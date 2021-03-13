@@ -13,7 +13,6 @@ import (
 func vaultInfraValues(infra v1.InfraSpec, c cloud.Cloud) (v1.InfraSpec, error) {
 	var err error
 
-	//TODO generic way of traversing struct and finding vault refs (use struct tag to determine if field may contain ref)
 	err = vaultValue(&infra.State.Access, c, "access", err)
 	err = vaultValue(&infra.AAD.TenantID, c, "tenantID", err)
 	err = vaultValue(&infra.AAD.ClientAppID, c, "clientAppID", err)

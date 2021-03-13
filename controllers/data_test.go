@@ -22,9 +22,14 @@ func testEnvironmentCR(nn types.NamespacedName, spec *v1.EnvironmentSpec) *v1.En
 func testSpec1() *v1.EnvironmentSpec {
 	return &v1.EnvironmentSpec{
 		Infra: v1.InfraSpec{
+			AZ: v1.AZSpec{
+				Subscription: []v1.AZSubscription{
+					{Name: "dummy", ID: "12345"},
+				},
+			},
 			Source: v1.SourceSpec{
 				Type: "local",
-				URL:  "../config/samples/terraform", // relative to dir containing this _test.go file.
+				URL:  "testdata/terraform", // relative to dir containing this _test.go file.
 			},
 			Main: "main.tf",
 		},
@@ -38,7 +43,7 @@ func testSpec1() *v1.EnvironmentSpec {
 			Addons: v1.ClusterAddonSpec{
 				Source: v1.SourceSpec{
 					Type: "local",
-					URL:  "../config/samples/addons", // relative to dir containing this _test.go file.
+					URL:  "testdata/addons", // relative to dir containing this _test.go file.
 				},
 				Jobs: []string{
 					"cluster/local/minikube/all.yaml",
@@ -65,7 +70,7 @@ func testSpec1() *v1.EnvironmentSpec {
 	}
 }
 
-// TestSpecLocal for test runs ICW with local k8s cluster.
+// TestSpecLocal for all steps ICW with local k8s cluster.
 func testSpecLocal() *v1.EnvironmentSpec {
 	return &v1.EnvironmentSpec{
 
@@ -75,7 +80,7 @@ func testSpecLocal() *v1.EnvironmentSpec {
 
 			Source: v1.SourceSpec{
 				Type: "local",
-				URL:  "../config/samples/terraform", // relative to dir containing this _test.go file.
+				URL:  "testdata/terraform", // relative to dir containing this _test.go file.
 			},
 			Main: "main.tf",
 
@@ -86,13 +91,12 @@ func testSpecLocal() *v1.EnvironmentSpec {
 				ClientAppID:     "na",
 			},
 			AZ: v1.AZSpec{
-				Subscription:  "dummy",
+				Subscription: []v1.AZSubscription{
+					{Name: "dummy", ID: "12345"},
+				},
 				ResourceGroup: "dummy",
 				VNetCIDR:      "10.20.30.0/24",
 				SubnetNewbits: 5,
-				X: map[string]string{
-					"extra": "value",
-				},
 			},
 		},
 		Defaults: v1.ClusterSpec{
@@ -106,40 +110,50 @@ func testSpecLocal() *v1.EnvironmentSpec {
 			Addons: v1.ClusterAddonSpec{
 				Source: v1.SourceSpec{
 					Type: "local",
-					URL:  "../config/samples/addons", // relative to dir containing this _test.go file.
+					URL:  "testdata/addons", // relative to dir containing this _test.go file.
 				},
 				Jobs: []string{
 					"cluster/local/minikube/all.yaml",
 				},
+				MKV: "mkv/fake",
 				X: map[string]string{
-					"owner":          "xyz",
+					"owner":          "harry",
 					"costcenter":     "default",
 					"environment":    "local",
 					"cpe/gitops":     "envop",
 					"k8sEnvironment": "local",
-					"k8sDomain":      "xyz.com",
+					"k8sDomain":      "example.com",
 				},
 			},
 		},
 		Clusters: []v1.ClusterSpec{
 			{
-				Name: "one",
+				Name: "xyz",
 
 				Infra: v1.ClusterInfraSpec{
 					SubnetNum: 1,
 					Pools: map[string]v1.NodepoolSpec{
-						"default": v1.NodepoolSpec{Scale: 2, VMSize: "Standard_DS2_v2"},
+						"default": {Scale: 2, VMSize: "Standard_DS2_v2"},
 					},
 					X: map[string]string{
-						"overridden": "one-cluster",
+						"overridden": "xyz-cluster",
 					},
 				},
 				Addons: v1.ClusterAddonSpec{
 					X: map[string]string{
-						"k8sDomain": "one",
+						"k8sDomain": "xyz",
 					},
 				},
 			},
 		},
 	}
+}
+
+// TestSpecLocalDestroy for Destroy ICW with local k8s cluster.
+func testSpecLocalDestroy() *v1.EnvironmentSpec {
+	cr := testSpecLocal()
+	cr.Destroy = true
+	x := int32(99)
+	cr.Infra.Budget.DeleteLimit = &x
+	return cr
 }

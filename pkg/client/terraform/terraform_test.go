@@ -43,7 +43,8 @@ commands will detect it and remind you to do so if necessary.
 				Info: 1,
 				Text: "Initializing modules...\n- test in modules/aks\n\nInitializing the backend...\n\nInitializing provider plugins...\n- Checking for available provider plugins...\n- Downloading plugin for provider \"azuread\" (hashicorp/azuread) 0.3.1...\n- Downloading plugin for provider \"azurerm\" (hashicorp/azurerm) 1.39.0...\n\nTerraform has been successfully initialized!\n\nYou may now begin working with Terraform. Try running \"terraform plan\" to see\nany changes that are required for your infrastructure. All Terraform commands\nshould now work.\n\nIf you ever set or change modules or backend configuration for Terraform,\nrerun this command to reinitialize your working directory. If you forget, other\ncommands will detect it and remind you to do so if necessary.\n",
 			},
-		}, {
+		},
+		{
 			it: "must return success for when terraform init is repeated",
 			in: `Initializing modules...
 
@@ -66,7 +67,8 @@ commands will detect it and remind you to do so if necessary.
 				Info: 1,
 				Text: "Initializing modules...\n\nInitializing the backend...\n\nInitializing provider plugins...\n\nTerraform has been successfully initialized!\n\nYou may now begin working with Terraform. Try running \"terraform plan\" to see\nany changes that are required for your infrastructure. All Terraform commands\nshould now work.\n\nIf you ever set or change modules or backend configuration for Terraform,\nrerun this command to reinitialize your working directory. If you forget, other\ncommands will detect it and remind you to do so if necessary.\n",
 			},
-		}, {
+		},
+		{
 			it: "must error when terraform init dir does not exist",
 			in: `Terraform initialized in an empty directory!
 
@@ -77,7 +79,8 @@ with Terraform immediately by creating Terraform configuration files.
 			want: TFResult{
 				Text: "Terraform initialized in an empty directory!\n\nThe directory has no Terraform configuration files. You may begin working\nwith Terraform immediately by creating Terraform configuration files.\n",
 			},
-		}, {
+		},
+		{
 			it: "must error when 'provider' has typos",
 			in: `Initializing modules...
 
@@ -120,7 +123,8 @@ To see the full set of errors that led to this message, run:
 				Warnings: 1,
 				Text:     "Initializing modules...\n\nInitializing provider plugins...\n\nThe following providers do not have any version constraints in configuration,\nso the latest version was installed.\n\nTo prevent automatic upgrades to new major versions that may contain breaking\nchanges, it is recommended to add version = \"...\" constraints to the\ncorresponding provider blocks in configuration, with the constraint strings\nsuggested below.\n\n* provider.azurerm: version = \"~> 1.39\"\n\n\nWarning: Skipping backend initialization pending configuration upgrade\n\nThe root module configuration contains errors that may be fixed by running the\nconfiguration upgrade tool, so Terraform is skipping backend initialization.\nSee below for more information.\n\n\nTerraform has initialized, but configuration upgrades may be needed.\n\nTerraform found syntax errors in the configuration that prevented full\ninitialization. If you've recently upgraded to Terraform v0.12, this may be\nbecause your configuration uses syntax constructs that are no longer valid,\nand so must be updated before full initialization is possible.\n\nTerraform has installed the required providers to support the configuration\nupgrade process. To begin upgrading your configuration, run the following:\n    terraform 0.12upgrade\n\nTo see the full set of errors that led to this message, run:\n    terraform validate\n",
 			},
-		}, {
+		},
+		{
 			it:    "it must error when terraform init exits with non-zero code",
 			in:    ``,
 			inErr: newExitError(1),
@@ -129,7 +133,8 @@ To see the full set of errors that led to this message, run:
 					"exec: \"exit\": executable file not found in $PATH",
 				},
 			},
-		}, {
+		},
+		{
 			it:    "must handle empty input",
 			in:    ``,
 			inErr: nil,
@@ -138,10 +143,15 @@ To see the full set of errors that led to this message, run:
 	}
 
 	for _, tst := range tsts {
-		got := parseInitResponse(tst.in, tst.inErr)
-		assert.Equal(t, tst.want, *got, "It %s.", tst.it)
+		t.Run(tst.it, func(t *testing.T) {
+			got := parseInitResponse(tst.in, tst.inErr)
+			assert.Equal(t, tst.want, *got)
+		})
 	}
 }
+
+// sameAsIn is used when the string is the same as the tst.in value.
+const sameAsIn = "SAME_AS_IN"
 
 func TestParsePlanResponse(t *testing.T) {
 	tsts := []struct {
@@ -155,9 +165,10 @@ func TestParsePlanResponse(t *testing.T) {
 			in:    `stat _main.tf: no such file or directory`,
 			inErr: newExitError(1),
 			want: TFResult{
-				Errors: []string{},
+				Text: sameAsIn,
 			},
-		}, {
+		},
+		{
 			it: "must error when terraform plan is invoked with a non existing -tfvars-file",
 			in: `
 Error: Failed to read variables file
@@ -166,9 +177,11 @@ Given variables file _main.tfvars does not exist.
 `,
 			inErr: nil,
 			want: TFResult{
-				Errors: []string{},
+				Text: sameAsIn,
 			},
-		}, {it: "must warn when values are provided that aren't used",
+		},
+		{
+			it: "must warn when values are provided that aren't used",
 			in: `
 Warning: Value for undeclared variable
 
@@ -184,8 +197,10 @@ environment variables to set these instead.
 			inErr: nil,
 			want: TFResult{
 				Warnings: 1,
+				Text:     sameAsIn,
 			},
-		}, {
+		},
+		{
 			it: "must return success if no errors are present",
 			in: `
 Refreshing Terraform state in-memory prior to plan...
@@ -233,8 +248,10 @@ Plan: 3 to add, 0 to change, 0 to destroy.
 			want: TFResult{
 				Info:      1,
 				PlanAdded: 3,
+				Text:      sameAsIn,
 			},
-		}, {
+		},
+		{
 			it: "must handle backticks and double quotes",
 			in: "\n" +
 				"Warning: \"route_table_id\": [DEPRECATED] Use the `azurerm_subnet_route_table_association` resource instead.\n" +
@@ -246,20 +263,24 @@ Plan: 3 to add, 0 to change, 0 to destroy.
 			inErr: nil,
 			want: TFResult{
 				Warnings: 1,
+				Text:     sameAsIn,
 			},
-		}, {
+		},
+		{
 			it:    "must error when terraform plan exits with exit code 1",
 			in:    ``,
 			inErr: newExitError(1),
 			want: TFResult{
-				Errors: []string{},
+				Text: sameAsIn,
 			},
-		}, {
+		},
+		{
 			it:    "must handle empty input",
 			in:    ``,
 			inErr: nil,
 			want:  TFResult{},
-		}, {
+		},
+		{
 			it: "must parse the numbers to add, change, delete correctly",
 			in: `<some input deleted>
 
@@ -278,13 +299,19 @@ To perform exactly these actions, run the following command to apply:
 				PlanAdded:   1,
 				PlanChanged: 22,
 				PlanDeleted: 33,
+				Text:        sameAsIn,
 			},
 		},
 	}
 
 	for _, tst := range tsts {
-		got := parsePlanResponse(tst.in, tst.inErr)
-		assert.Equal(t, *got, tst.want, "It %s.", tst.it)
+		t.Run(tst.it, func(t *testing.T) {
+			got := parsePlanResponse(tst.in, tst.inErr)
+			if tst.want.Text == sameAsIn {
+				tst.want.Text = tst.in
+			}
+			assert.Equal(t, tst.want, *got)
+		})
 	}
 }
 

@@ -25,40 +25,6 @@ type TerraformFake struct {
 	Log logr.Logger
 }
 
-//TODO remove
-//func NewFake(log logr.Logger) *TerraformFake {
-//	return &TerraformFake{
-//		InitResult: TFResult{
-//			Info: 1,
-//		},
-//		PlanResult: TFResult{
-//			Info: 1,
-//		},
-//		ApplyResult: []TFApplyResult{
-//			{Modifying: 1, Object: "azurerm_route_table.env", Action: "modifying", Elapsed: ""},
-//			{Modifying: 1, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: ""},
-//			{Modifying: 1, Destroying: 1, Object: "azurerm_route_table.env", Action: "modifications", Elapsed: "1s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_subnet.this", Action: "modifying", Elapsed: ""},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "10s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_subnet.this", Action: "modifying", Elapsed: "10s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "20s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_subnet.this", Action: "modifying", Elapsed: "20s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "30s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_subnet.this", Action: "modifying", Elapsed: "30s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_subnet.this", Action: "modifications", Elapsed: "32s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "40s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "50s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "1m0s"},
-//			{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destruction", Elapsed: "1m8s"},
-//			{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creating", Elapsed: ""},
-//			{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creating", Elapsed: "[10s"},
-//			{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creating", Elapsed: "[20s"},
-//			{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creating", Elapsed: "[30s"},
-//			{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creation", Elapsed: "6m22s"},
-//			{Creating: 1, Modifying: 2, Destroying: 1, TotalAdded: 1, TotalChanged: 2, TotalDestroyed: 1, Object: "", Action: "", Elapsed: ""}},
-//	}
-//}
-
 // Init implements Terraformer.
 func (t *TerraformFake) Init(ctx context.Context, env []string, dir string) *TFResult {
 	t.InitTally++
@@ -185,9 +151,26 @@ func (t *TerraformFake) SetupFakeResults(clusters map[string]interface{}) {
 		{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creation", Elapsed: "6m22s"},
 		{Creating: 1, Modifying: 2, Destroying: 1, TotalAdded: 1, TotalChanged: 2, TotalDestroyed: 1, Object: "", Action: "", Elapsed: ""}}
 
+	t.DestroyMustSucceed()
+
 	t.OutputResult = map[string]interface{}{
 		"clusters": map[string]interface{}{
 			"value": clusters,
 		},
 	}
+}
+
+// DestroyMustSucceed makes the fake replay failed destroy.
+func (t *TerraformFake) DestroyMustFail() {
+	t.DestroyResult = nil
+}
+
+// DestroyMustSucceed makes the fake replay a successful destroy.
+func (t *TerraformFake) DestroyMustSucceed() {
+	t.DestroyResult = []TFApplyResult{
+		{Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "40s"},
+		{Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "50s"},
+		{Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "1m0s"},
+		{Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destruction", Elapsed: "1m8s"},
+		{Destroying: 1, TotalAdded: 0, TotalChanged: 0, TotalDestroyed: 1, Object: "", Action: "", Elapsed: ""}}
 }

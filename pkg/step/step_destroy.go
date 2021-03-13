@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
+	"github.com/mmlt/environment-operator/pkg/client/azure"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/tmplt"
@@ -27,6 +28,8 @@ type DestroyStep struct {
 	Cloud cloud.Cloud
 	// Terraform is the terraform implementation to use.
 	Terraform terraform.Terraformer
+	// Azure is the azure cli implementation to use.
+	Azure azure.AZer
 
 	/* Results */
 
@@ -34,84 +37,66 @@ type DestroyStep struct {
 	Added, Changed, Deleted int
 }
 
-// Meta returns a reference to the Metaa data of this Step.
-func (st *DestroyStep) Meta() *Metaa {
-	return &st.Metaa
-}
-
 // DeleteLimitForDestroy is the number the budget.deleteLimit must have for the Destroy to proceed.
 // Any other number will deny Destroy.
 const deleteLimitForDestroy = 99
 
 // Execute terraform destroy.
-func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *DestroyStep) Execute(ctx context.Context, env []string, log logr.Logger) {
 	// Check budget.
 	b := st.Values.Infra.Budget
 	if b.DeleteLimit == nil || int(*b.DeleteLimit) != deleteLimitForDestroy {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("destroy requires budget.deleteLimit=%d to proceed", deleteLimitForDestroy)
-		usink.Update(st)
-		return false
+		msg := fmt.Sprintf("destroy requires budget.deleteLimit=%d to proceed", deleteLimitForDestroy)
+		st.error2(nil, msg)
+		return
 	}
 
 	log.Info("start")
 
 	// Init
-	// TODO refactor; similar code in step_destroy.go
-	st.State = v1.StateRunning
-	st.Msg = "terraform init"
-	usink.Update(st)
+	st.update(v1.StateRunning, "terraform init")
 
 	err := tmplt.ExpandAll(st.SourcePath, ".tmplt", st.Values)
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "tmplt")
+		return
 	}
 
 	sp, err := st.Cloud.Login()
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "login")
+		return
 	}
 	xenv := terraformEnviron(sp, st.Values.Infra.State.Access)
+	writeEnv(xenv, st.SourcePath, "infra.env", log) // useful when invoking terraform manually.
 	env = util.KVSliceMergeMap(env, xenv)
 
 	tfr := st.Terraform.Init(ctx, env, st.SourcePath)
 	writeText(tfr.Text, st.SourcePath, "init.txt", log)
 	if len(tfr.Errors) > 0 {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("terraform init %s", tfr.Errors[0]) // first error only
-		usink.Update(st)
-		return false
+		st.error2(nil, "terraform init "+tfr.Errors[0] /*first error only*/)
+		return
+	}
+
+	// Disable autoscaler(s)
+	err = st.Azure.AllAutoscalers(false, st.Values.Clusters, st.Values.Infra.AZ.ResourceGroup, log)
+	if err != nil {
+		st.error2(err, "az aks nodepool list")
+		return
 	}
 
 	// Destroy
-	st.Msg = "terraform destroy"
-	usink.Update(st)
+	st.update(v1.StateRunning, "terraform destroy")
 
 	cmd, ch, err := st.Terraform.StartDestroy(ctx, env, st.SourcePath)
 	if err != nil {
-		log.Error(err, "start terraform destroy")
-		isink.Warning(st.ID, "start terraform destroy:"+err.Error())
-		st.State = v1.StateError
-		st.Msg = "start terraform destroy:" + err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "start terraform destroy")
+		return
 	}
 
-	st.State = v1.StateRunning
-	usink.Update(st)
-
-	// notify sink while waiting for command completion.
+	// keep last line of stdout/err
 	var last *terraform.TFApplyResult
 	for r := range ch {
-		if r.Object != "" {
-			isink.Info(st.ID, r.Object+" "+r.Action)
-		}
 		last = &r
 	}
 
@@ -123,30 +108,25 @@ func (st *DestroyStep) Execute(ctx context.Context, env []string, isink Infoer, 
 		}
 	}
 
-	writeText(last.Text, st.SourcePath, "destroy.txt", log)
+	if last != nil {
+		writeText(last.Text, st.SourcePath, "destroy.txt", log)
+	}
 
 	// Return results.
 	if last == nil {
-		st.State = v1.StateError
-		st.Msg = "did not receive response from terraform destroy"
-		usink.Update(st)
-		return false
+		st.error2(nil, "did not receive response from terraform destroy")
+		return
 	}
 
 	if len(last.Errors) > 0 {
-		st.State = v1.StateError
-		st.Msg = strings.Join(last.Errors, ", ")
-	} else {
-		st.State = v1.StateReady
-		st.Msg = fmt.Sprintf("terraform destroy errors=0 added=%d changed=%d deleted=%d",
-			last.TotalAdded, last.TotalChanged, last.TotalDestroyed)
+		st.error2(nil, strings.Join(last.Errors, ", "))
+		return
 	}
 
 	st.Added = last.TotalAdded
 	st.Changed = last.TotalChanged
 	st.Deleted = last.TotalDestroyed
 
-	usink.Update(st)
-
-	return st.State == v1.StateReady
+	st.update(v1.StateReady, fmt.Sprintf("terraform destroy errors=0 added=%d changed=%d deleted=%d",
+		last.TotalAdded, last.TotalChanged, last.TotalDestroyed))
 }

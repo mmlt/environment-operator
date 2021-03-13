@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-// InitStep performs a terraform init
+// KubeconfigStep reads data from terraform and creates a kubeconfig file.
 type KubeconfigStep struct {
 	Metaa
 
@@ -41,74 +41,54 @@ type KubeconfigStep struct {
 	Kubectl kubectl.Kubectrler
 }
 
-// Meta returns a reference to the Metaa data of this Step.
-func (st *KubeconfigStep) Meta() *Metaa {
-	return &st.Metaa
-}
-
 // Run a step.
-func (st *KubeconfigStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *KubeconfigStep) Execute(ctx context.Context, env []string, log logr.Logger) {
 	log.Info("start")
 
-	// Run.
-	st.State = v1.StateRunning
-	usink.Update(st)
+	st.update(v1.StateRunning, "get kubeconfig")
 
 	sp, err := st.Cloud.Login()
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "login")
+		return
 	}
 	xenv := terraformEnviron(sp, st.Access)
 	env = util.KVSliceMergeMap(env, xenv)
 
 	o, err := st.Terraform.Output(ctx, env, st.TFPath)
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("terraform output: %v", err)
-		usink.Update(st)
-		return false
+		st.error2(err, "terraform output")
+		return
 	}
 
 	kc, err := kubeconfig(o, st.ClusterName)
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("kubeconfig from terraform output: %v", err)
-		usink.Update(st)
-		return false
+		st.error2(err, "kubeconfig from terraform output")
+		return
 	}
 
 	err = ioutil.WriteFile(st.KCPath, kc, 0664)
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("write kubeconfig: %v", err)
-		usink.Update(st)
-		return false
+		st.error2(err, "write kubeconfig")
+		return
 	}
 
+	//TODO move to AKSAddonPreflight
 	// Wait for AKS to have resources deployed.
 	// On 20200821 when AKS provisioning is completed (according to terraform) it still takes 5 minutes or more for
-	// the default StorageClass to appear. During that time window PVC's that specify no storageClass: will fail.
-	err = st.waitForDefaultStorageClass(usink)
+	// the default StorageClass to appear. During that time window PVC's that don't set 'storageClass:' will fail.
+	st.update(v1.StateRunning, "check default StorageClass is present")
+	err = st.waitForDefaultStorageClass()
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("waiting for default StorageClass: %v", err)
-		usink.Update(st)
-		return false
+		st.error2(err, "waiting for default StorageClass")
+		return
 	}
 
-	// Return results.
-	st.State = v1.StateReady
-
-	usink.Update(st)
-
-	return st.State == v1.StateReady
+	st.update(v1.StateReady, "default StorageClass is present")
 }
 
 // WaitForDefaultStorageClass waits until the target cluster contains a StorageClass with 'default' annotation.
-func (st *KubeconfigStep) waitForDefaultStorageClass(usink Updater) error {
+func (st *KubeconfigStep) waitForDefaultStorageClass() error {
 	var errTally int
 
 	end := time.Now().Add(10 * time.Minute)
@@ -128,14 +108,9 @@ func (st *KubeconfigStep) waitForDefaultStorageClass(usink Updater) error {
 				v = sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"]
 			}
 			if v == "true" {
-				st.Msg = fmt.Sprintf("default StorageClass present")
-				usink.Update(st)
 				return nil
 			}
 		}
-
-		st.Msg = fmt.Sprintf("waiting for default StorageClass to appear")
-		usink.Update(st)
 	}
 
 	return fmt.Errorf("time-out")

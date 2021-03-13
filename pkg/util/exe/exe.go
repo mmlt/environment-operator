@@ -37,8 +37,14 @@ func Run(log logr.Logger, options *Opt, stdin string, cmd string, args ...string
 		}
 
 		go func() {
-			defer sin.Close()
-			io.WriteString(sin, stdin)
+			_, err := io.WriteString(sin, stdin)
+			if err != nil {
+				log.Error(err, "write stdin")
+			}
+			err = sin.Close()
+			if err != nil {
+				log.Error(err, "close stdin")
+			}
 		}()
 	}
 
@@ -55,7 +61,7 @@ func Run(log logr.Logger, options *Opt, stdin string, cmd string, args ...string
 }
 
 // RunAsync returns an exec.Cmd that requires Start() and Wait() to run it.
-func RunAsync(ctx context.Context, log logr.Logger, options *Opt, stdin string, cmd string, args ...string) *exec.Cmd {
+func RunAsync(ctx context.Context, log logr.Logger, options *Opt, _ /*stdin*/ string, cmd string, args ...string) *exec.Cmd {
 	log.V(2).Info("RunAsync", "cmd", cmd, "args", args)
 
 	c := exec.CommandContext(ctx, cmd, args...)

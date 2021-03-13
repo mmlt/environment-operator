@@ -1,0 +1,4 @@
+steps:
+- tmplt: ../../../tpl/namespace.yaml
+  values:
+    name: addons

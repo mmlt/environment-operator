@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-// InfraStep performs a terraform init, plan, apply
+// InfraStep performs a terraform init, plan and apply.
 type InfraStep struct {
 	Metaa
 
@@ -26,8 +26,6 @@ type InfraStep struct {
 	Values InfraValues
 	// SourcePath is the path to the directory containing terraform code.
 	SourcePath string
-	// Hash is an opaque value passed to Update.
-
 	// Cloud provides generic cloud functionality.
 	Cloud cloud.Cloud
 	// Terraform provides terraform functionality.
@@ -35,7 +33,7 @@ type InfraStep struct {
 
 	/* Results */
 
-	// Added, Changed, Deleted are then number of infrastructure objects affected when applying the plan.
+	// Added, Changed, Deleted are then number of infrastructure objects affected.
 	Added, Changed, Deleted int
 }
 
@@ -45,41 +43,24 @@ type InfraValues struct {
 	Clusters []v1.ClusterSpec
 }
 
-// Meta returns a reference to the Metaa data of this Step.
-func (st *InfraStep) Meta() *Metaa {
-	return &st.Metaa
-}
-
 // Run a step.
-func (st *InfraStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *InfraStep) Execute(ctx context.Context, env []string, log logr.Logger) {
 	log.Info("start")
 
-	// TODO
-	//  review isink usage
-	//  refactor error handling commonality.
-	//  refactor similar code in step_destroy.go
-
-	// Init
-	st.State = v1.StateRunning
-	st.Msg = "terraform init"
-	usink.Update(st)
+	st.update(v1.StateRunning, "terraform init")
 
 	writeJSON(st.Values, st.SourcePath, "values.json", log)
 
 	err := tmplt.ExpandAll(st.SourcePath, ".tmplt", st.Values)
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "tmplt")
+		return
 	}
 
 	sp, err := st.Cloud.Login()
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "login")
+		return
 	}
 	xenv := terraformEnviron(sp, st.Values.Infra.State.Access)
 	writeEnv(xenv, st.SourcePath, "infra.env", log) // useful when invoking terraform manually.
@@ -88,78 +69,58 @@ func (st *InfraStep) Execute(ctx context.Context, env []string, isink Infoer, us
 	tfr := st.Terraform.Init(ctx, env, st.SourcePath)
 	writeText(tfr.Text, st.SourcePath, "init.txt", log)
 	if len(tfr.Errors) > 0 {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("terraform init %s", tfr.Errors[0]) // first error only
-		usink.Update(st)
-		writeText(tfr.Errors[0], st.SourcePath, "init.err", log)
-		return false
+		st.error2(nil, "terraform init "+tfr.Errors[0] /*first error only*/)
+		return
 	}
 
 	// Plan
-	st.Msg = "terraform plan"
-	usink.Update(st)
+	st.update(v1.StateRunning, "terraform plan")
 
 	tfr = st.Terraform.Plan(ctx, env, st.SourcePath)
 	writeText(tfr.Text, st.SourcePath, "plan.txt", log)
 	if len(tfr.Errors) > 0 {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("terraform plan %s", tfr.Errors[0]) // first error only
-		usink.Update(st)
-		writeText(tfr.Errors[0], st.SourcePath, "plan.err", log)
-		return false
+		st.error2(nil, "terraform plan "+tfr.Errors[0] /*first error only*/)
+		return
 	}
 
 	st.Added = tfr.PlanAdded
 	st.Changed = tfr.PlanChanged
 	st.Deleted = tfr.PlanDeleted
 	if st.Added == 0 && st.Changed == 0 && st.Deleted == 0 {
-		st.State = v1.StateReady
-		st.Msg = "terraform plan: nothing to do"
-		usink.Update(st)
-		return true
+		st.update(v1.StateReady, "terraform plan: nothing to do")
+		return
 	}
 
 	// Check budget.
+	var msgs []string
 	b := st.Values.Infra.Budget
 	if b.AddLimit != nil && tfr.PlanAdded > int(*b.AddLimit) {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("plan added %d exceeds addLimit %d", tfr.PlanAdded, *b.AddLimit)
-		usink.Update(st)
-		return false
+		msgs = append(msgs, fmt.Sprintf("added %d exceeds addLimit %d", tfr.PlanAdded, *b.AddLimit))
 	}
 	if b.UpdateLimit != nil && tfr.PlanChanged > int(*b.UpdateLimit) {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("plan changed %d exceeds updateLimit %d", tfr.PlanChanged, *b.UpdateLimit)
-		usink.Update(st)
-		return false
+		msgs = append(msgs, fmt.Sprintf("changed %d exceeds updateLimit %d", tfr.PlanChanged, *b.UpdateLimit))
 	}
 	if b.DeleteLimit != nil && tfr.PlanDeleted > int(*b.DeleteLimit) {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("plan deleted %d exceeds deleteLimit %d", tfr.PlanDeleted, *b.DeleteLimit)
-		usink.Update(st)
-		return false
+		msgs = append(msgs, fmt.Sprintf("deleted %d exceeds deleteLimit %d", tfr.PlanDeleted, *b.DeleteLimit))
+	}
+	if len(msgs) > 0 {
+		st.error2(nil, "plan limits exceeded: "+strings.Join(msgs, ", "))
+		return
 	}
 
 	// Apply
-	st.Msg = fmt.Sprintf("terraform apply adds=%d changes=%d deletes=%d", tfr.PlanAdded, tfr.PlanChanged, tfr.PlanDeleted)
-	usink.Update(st)
+	st.update(v1.StateRunning, fmt.Sprintf("terraform apply adds=%d changes=%d deletes=%d",
+		tfr.PlanAdded, tfr.PlanChanged, tfr.PlanDeleted))
 
 	cmd, ch, err := st.Terraform.StartApply(ctx, env, st.SourcePath)
 	if err != nil {
-		log.Error(err, "start terraform apply")
-		isink.Warning(st.ID, "start terraform apply:"+err.Error())
-		st.State = v1.StateError
-		st.Msg = "start terraform apply:" + err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "start terraform apply")
+		return
 	}
 
 	// notify sink while waiting for command completion.
 	var last *terraform.TFApplyResult
 	for r := range ch {
-		if r.Object != "" {
-			isink.Info(st.ID, r.Object+" "+r.Action)
-		}
 		last = &r
 	}
 
@@ -171,34 +132,27 @@ func (st *InfraStep) Execute(ctx context.Context, env []string, isink Infoer, us
 		}
 	}
 
-	writeText(last.Text, st.SourcePath, "apply.txt", log)
+	if last != nil {
+		writeText(last.Text, st.SourcePath, "apply.txt", log)
+	}
 
 	// Return results.
 	if last == nil {
-		st.State = v1.StateError
-		st.Msg = "did not receive response from terraform apply"
-		usink.Update(st)
-		return false
+		st.error2(nil, "did not receive response from terraform apply")
+		return
 	}
 
 	if len(last.Errors) > 0 {
-		st.State = v1.StateError
-		st.Msg = strings.Join(last.Errors, ", ")
-		writeText(st.Msg, st.SourcePath, "apply.err", log)
-	} else {
-		st.State = v1.StateReady
-		st.Msg = fmt.Sprintf("terraform apply errors=0 added=%d changed=%d deleted=%d",
-			last.TotalAdded, last.TotalChanged, last.TotalDestroyed)
+		st.error2(nil, strings.Join(last.Errors, ", "))
+		return
 	}
 
-	// TODO these values should not have changed
 	st.Added = last.TotalAdded
 	st.Changed = last.TotalChanged
 	st.Deleted = last.TotalDestroyed
 
-	usink.Update(st)
-
-	return st.State == v1.StateReady
+	st.update(v1.StateReady, fmt.Sprintf("terraform apply errors=0 added=%d changed=%d deleted=%d",
+		last.TotalAdded, last.TotalChanged, last.TotalDestroyed))
 }
 
 // TerraformEnviron returns terraform specific environment variables.

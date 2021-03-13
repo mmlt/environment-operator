@@ -385,7 +385,8 @@ type StepStatus struct {
 	// A human readable message indicating details about the transition.
 	// +optional
 	Message string `json:"message,omitempty"`
-	// An opaque value representing the config/parameters applied by the step.
+	// An opaque value representing the config/parameters applied by a step.
+	// Only valid when state=Ready.
 	Hash string `json:"hash,omitempty"`
 }
 

@@ -52,7 +52,7 @@ func Test_planFilter(t *testing.T) {
 			args: args{
 				pl: planInfraDestroy,
 				allowed: map[step.Type]struct{}{
-					step.TypeDestroy: struct{}{},
+					step.TypeDestroy: {},
 				},
 			},
 			want: plan{

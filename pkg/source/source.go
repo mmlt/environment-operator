@@ -140,7 +140,7 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (bool, error) {
 		return false, nil
 	}
 
-	ss.Log.Info("Get workspace", "request", nsn, "name", name)
+	ss.Log.Info("Get workspace (repo changed)", "request", nsn, "name", name)
 
 	p := ss.repoPath(w.Spec)
 	// TODO sync with fetch to prevent inconsistent copies
@@ -170,7 +170,8 @@ func (ss *Sources) Workspace(nsn types.NamespacedName, name string) (Workspace, 
 	return w, ok
 }
 
-// FetchAll fetches all remote repo's or filesystems.
+// FetchAll fetches all remote repo's or filesystems into a local repo directory.
+// The fetch rate is limited to at most once per N minutes.
 func (ss *Sources) FetchAll() error {
 	var errs error
 	for _, w := range ss.workspaces {
@@ -186,7 +187,7 @@ func (ss *Sources) FetchAll() error {
 var timeNow = time.Now
 
 // Fetch fetches a remote repo or filesystem specified by spec into a local repo directory.
-// The fetch rate is limited to at most once per 2 minutes.
+// The fetch rate is limited to at most once per N minutes.
 func (ss *Sources) fetch(spec v1.SourceSpec) error {
 	if ss.repos == nil {
 		ss.repos = make(map[v1.SourceSpec]repo)
@@ -202,12 +203,12 @@ func (ss *Sources) fetch(spec v1.SourceSpec) error {
 
 	// fetch
 	var err error
-	var hash string
+	var h string
 	switch spec.Type {
 	case v1.SourceTypeGIT:
-		hash, err = ss.gitFetch(spec)
+		h, err = ss.gitFetch(spec)
 	case v1.SourceTypeLocal:
-		hash, err = ss.localFetch(spec)
+		h, err = ss.localFetch(spec)
 	default:
 		err = fmt.Errorf("source: unknown type: %s", spec.Type)
 	}
@@ -217,7 +218,7 @@ func (ss *Sources) fetch(spec v1.SourceSpec) error {
 
 	ss.repos[spec] = repo{
 		lastFetched: timeNow(),
-		hash:        hash,
+		hash:        h,
 	}
 
 	return nil
@@ -249,9 +250,9 @@ func (ss *Sources) localFetch(spec v1.SourceSpec) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hash := hex.EncodeToString(h.Sum(nil))
+	s := hex.EncodeToString(h.Sum(nil))
 
-	return hash, err
+	return s, err
 }
 
 // GITFetch fetches content of a GIT repo and returns its hash.
@@ -305,7 +306,7 @@ func (ss *Sources) repoPath(spec v1.SourceSpec) string {
 	// url part is an 8 chars hash followed by the URL base up to 24 chars in total.
 	const max = 24 - 8
 	h := fnv.New32a()
-	h.Write([]byte(spec.URL))
+	_, _ = h.Write([]byte(spec.URL))
 	b := path.Base(spec.URL)
 	l := len(b)
 	if l > max {
@@ -330,7 +331,7 @@ func hashAll(path string) (hash.Hash, error) {
 		if err != nil {
 			return nil
 		}
-		io.WriteString(h, path)
+		_, _ = io.WriteString(h, path)
 
 		if info.IsDir() {
 			return nil

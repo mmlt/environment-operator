@@ -63,8 +63,8 @@ func (r *Repo) Name() string {
 	const max = 24 - 8
 
 	h := fnv.New32a()
-	h.Write([]byte(r.url))
-	h.Write([]byte(r.reference))
+	_, _ = h.Write([]byte(r.url))
+	_, _ = h.Write([]byte(r.reference))
 
 	b := path.Base(r.url)
 	l := len(b)

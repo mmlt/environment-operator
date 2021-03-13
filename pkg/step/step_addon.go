@@ -38,48 +38,33 @@ type AddonStep struct {
 	Added, Changed, Deleted int
 }
 
-// Meta returns a reference to the Metaa data of this Step.
-func (st *AddonStep) Meta() *Metaa {
-	return &st.Metaa
-}
-
 // Execute addon apply for a cluster.
-func (st *AddonStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *AddonStep) Execute(ctx context.Context, env []string, log logr.Logger) {
 	log.Info("start")
 
-	st.State = v1.StateRunning
-	usink.Update(st)
+	st.update(v1.StateRunning, "values yaml")
 
 	// Create values yaml
 	values, err := st.valuesYamlIn(st.SourcePath)
 	if err != nil {
-		log.Error(err, "addon")
-		isink.Warning(st.ID, "addon:"+err.Error())
-		st.State = v1.StateError
-		st.Msg = "addon:" + err.Error()
-		usink.Update(st)
-		return false
+		st.error2(err, "values yaml")
+		return
 	}
 
 	var totals []addon.KTResult
 	for _, job := range st.JobPaths {
-		// Run kubectl-tmplt
+		st.update(v1.StateRunning, job)
+
+		// Start kubectl-tmplt
 		cmd, ch, err := st.Addon.Start(ctx, env, st.SourcePath, job, values, st.KCPath, st.MasterVaultPath)
 		if err != nil {
-			log.Error(err, "start kubectl-tmplt")
-			isink.Warning(st.ID, "start kubectl-tmplt:"+err.Error())
-			st.State = v1.StateError
-			st.Msg = "start kubectl-tmplt:" + err.Error()
-			usink.Update(st)
-			return false
+			st.error2(err, "start kubectl-tmplt")
+			return
 		}
 
 		// notify sink while waiting for command completion.
 		var last *addon.KTResult
 		for r := range ch {
-			if r.Object != "" {
-				isink.Info(st.ID, r.Object+" "+r.Action)
-			}
 			last = &r
 		}
 
@@ -107,10 +92,8 @@ func (st *AddonStep) Execute(ctx context.Context, env []string, isink Infoer, us
 
 	// Return results.
 	if len(totals) == 0 {
-		st.State = v1.StateError
-		st.Msg = "did not receive response from kubectl-tmplt"
-		usink.Update(st)
-		return false
+		st.error2(nil, "nothing applied")
+		return
 	}
 	// aggregate totals
 	var tE []string
@@ -121,22 +104,16 @@ func (st *AddonStep) Execute(ctx context.Context, env []string, isink Infoer, us
 		tC = +t.Changed
 		tD = +t.Deleted
 	}
-
 	if len(tE) > 0 {
-		st.State = v1.StateError
-		st.Msg = strings.Join(tE, ", ")
-	} else {
-		st.State = v1.StateReady
-		st.Msg = fmt.Sprintf("kubectl-tmplt errors=0 added=%d changed=%d deleted=%d", tA, tC, tD)
+		st.error2(nil, strings.Join(tE, ", "))
+		return
 	}
 
 	st.Added = tA
 	st.Changed = tC
 	st.Deleted = tD
 
-	usink.Update(st)
-
-	return st.State == v1.StateReady
+	st.update(v1.StateReady, fmt.Sprintf("kubectl-tmplt errors=0 added=%d changed=%d deleted=%d", tA, tC, tD))
 }
 
 // ValuesYamlIn write a yaml file with st values and returns the path.

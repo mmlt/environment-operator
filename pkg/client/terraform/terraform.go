@@ -65,13 +65,13 @@ type TFApplyResult struct {
 	// Most recently logged terraform object name.
 	Object string
 	// Most recently logged action being performed; creating (creation), modifying (modification), destroying (destruction).
-	// *ing means in-progress, *tion means completed. TODO consider normalizing *tion to *ed
+	// *ing means in-progress, *tion means completed.
 	Action string
 	// Most recently logged elapsed time reported by terraform.
 	Elapsed string
 
 	// Text is the verbatim output of the command.
-	// NB every TFApplyResult instance holds a string with all text as known at that time. TODO consider []string
+	// NB every TFApplyResult instance holds a string with all lines known at that time.
 	Text string
 }
 
@@ -81,7 +81,7 @@ type Terraform struct {
 }
 
 // Init implements Terraformer.
-func (t *Terraform) Init(ctx context.Context, env []string, dir string) *TFResult {
+func (t *Terraform) Init(_ context.Context, env []string, dir string) *TFResult {
 	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "init", "-input=false", "-no-color")
 
 	return parseInitResponse(o, err)
@@ -108,14 +108,14 @@ func parseInitResponse(text string, err error) *TFResult {
 }
 
 // Plan implements Terraformer.
-func (t *Terraform) Plan(ctx context.Context, env []string, dir string) *TFResult {
+func (t *Terraform) Plan(_ context.Context, env []string, dir string) *TFResult {
 	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "plan",
 		"-out=newplan", "-detailed-exitcode", "-input=false", "-no-color")
 	return parsePlanResponse(o, err)
 }
 
 // ParsePlanResponse parses terraform stdout text and err and returns tfresult.
-// Terraform should be run with flag '-detailed-exitcode'
+// Terraform should be run with flag '-detailed-exitcode' so it returns:
 //	0 = Succeeded with empty diff (no changes)
 //  1 = Error
 //  2 = Succeeded with non-empty diff (changes present)
@@ -319,7 +319,7 @@ func normalizeAction(s string) string {
 }
 
 // Output implements Terraformer.
-func (t *Terraform) Output(ctx context.Context, env []string, dir string) (map[string]interface{}, error) {
+func (t *Terraform) Output(_ context.Context, env []string, dir string) (map[string]interface{}, error) {
 	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "output", "-json", "-no-color")
 	if err != nil {
 		return nil, err

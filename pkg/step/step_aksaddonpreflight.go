@@ -22,13 +22,8 @@ type AKSAddonPreflightStep struct {
 	Kubectl kubectl.Kubectrler
 }
 
-// Meta returns a reference to the Metaa data of this Step.
-func (st *AKSAddonPreflightStep) Meta() *Metaa {
-	return &st.Metaa
-}
-
 // Execute node pool upgrade for a cluster.
-func (st *AKSAddonPreflightStep) Execute(ctx context.Context, env []string, isink Infoer, usink Updater, log logr.Logger) bool {
+func (st *AKSAddonPreflightStep) Execute(_ context.Context, _ []string, log logr.Logger) {
 	const (
 		namespace = "kube-system"
 		name      = "preflight"
@@ -37,8 +32,7 @@ func (st *AKSAddonPreflightStep) Execute(ctx context.Context, env []string, isin
 
 	log.Info("start")
 
-	st.State = v1.StateRunning
-	usink.Update(st)
+	st.update(v1.StateRunning, "check api-server connection")
 
 	// Remove possible leftover probe pod.
 	s, _ := st.Kubectl.PodState(st.KCPath, namespace, name)
@@ -46,10 +40,8 @@ func (st *AKSAddonPreflightStep) Execute(ctx context.Context, env []string, isin
 		// Pod already present, delete it
 		err = st.Kubectl.PodDelete(st.KCPath, namespace, name)
 		if err != nil {
-			st.State = v1.StateError
-			st.Msg = fmt.Sprintf("delete pod: %v", err)
-			usink.Update(st)
-			return false
+			st.error2(err, "delete pod")
+			return
 		}
 	}
 
@@ -58,10 +50,8 @@ func (st *AKSAddonPreflightStep) Execute(ctx context.Context, env []string, isin
 	err = st.Kubectl.PodRun(st.KCPath, namespace, name, "docker.io/curlimages/curl:7.72.0",
 		"until curl -ksS --max-time 2 https://kubernetes.default | grep Status ; do date -Iseconds; sleep 5 ; done")
 	if err != nil {
-		st.State = v1.StateError
-		st.Msg = fmt.Sprintf("run pod: %v", err)
-		usink.Update(st)
-		return false
+		st.error2(err, "run pod")
+		return
 	}
 	// Check for completion.
 	s = ""
@@ -82,14 +72,9 @@ func (st *AKSAddonPreflightStep) Execute(ctx context.Context, env []string, isin
 		} else {
 			errMsg = fmt.Sprintf(": %s", s)
 		}
-		st.Msg = fmt.Sprintf("waiting for %s pod completion%s", name, errMsg)
-		usink.Update(st)
-		return true
+		st.update(v1.StateRunning, fmt.Sprintf("waiting for %s pod completion%s", name, errMsg))
+		return
 	}
 
-	st.State = v1.StateReady
-	st.Msg = fmt.Sprintf("%s completed", name)
-	usink.Update(st)
-
-	return st.State == v1.StateReady
+	st.update(v1.StateReady, fmt.Sprintf("%s completed", name))
 }

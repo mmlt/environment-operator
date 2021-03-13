@@ -21,9 +21,9 @@ func Test_parseAddonResponseLine(t *testing.T) {
 				"I 18:24:55  \"level\"=0 \"txt\"=\"pod/opa-5cd59b58bc-rrrxf condition met\" \"msg\"=\"wait\"  \"id\"=\"3\"  \"tpl\"=\"\"\n",
 			},
 			want: []KTResult{
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "1", Action: "apply"},
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "namespace/xyz-system created", ObjectID: "2", Action: "apply"},
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "pod/opa-5cd59b58bc-rrrxf condition met", ObjectID: "3", Action: "wait"},
+				{Added: 0, Changed: 1, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "1", Action: "apply"},
+				{Added: 0, Changed: 2, Deleted: 0, Errors: []string(nil), Object: "namespace/xyz-system created", ObjectID: "2", Action: "apply"},
+				{Added: 0, Changed: 3, Deleted: 0, Errors: []string(nil), Object: "pod/opa-5cd59b58bc-rrrxf condition met", ObjectID: "3", Action: "wait"},
 			},
 		},
 		{
@@ -32,7 +32,7 @@ func Test_parseAddonResponseLine(t *testing.T) {
 				"I 18:24:53  \"level\"=0 \"txt\"=\"namespace/kube-system unchanged\" \"msg\"=\"apply\" \"id\"=\"01.02\"  \"tpl\"=\"namespace.yaml\"\n",
 			},
 			want: []KTResult{
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "01.02", Action: "apply"},
+				{Added: 0, Changed: 1, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "01.02", Action: "apply"},
 			},
 		},
 		{
@@ -41,7 +41,7 @@ func Test_parseAddonResponseLine(t *testing.T) {
 				"I 09:14:40  \"level\"=0 \"msg\"=\"apply\"  \"id\"=\"25\" \"tpl\"=\"hashi-injector.yaml\" \"txt\"=\"service/vault-agent-injector-svc created\"\n",
 			},
 			want: []KTResult{
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "service/vault-agent-injector-svc created", ObjectID: "25", Action: "apply"},
+				{Added: 0, Changed: 1, Deleted: 0, Errors: []string(nil), Object: "service/vault-agent-injector-svc created", ObjectID: "25", Action: "apply"},
 			},
 		},
 		{
@@ -51,8 +51,8 @@ func Test_parseAddonResponseLine(t *testing.T) {
 				"E expand ../../../tpl/cert-manager/cert-manager.yaml: execute: template: input:5944:7: executing \"input\" at <eq .Values.k8sProvider \"minikube\">: error calling eq: incompatible types for comparison\n",
 			},
 			want: []KTResult{
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "1", Action: "apply"},
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string{"expand ../../../tpl/cert-manager/cert-manager.yaml: execute: template: input:5944:7: executing \"input\" at <eq .Values.k8sProvider \"minikube\">: error calling eq: incompatible types for comparison"}, Object: "", ObjectID: "", Action: ""},
+				{Added: 0, Changed: 1, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "1", Action: "apply"},
+				{Added: 0, Changed: 2, Deleted: 0, Errors: []string{"expand ../../../tpl/cert-manager/cert-manager.yaml: execute: template: input:5944:7: executing \"input\" at <eq .Values.k8sProvider \"minikube\">: error calling eq: incompatible types for comparison"}, Object: "", ObjectID: "", Action: ""},
 			},
 		},
 		{
@@ -61,7 +61,7 @@ func Test_parseAddonResponseLine(t *testing.T) {
 				"E -job-file should be defined, -m should be one of 'generate' or 'apply'\n",
 			},
 			want: []KTResult{
-				{Added: 0, Changed: 0, Deleted: 0, Errors: []string{"-job-file should be defined, -m should be one of 'generate' or 'apply'"}, Object: "", ObjectID: "", Action: ""},
+				{Added: 0, Changed: 1, Deleted: 0, Errors: []string{"-job-file should be defined, -m should be one of 'generate' or 'apply'"}, Object: "", ObjectID: "", Action: ""},
 			},
 		},
 		{
