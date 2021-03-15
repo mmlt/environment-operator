@@ -35,7 +35,7 @@ func New(url, dir string, log logr.Logger) (*Repo, error) {
 
 	// Create directory to clone the repo into.
 	p := filepath.Join(dir, r.Name())
-	err := os.MkdirAll(p, 0755)
+	err := os.MkdirAll(p, 0750)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (r *Repo) Name() string {
 
 // Update refreshes the repo to the latest commit.
 func (r *Repo) Update() error {
-	err := os.MkdirAll(r.RepoDir(), 0755)
+	err := os.MkdirAll(r.RepoDir(), 0750)
 	if err != nil {
 		return err
 	}

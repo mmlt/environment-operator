@@ -130,7 +130,7 @@ func (st *AddonStep) valuesYamlIn(dir string) (string, error) {
 	}
 
 	p := filepath.Join(dir, filename)
-	err := ioutil.WriteFile(p, d, 0644)
+	err := ioutil.WriteFile(p, d, 0600)
 
 	return p, err
 }

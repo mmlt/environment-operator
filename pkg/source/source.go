@@ -108,7 +108,7 @@ func (ss *Sources) Register(nsn types.NamespacedName, name string, spec v1.Sourc
 
 	// Create new workspace.
 	p := ss.workspacePath(id)
-	err := os.MkdirAll(p, 0755)
+	err := os.MkdirAll(p, 0750)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func (ss *Sources) fetch(spec v1.SourceSpec) error {
 // LocalFetch fetches the content of a local source like a directory and returns its hash.
 func (ss *Sources) localFetch(spec v1.SourceSpec) (string, error) {
 	p := ss.repoPath(spec)
-	err := os.MkdirAll(p, 0755)
+	err := os.MkdirAll(p, 0750)
 	if err != nil {
 		return "", err
 	}
@@ -262,7 +262,7 @@ func (ss *Sources) gitFetch(spec v1.SourceSpec) (string, error) {
 	if os.IsNotExist(err) {
 		// Clone new repo.
 		d, _ := filepath.Split(p)
-		err = os.MkdirAll(d, 0775)
+		err = os.MkdirAll(d, 0750)
 		if err != nil {
 			return "", err
 		}

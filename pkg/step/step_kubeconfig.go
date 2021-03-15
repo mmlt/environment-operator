@@ -67,7 +67,7 @@ func (st *KubeconfigStep) Execute(ctx context.Context, env []string, log logr.Lo
 		return
 	}
 
-	err = ioutil.WriteFile(st.KCPath, kc, 0664)
+	err = ioutil.WriteFile(st.KCPath, kc, 0600)
 	if err != nil {
 		st.error2(err, "write kubeconfig")
 		return
