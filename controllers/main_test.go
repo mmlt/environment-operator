@@ -10,7 +10,6 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
-	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	corev1 "k8s.io/api/core/v1"
@@ -56,6 +55,7 @@ var (
 	testCtx = context.Background()
 )
 
+// TestMain sets-up a test API server, runs tests and tears down the API server.
 func TestMain(m *testing.M) {
 	if alwaysShowLog {
 		logf.SetLogger(stdr.New(log.New(os.Stdout, "", log.Lshortfile|log.Ltime)))
@@ -95,7 +95,7 @@ func TestMain(m *testing.M) {
 	os.Exit(r)
 }
 
-// testManagerWithFakeClients starts a Manager with the fake clients.
+// TestManagerWithFakeClients starts a Manager with the fake clients.
 func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGroup {
 	t.Helper()
 
@@ -112,6 +112,9 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("envop"),
 		Log:      ctrl.Log.WithName("recon"),
+		Environ: map[string]string{
+			"PATH": "/usr/local/bin", //kubectl-tmplt uses kubectl
+		},
 	}
 
 	testReconciler.Sources = &source.Sources{
@@ -147,14 +150,6 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 			Log: testReconciler.Log.WithName("addon"),
 		},
 		Log: testReconciler.Log.WithName("planner"),
-	}
-
-	testReconciler.Executor = &executor.Executor{
-		UpdateSink: testReconciler,
-		Environ: map[string]string{
-			"PATH": "/usr/local/bin", //kubectl-tmplt uses kubectl
-		},
-		Log: testReconciler.Log.WithName("executor"),
 	}
 
 	// Add reconciler to manager.

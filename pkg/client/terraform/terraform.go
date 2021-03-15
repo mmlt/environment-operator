@@ -100,9 +100,9 @@ func parseInitResponse(text string, err error) *TFResult {
 	r.Info = len(ire.FindAllStringIndex(text, -1))
 	wre := regexp.MustCompile("\nWarning: ")
 	r.Warnings = len(wre.FindAllStringIndex(text, -1))
-	//TODO
-	//ere := regexp.MustCompile(" errors |Terraform initialized in an empty directory!")
-	//r.Errors = append(r.Errors, ere.FindAllStringIndex(text, -1))
+	// errors are detected via exit code instead of:
+	//  ere := regexp.MustCompile(" errors |Terraform initialized in an empty directory!")
+	//  r.Errors = append(r.Errors, ere.FindAllStringIndex(text, -1))
 
 	return r
 }
@@ -139,9 +139,9 @@ func parsePlanResponse(text string, err error) *TFResult {
 
 	wre := regexp.MustCompile("\nWarning: ")
 	r.Warnings = len(wre.FindAllStringIndex(text, -1))
-	//TODO
-	//ere := regexp.MustCompile("\nError: ")
-	//r.Errors = len(ere.FindAllStringIndex(text, -1))
+	// errors are detected via exit code instead of:
+	//  ere := regexp.MustCompile("\nError: ")
+	//  r.Errors = len(ere.FindAllStringIndex(text, -1))
 
 	// terraform returns exitcode:
 	//	0 = Succeeded with empty diff (no changes)

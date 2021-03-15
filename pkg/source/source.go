@@ -341,7 +341,7 @@ func hashAll(path string) (hash.Hash, error) {
 		if err != nil {
 			return err
 		}
-		defer r.Close()
+		defer r.Close() // #nosec
 		_, err = io.Copy(h, r)
 		if err != nil {
 			return err

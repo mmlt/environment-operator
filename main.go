@@ -9,7 +9,6 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
-	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
@@ -102,6 +101,7 @@ func main() {
 		Recorder: mgr.GetEventRecorderFor("envop"),
 		Log:      ctrl.Log.WithName("recon"),
 		Selector: *selector,
+		Environ:  util.KVSliceToMap(os.Environ()),
 	}
 	r.Sources = &source.Sources{
 		RootPath: *workDir,
@@ -131,11 +131,7 @@ func main() {
 			Log: r.Log.WithName("addon"),
 		},
 	}
-	r.Executor = &executor.Executor{
-		Environ:    util.KVSliceToMap(os.Environ()),
-		UpdateSink: r,
-		Log:        r.Log.WithName("executor"),
-	}
+
 	err = r.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Environment")

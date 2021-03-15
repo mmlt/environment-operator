@@ -20,15 +20,14 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/imdario/mergo"
-	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
+	"github.com/mmlt/environment-operator/pkg/util"
 	"github.com/robfig/cron/v3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,17 +53,14 @@ type EnvironmentReconciler struct {
 	// Planner decides on the next step to execute based on Environment.
 	Planner *plan.Planner
 
-	// Executor executes Steps.
-	Executor *executor.Executor
+	// Environ are the environment variables presented to the steps.
+	Environ map[string]string
 
 	// Invocation counters
 	reconTally int
 }
 
 const label = "clusterops.mmlt.nl/operator"
-
-// RequeueIntervalWhenRunnning is the time between reconciliations when a step is running.
-const requeueIntervalWhenRunnning = 10 * time.Second
 
 // TimeNow for testing.
 var timeNow = time.Now
@@ -117,51 +113,42 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return noRequeue, nil
 	}
 
-	// Update environment status with the current state-of-the-world.
-	err = syncStatusWithExecutor(&cr.Status, r.Executor)
-	if err != nil {
-		return requeueSoon, fmt.Errorf("sync status with executor: %w", err)
+	if hasStepState(cr.Status.Steps, v1.StateError) {
+		// Needs step state reset to continue.
+		return noRequeue, nil
 	}
 
 	// Plan work.
-	var stp step.Step
-	if !hasStepState(cr.Status.Steps, v1.StateError) {
-		running := stepFilter(cr.Status, v1.StateRunning)
-		if len(running) == 0 {
-			// No step is running.
-			stp, err = r.planNextStepAndUpdateStatus(cr, req, log)
-			if err != nil {
-				return requeueSoon, err
-			}
-		} else {
-			// A step is already running.
-			stp = r.Planner.ExistingStep(req.NamespacedName, running[0])
-		}
-	}
+	stp, err := r.nextStep(cr, req, log)
 
-	// Save state-of-the-world.
-	updateStatusConditions(&cr.Status)
-	err = r.saveStatus(cr)
+	// save planned steps (some steps might need to be re-executed)
+	err = r.saveStatus2(ctx, cr)
 	if err != nil {
 		return requeueNow, fmt.Errorf("save status: %w", err)
 	}
 
-	// Perform work.
-	r.Executor.ReleaseSteps()
-	_, err = r.Executor.Accept(stp)
-	if err != nil {
-		return requeueNow, fmt.Errorf("accept step for execution: %w", err)
-	}
-
+	// Execute work.
 	if stp != nil {
-		return requeueSoon, nil
+		stp.SetOnUpdate(func(meta step.Meta) {
+			e := meta.GetLastError()
+			m := meta.GetMsg()
+			if e != nil {
+				log.Error(e, m)
+			}
+			s := meta.GetState()
+			log.Info("OnUpdate", "msg", m, "state", s, "id", meta.GetID().ShortName())
+			r.Update(ctx, cr, meta)
+		})
+		env := util.KVSliceFromMap(r.Environ)
+		stp.Execute(ctx, env, log)
 	}
 
 	return noRequeue, nil
 }
 
-// PlanNextStepAndUpdateStatus makes a plan and select the next step.
-func (r *EnvironmentReconciler) planNextStepAndUpdateStatus(cr *v1.Environment, req ctrl.Request, log logr.Logger) (step.Step, error) {
+// NextStep fetches sources, makes a plan, updates cr and returns the next step.
+// Step is nil if there is nothing to do.
+func (r *EnvironmentReconciler) nextStep(cr *v1.Environment, req ctrl.Request, log logr.Logger) (step.Step, error) {
 	// Get ClusterSpecs with defaults.
 	cspec, err := flattenedClusterSpec(cr.Spec)
 	if err != nil {
@@ -202,7 +189,6 @@ func (r *EnvironmentReconciler) planNextStepAndUpdateStatus(cr *v1.Environment, 
 	if err != nil {
 		return nil, fmt.Errorf("plan: %w", err)
 	}
-	// and select the next step.
 	stp, err := syncStatusWithPlan(&cr.Status, pln)
 	if err != nil {
 		return nil, fmt.Errorf("sync status with plan: %w", err)
@@ -242,45 +228,6 @@ func inSchedule(schedule string, now time.Time) (bool, error) {
 	ok := next.Sub(now).Minutes() < 10.0
 
 	return ok, nil
-}
-
-// SyncStatusWithExecutor updates status.steps with the status of executing steps.
-// When status has recorded a step in final state it tells the executor to release that step.
-func syncStatusWithExecutor(status *v1.EnvironmentStatus, ex *executor.Executor) error {
-	if status.Steps == nil {
-		status.Steps = make(map[string]v1.StepStatus)
-	}
-
-	for _, stp := range ex.Steps() {
-		/*TODO		n := stp.GetID().ShortName()
-
-		if ss, ok := status.Steps[n]; ok && step.IsStateFinal(ss.State) {
-			err := ex.Release(stp.GetID())
-			if err != nil {
-				return err
-			}
-		}*/
-
-		ss := v1.StepStatus{
-			State:              stp.GetState(),
-			Message:            stp.GetMsg(),
-			LastTransitionTime: metav1.Time{Time: stp.GetLastUpdate()},
-		}
-
-		if ss.LastTransitionTime.IsZero() {
-			// might happen when executor has Accepted step but the step hasn't started executing yet.
-			ss.LastTransitionTime = metav1.Time{Time: timeNow()}
-		}
-
-		if stp.GetState() == v1.StateReady {
-			// step is completed successfully
-			ss.Hash = stp.GetHash()
-		}
-
-		status.Steps[stp.GetID().ShortName()] = ss
-	}
-
-	return nil
 }
 
 // syncStatusWithPlan update status.steps with plan and returns the next step to execute.
@@ -332,6 +279,14 @@ func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.St
 	// when setting Condition 'Ready'
 
 	return r, nil
+}
+
+// SaveStatus writes the status to the API server.
+func (r *EnvironmentReconciler) saveStatus2(ctx context.Context, cr *v1.Environment) error {
+	updateStatusConditions(&cr.Status)
+
+	r.Log.Info("saveState", "status", cr.Status)
+	return r.Status().Update(ctx, cr)
 }
 
 // UpdateStatusConditions updates Status.Conditions to reflect steps state.
@@ -388,61 +343,32 @@ func updateStatusConditions(status *v1.EnvironmentStatus) {
 	if !exists {
 		status.Conditions = append(status.Conditions, c)
 	}
-
-	return
 }
 
-// SaveStatus writes the status to the API server.
-func (r *EnvironmentReconciler) saveStatus(cr *v1.Environment) error {
-	log := r.Log.WithName("saveStatus")
-
-	nsn := types.NamespacedName{
-		Namespace: cr.Namespace,
-		Name:      cr.Name,
-	}
-
-	for i := 0; i < 10; i++ {
-		ctx := context.Background()
-		c := &v1.Environment{}
-		err := r.Get(ctx, nsn, c)
-		if err != nil {
-			log.Error(err, "get kind", "retry", i)
-			time.Sleep(time.Second) //TODO expo backoff
-			continue
-		}
-
-		c.Status = cr.Status
-
-		ctx = context.Background()
-		err = r.Status().Update(ctx, c)
-		if err != nil {
-			log.Error(err, "update kind status", "retry", i)
-			time.Sleep(time.Second) //TODO expo backoff
-			continue
-		}
-
-		return nil
-	}
-
-	return fmt.Errorf("too many errors, give up")
-}
-
-func (r *EnvironmentReconciler) Update(meta step.Meta) {
+// Update updates cr.Status with meta, writes the status to the API Server and records an Event.
+func (r *EnvironmentReconciler) Update(ctx context.Context, cr *v1.Environment, meta step.Meta) {
 	log := r.Log.WithName("Update")
 
-	nsn := types.NamespacedName{
-		Namespace: meta.GetID().Namespace,
-		Name:      meta.GetID().Name,
-	}
-	// Get Environment.
-	ctx := context.Background()
-	cr := &v1.Environment{}
-	err := r.Get(ctx, nsn, cr)
-	if err != nil {
-		log.Error(err, "get kind Environment")
-	}
+	shortname := meta.GetID().ShortName()
 
-	r.Recorder.Event(cr, "Normal", meta.GetID().ShortName()+string(meta.GetState()), meta.GetMsg())
+	r.Recorder.Event(cr, "Normal", shortname+string(meta.GetState()), meta.GetMsg())
+
+	// copy meta to step
+	ss := cr.Status.Steps[shortname]
+	ss.State = meta.GetState()
+	ss.Message = meta.GetMsg()
+	ss.LastTransitionTime = metav1.Time{Time: timeNow()}
+	if ss.State == v1.StateReady {
+		// step has completed.
+		ss.Hash = meta.GetHash()
+	}
+	cr.Status.Steps[shortname] = ss
+
+	err := r.saveStatus2(ctx, cr)
+	if err != nil {
+		// failing to save a final state will result in re-execution of the step
+		log.Error(err, "saveStatus")
+	}
 }
 
 // SetupWithManager initializes the receiver and adds it to mgr.
@@ -491,33 +417,7 @@ func flattenedClusterSpec(in v1.EnvironmentSpec) ([]v1.ClusterSpec, error) {
 	return r, nil
 }
 
-// ValidateSpec returns an error when spec values are missing or wrong.
-func validateSpec(es *v1.EnvironmentSpec) error {
-	if len(es.Infra.AZ.Subscription) == 0 {
-		return fmt.Errorf("spec.infra.az.subscription: at least 1 subscription expected")
-	}
-	//TODO Add validation logAnalyticsWorkspace.subscriptionName must be in spec.infra.subscription[]
-	return nil
-}
-
-// ValidateClusterSpec returns an error when cluster values are missing or wrong.
-func validateClusterSpec(cs *v1.ClusterSpec) error {
-	//validations go here...
-	_ = cs
-	return nil
-}
-
-// StepFilter returns the names of the steps that match state.
-func stepFilter(status v1.EnvironmentStatus, state v1.StepState) []string {
-	var r []string
-	for n, s := range status.Steps {
-		if s.State == state {
-			r = append(r, n)
-		}
-	}
-	return r
-}
-
+// HasStepState returns true when one of the stps is in state.
 func hasStepState(stps map[string]v1.StepStatus, state v1.StepState) bool {
 	for _, stp := range stps {
 		if stp.State == state {

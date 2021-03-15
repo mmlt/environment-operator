@@ -4,9 +4,7 @@ import (
 	"context"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
-	"github.com/mmlt/environment-operator/pkg/executor"
 	"github.com/mmlt/testr"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,12 +24,12 @@ func TestGoodRun(t *testing.T) {
 
 		got := testGetCRWhenConditionReady(t, testNSN)
 
-		// Metrics
+		/*TODO		// Metrics
 		cnt := testutil.ToFloat64(executor.MetricSteps)
 		assert.EqualValues(t, float64(7), cnt, "number of executed steps")
 		cnt = testutil.ToFloat64(executor.MetricStepFailures)
 		assert.EqualValues(t, float64(0), cnt, "number of failed executed steps")
-
+		*/
 		// Condition
 		assert.Equal(t, 1, len(got.Status.Conditions), "number of Status.Conditions")
 		assert.Equal(t, v1.ReasonReady, got.Status.Conditions[0].Reason)
@@ -85,7 +83,7 @@ func TestErrorRun(t *testing.T) {
 		// Fix error and reset step.
 		tf.DestroyMustSucceed()
 		testResetStep(t, testNSN, "Destroy")
-		time.Sleep(5 * time.Second) //TODO it will take some time for the condition to reflect the new status (ResetStep should also remove Condition?)
+		time.Sleep(5 * time.Second) //TODO it will take some time for the condition to reflect the new status (should ResetStep also remove Condition?)
 
 		got = testGetCRWhenConditionReady(t, testNSN)
 

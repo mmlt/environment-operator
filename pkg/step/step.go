@@ -177,7 +177,6 @@ func IsStateLE(lhs, rhs v1.StepState) bool {
 			return 2
 		default:
 			panic("bug: state missing")
-			return 99
 		}
 	}
 	return toNum(lhs) <= toNum(rhs)

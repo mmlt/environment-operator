@@ -39,7 +39,7 @@ func ExpandFile(path, suffix string, values interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer out.Close() // #nosec
 
 	err = Expand(path, string(in), out, values)
 	if err != nil {

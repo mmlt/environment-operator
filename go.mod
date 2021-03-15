@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.3.0
-	github.com/go-logr/stdr v0.0.0-20190808155957-db4f46c40425
+	github.com/go-logr/stdr v0.3.0
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/huandu/xstrings v1.3.2 // indirect
