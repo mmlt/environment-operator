@@ -94,42 +94,39 @@ func main() {
 		os.Exit(1)
 	}
 
+	l := ctrl.Log.WithName("recon")
+
 	// Create environment reconciler and all it's dependencies.
 	r := &controllers.EnvironmentReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("envop"),
-		Log:      ctrl.Log.WithName("recon"),
 		Selector: *selector,
 		Environ:  util.KVSliceToMap(os.Environ()),
 	}
 	r.Sources = &source.Sources{
 		RootPath: *workDir,
-		Log:      r.Log.WithName("source"),
+		Log:      l,
 	}
 	r.Planner = &plan.Planner{
 		AllowedStepTypes: steps,
-		Log:              r.Log.WithName("plan"),
+		Log:              l,
 		Cloud: &cloud.Azure{
 			CredentialsFile: *credentialsFile,
 			Vault:           *vault,
 			Client: &azure.AZ{
-				Log: r.Log.WithName("az"),
+				Log: l,
 			},
-			Log: r.Log.WithName("cloud"),
+			Log: l,
 		},
-		Terraform: &terraform.Terraform{
-			Log: r.Log.WithName("tf"),
-		},
+		Terraform: &terraform.Terraform{},
 		Kubectl: &kubectl.Kubectl{
-			Log: r.Log.WithName("kubectl"),
+			Log: l,
 		},
 		Azure: &azure.AZ{
-			Log: r.Log.WithName("az"),
+			Log: l,
 		},
-		Addon: &addon.Addon{
-			Log: r.Log.WithName("addon"),
-		},
+		Addon: &addon.Addon{},
 	}
 
 	err = r.SetupWithManager(mgr)

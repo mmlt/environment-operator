@@ -77,12 +77,13 @@ type TFApplyResult struct {
 
 // Terraform provisions infrastructure using terraform cli.
 type Terraform struct {
-	Log logr.Logger
 }
 
 // Init implements Terraformer.
-func (t *Terraform) Init(_ context.Context, env []string, dir string) *TFResult {
-	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "init", "-input=false", "-no-color")
+func (t *Terraform) Init(ctx context.Context, env []string, dir string) *TFResult {
+	log := logr.FromContext(ctx).WithName("TFInit")
+
+	o, _, err := exe.Run(log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "init", "-input=false", "-no-color")
 
 	return parseInitResponse(o, err)
 }
@@ -108,8 +109,10 @@ func parseInitResponse(text string, err error) *TFResult {
 }
 
 // Plan implements Terraformer.
-func (t *Terraform) Plan(_ context.Context, env []string, dir string) *TFResult {
-	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "plan",
+func (t *Terraform) Plan(ctx context.Context, env []string, dir string) *TFResult {
+	log := logr.FromContext(ctx).WithName("TFPlan")
+
+	o, _, err := exe.Run(log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "plan",
 		"-out=newplan", "-detailed-exitcode", "-input=false", "-no-color")
 	return parsePlanResponse(o, err)
 }
@@ -158,7 +161,10 @@ func parsePlanResponse(text string, err error) *TFResult {
 
 // StartApply implements Terraformer.
 func (t *Terraform) StartApply(ctx context.Context, env []string, dir string) (*exec.Cmd, chan TFApplyResult, error) {
-	cmd := exe.RunAsync(ctx, t.Log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "apply",
+	log := logr.FromContext(ctx).WithName("TFApply")
+	ctx = logr.NewContext(ctx, log)
+
+	cmd := exe.RunAsync(ctx, log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "apply",
 		"-auto-approve", "-input=false", "-no-color", "newplan")
 
 	o, err := cmd.StdoutPipe()
@@ -173,14 +179,17 @@ func (t *Terraform) StartApply(ctx context.Context, env []string, dir string) (*
 		return nil, nil, err
 	}
 
-	ch := t.parseAsyncApplyResponse(o)
+	ch := t.parseAsyncApplyResponse(log, o)
 
 	return cmd, ch, nil
 }
 
 // StartDestroy implements Terraformer.
 func (t *Terraform) StartDestroy(ctx context.Context, env []string, dir string) (*exec.Cmd, chan TFApplyResult, error) {
-	cmd := exe.RunAsync(ctx, t.Log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "destroy",
+	log := logr.FromContext(ctx).WithName("TFDestroy")
+	ctx = logr.NewContext(ctx, log)
+
+	cmd := exe.RunAsync(ctx, log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "destroy",
 		"-auto-approve", "-no-color")
 
 	o, err := cmd.StdoutPipe()
@@ -195,14 +204,14 @@ func (t *Terraform) StartDestroy(ctx context.Context, env []string, dir string) 
 		return nil, nil, err
 	}
 
-	ch := t.parseAsyncApplyResponse(o)
+	ch := t.parseAsyncApplyResponse(log, o)
 
 	return cmd, ch, nil
 }
 
 // ParseAsyncApplyResponse parses in and returns results when interesting input is encountered.
 // Close in to release the go func.
-func (t *Terraform) parseAsyncApplyResponse(in io.ReadCloser) chan TFApplyResult {
+func (t *Terraform) parseAsyncApplyResponse(log logr.Logger, in io.ReadCloser) chan TFApplyResult {
 	out := make(chan TFApplyResult)
 
 	// hold running totals.
@@ -212,14 +221,14 @@ func (t *Terraform) parseAsyncApplyResponse(in io.ReadCloser) chan TFApplyResult
 		sc := bufio.NewScanner(in)
 		for sc.Scan() {
 			s := sc.Text()
-			t.Log.V(3).Info("RunAsync-result", "text", s)
+			log.V(3).Info("RunAsync-result", "text", s)
 			r := parseApplyResponseLine(result, s)
 			if r != nil {
 				out <- *r
 			}
 		}
 		if err := sc.Err(); err != nil {
-			t.Log.Error(err, "parseAsyncApplyResponse")
+			log.Error(err, "parseAsyncApplyResponse")
 		}
 
 		close(out)
@@ -319,8 +328,10 @@ func normalizeAction(s string) string {
 }
 
 // Output implements Terraformer.
-func (t *Terraform) Output(_ context.Context, env []string, dir string) (map[string]interface{}, error) {
-	o, _, err := exe.Run(t.Log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "output", "-json", "-no-color")
+func (t *Terraform) Output(ctx context.Context, env []string, dir string) (map[string]interface{}, error) {
+	log := logr.FromContext(ctx).WithName("TFOutput")
+
+	o, _, err := exe.Run(log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "output", "-json", "-no-color")
 	if err != nil {
 		return nil, err
 	}

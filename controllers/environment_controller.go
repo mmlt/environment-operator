@@ -41,7 +41,6 @@ type EnvironmentReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
-	Log      logr.Logger
 
 	// Selector much match the value of resource label to be handled this instance.
 	// An empty Selector matches all resources.
@@ -77,10 +76,10 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		requeueSoon = ctrl.Result{RequeueAfter: 10 * time.Second}
 	)
 
-	log := r.Log.WithValues("request", req.NamespacedName)
+	log := logr.FromContext(ctx).WithName("Reconcile")
+	ctx = logr.NewContext(ctx, log)
 
 	r.reconTally++
-
 	log.V(1).Info("Start Reconcile", "tally", r.reconTally)
 	defer log.V(1).Info("End Reconcile", "tally", r.reconTally)
 
@@ -130,17 +129,20 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// Execute work.
 	if stp != nil {
 		stp.SetOnUpdate(func(meta step.Meta) {
+			log1 := logr.FromContext(ctx).WithName("OnUpdate")
+			ctx1 := logr.NewContext(ctx, log)
+
 			e := meta.GetLastError()
 			m := meta.GetMsg()
 			if e != nil {
 				log.Error(e, m)
 			}
 			s := meta.GetState()
-			log.Info("OnUpdate", "msg", m, "state", s, "id", meta.GetID().ShortName())
-			r.Update(ctx, cr, meta)
+			log1.Info("callback", "msg", m, "state", s, "id", meta.GetID().ShortName())
+			r.update(ctx1, cr, meta)
 		})
 		env := util.KVSliceFromMap(r.Environ)
-		stp.Execute(ctx, env, log)
+		stp.Execute(ctx, env)
 	}
 
 	return noRequeue, nil
@@ -238,17 +240,16 @@ func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.St
 
 	var r step.Step
 	for _, stp := range plan {
-		id := stp.GetID()
+		shortName := stp.GetID().ShortName()
 
 		// Get status step state.
-		stStp, ok := status.Steps[id.ShortName()]
+		stStp, ok := status.Steps[shortName]
 		if !ok {
 			// first time this step is seen.
 			stStp = v1.StepStatus{
 				Message:            "new",
 				LastTransitionTime: metav1.Time{Time: timeNow()},
 			}
-			status.Steps[id.ShortName()] = stStp
 		}
 
 		if stStp.Hash == stp.GetHash() {
@@ -262,7 +263,7 @@ func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.St
 		}
 
 		if stStp.State == v1.StateReady {
-			// clear state of a step that needs to be run again.
+			// clear state of a step that needs to be run again because its hash has changed.
 			stStp.State = ""
 
 			// Consider also doing to reverse: set stStepSate = v1.StateReady when hashes match.
@@ -271,6 +272,8 @@ func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.St
 			//	2. stStp.State is cleared because the hashes don't match anymore
 			//	3. changes from 1 are undone
 		}
+
+		status.Steps[shortName] = stStp
 	}
 
 	// TODO remove stStp that are not in plan anymore.
@@ -285,7 +288,9 @@ func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.St
 func (r *EnvironmentReconciler) saveStatus2(ctx context.Context, cr *v1.Environment) error {
 	updateStatusConditions(&cr.Status)
 
-	r.Log.Info("saveState", "status", cr.Status)
+	log := logr.FromContext(ctx)
+	log.Info("saveStatus", "status", cr.Status)
+
 	return r.Status().Update(ctx, cr)
 }
 
@@ -346,8 +351,8 @@ func updateStatusConditions(status *v1.EnvironmentStatus) {
 }
 
 // Update updates cr.Status with meta, writes the status to the API Server and records an Event.
-func (r *EnvironmentReconciler) Update(ctx context.Context, cr *v1.Environment, meta step.Meta) {
-	log := r.Log.WithName("Update")
+func (r *EnvironmentReconciler) update(ctx context.Context, cr *v1.Environment, meta step.Meta) {
+	log := logr.FromContext(ctx)
 
 	shortname := meta.GetID().ShortName()
 

@@ -29,8 +29,10 @@ type AKSPoolStep struct {
 }
 
 // Execute node pool upgrade for a cluster.
-func (st *AKSPoolStep) Execute(ctx context.Context, _ []string, log logr.Logger) {
-	log = log.WithName("az").WithValues("cluster", st.Cluster)
+func (st *AKSPoolStep) Execute(ctx context.Context, _ []string) {
+	log := logr.FromContext(ctx).WithName("AKSPoolStep").WithValues("cluster", st.Cluster)
+	ctx = logr.NewContext(ctx, log)
+
 	log.Info("start")
 
 	st.update(v1.StateRunning, "upgrade k8s version")
@@ -48,6 +50,7 @@ func (st *AKSPoolStep) Execute(ctx context.Context, _ []string, log logr.Logger)
 	var alreadyAtRightVersion int
 	for _, pool := range pools {
 		log := log.WithValues("pool", pool.Name)
+		st.update(v1.StateRunning, "upgrade k8s version of pool "+pool.Name)
 
 		switch pool.ProvisioningState {
 		case azure.Succeeded:
@@ -77,7 +80,10 @@ func (st *AKSPoolStep) Execute(ctx context.Context, _ []string, log logr.Logger)
 
 		if pool.EnableAutoScaling {
 			err = st.Azure.Autoscaler(true, st.Cluster, pool)
-			log.Error(err, "enable autoscaler", "cluster", st.Cluster, "pool", pool.Name)
+			if err != nil {
+				st.error2(err, "enable autoscaler")
+				return
+			}
 		}
 	}
 

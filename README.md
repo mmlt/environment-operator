@@ -109,7 +109,7 @@ Prerequisites
 
 ### Run local
 
-For development an `environment.yaml` is applied to a local k8s cluster, the envop run in your IDE.
+For development an `environment.yaml` is applied to a local k8s cluster, the envop runs in your IDE.
 
 Prerequisites
 - minikube or another local k8s cluster

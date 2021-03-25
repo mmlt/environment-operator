@@ -43,12 +43,14 @@ type KTResult struct {
 
 // Addon provisions Kubernetes resources using kubectl-tmplt cli.
 type Addon struct {
-	Log logr.Logger
 }
 
 // Start implements Addonr.
 func (a *Addon) Start(ctx context.Context, env []string, dir, jobPath, valuesPath, kubeconfigPath, masterVaultPath string) (*exec.Cmd, chan KTResult, error) {
-	cmd := exe.RunAsync(ctx, a.Log, &exe.Opt{Dir: dir, Env: env}, "", "kubectl-tmplt",
+	log := logr.FromContext(ctx).WithName("Addon")
+	ctx = logr.NewContext(ctx, log)
+
+	cmd := exe.RunAsync(ctx, log, &exe.Opt{Dir: dir, Env: env}, "", "kubectl-tmplt",
 		"-m", "apply-with-actions",
 		"--job-file", jobPath,
 		"--set-file", valuesPath,
@@ -67,14 +69,14 @@ func (a *Addon) Start(ctx context.Context, env []string, dir, jobPath, valuesPat
 		return nil, nil, err
 	}
 
-	ch := a.parseAsyncAddonResponse(o)
+	ch := a.parseAsyncAddonResponse(log, o)
 
 	return cmd, ch, nil
 }
 
 // ParseAsyncAddonResponse parses in and returns results when interesting input is encountered.
 // Close in to release the go func.
-func (a *Addon) parseAsyncAddonResponse(in io.ReadCloser) chan KTResult {
+func (a *Addon) parseAsyncAddonResponse(log logr.Logger, in io.ReadCloser) chan KTResult {
 	out := make(chan KTResult)
 
 	// hold running totals.
@@ -84,7 +86,7 @@ func (a *Addon) parseAsyncAddonResponse(in io.ReadCloser) chan KTResult {
 		sc := bufio.NewScanner(in)
 		for sc.Scan() {
 			s := sc.Text()
-			a.Log.V(3).Info("RunAsync-result", "text", s)
+			log.V(3).Info("RunAsync-result", "text", s)
 			r := parseAddonResponseLine(s)
 			if r != nil {
 				// every line counts as a change.
@@ -94,7 +96,7 @@ func (a *Addon) parseAsyncAddonResponse(in io.ReadCloser) chan KTResult {
 			}
 		}
 		if err := sc.Err(); err != nil {
-			a.Log.Error(err, "parseAsyncAddonResponse")
+			log.Error(err, "parseAsyncAddonResponse")
 		}
 
 		close(out)

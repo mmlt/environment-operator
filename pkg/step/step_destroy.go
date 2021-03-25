@@ -42,7 +42,7 @@ type DestroyStep struct {
 const deleteLimitForDestroy = 99
 
 // Execute terraform destroy.
-func (st *DestroyStep) Execute(ctx context.Context, env []string, log logr.Logger) {
+func (st *DestroyStep) Execute(ctx context.Context, env []string) {
 	// Check budget.
 	b := st.Values.Infra.Budget
 	if b.DeleteLimit == nil || int(*b.DeleteLimit) != deleteLimitForDestroy {
@@ -51,6 +51,8 @@ func (st *DestroyStep) Execute(ctx context.Context, env []string, log logr.Logge
 		return
 	}
 
+	log := logr.FromContext(ctx).WithName("DestroyStep")
+	ctx = logr.NewContext(ctx, log)
 	log.Info("start")
 
 	// Init

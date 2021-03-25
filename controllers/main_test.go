@@ -111,7 +111,6 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("envop"),
-		Log:      ctrl.Log.WithName("recon"),
 		Environ: map[string]string{
 			"PATH": "/usr/local/bin", //kubectl-tmplt uses kubectl
 		},
@@ -119,13 +118,13 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 
 	testReconciler.Sources = &source.Sources{
 		RootPath: filepath.Join(os.TempDir(), "envop"),
-		Log:      testReconciler.Log.WithName("source"),
+		Log:      ctrl.Log.WithName("source"),
 	}
 
 	az := &azure.AZFake{}
 	az.SetupFakeResults()
 	tf := &terraform.TerraformFake{
-		Log: testReconciler.Log.WithName("tffake"),
+		Log: ctrl.Log.WithName("tffake"),
 	}
 	tf.SetupFakeResults(map[string]interface{}{
 		"xyz": map[string]interface{}{
@@ -146,10 +145,8 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 		Kubectl:   kc,
 		Azure:     az,
 		Cloud:     cl,
-		Addon: &addon.Addon{
-			Log: testReconciler.Log.WithName("addon"),
-		},
-		Log: testReconciler.Log.WithName("planner"),
+		Addon:     &addon.Addon{},
+		Log:       ctrl.Log.WithName("planner"),
 	}
 
 	// Add reconciler to manager.

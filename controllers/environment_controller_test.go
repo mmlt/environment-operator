@@ -3,7 +3,9 @@ package controllers
 import (
 	"errors"
 	v1 "github.com/mmlt/environment-operator/api/v1"
+	"github.com/mmlt/environment-operator/pkg/step"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
 )
@@ -117,6 +119,231 @@ func Test_inSchedule(t *testing.T) {
 			got, err := inSchedule(tt.args.schedule, now)
 			assert.Equal(t, tt.want, got)
 			assert.Equal(t, tt.err, err)
+		})
+	}
+}
+
+func Test_syncStatusWithPlan(t *testing.T) {
+	// test helper
+	newStep := func(typ step.Type, clusterName, hash string) step.Step {
+		return &step.AddonStep{ // we don't execute the step so we can use the same struct for this test
+			Metaa: step.Metaa{
+				ID: step.ID{
+					Type:        typ,
+					Namespace:   "ns",
+					Name:        "name",
+					ClusterName: clusterName,
+				},
+				Hash: hash,
+			},
+		}
+	}
+	newTime := func(t int64) metav1.Time {
+		return metav1.Time{Time: time.Unix(t, 0)}
+	}
+	// fake time
+	orgTimeNow := timeNow
+	setTime := func(t int64) {
+		timeNow = func() time.Time { return time.Unix(t, 0) }
+	}
+
+	// test cases
+	type args struct {
+		status v1.EnvironmentStatus
+		plan   []step.Step
+	}
+	tests := []struct {
+		it         string
+		args       args
+		wantStatus v1.EnvironmentStatus
+		wantStep   step.Step
+		wantErr    bool
+	}{
+		{
+			it: "should return the first step of the plan when no steps have executed before",
+			args: args{
+				status: v1.EnvironmentStatus{},
+				plan: []step.Step{
+					newStep(step.TypeInfra, "", "123"),
+					newStep(step.TypeAddons, "foo", "123"),
+				}},
+			wantStatus: v1.EnvironmentStatus{
+				Steps: map[string]v1.StepStatus{
+					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+				}},
+			wantStep: newStep(step.TypeInfra, "", "123"),
+			wantErr:  false,
+		},
+		{
+			it: "should return the same first step of the plan when the step is executing",
+			args: args{
+				status: v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Running", Message: "new", Hash: ""},
+						"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+					}},
+				plan: []step.Step{
+					newStep(step.TypeInfra, "", "123"),
+					newStep(step.TypeAddons, "foo", "456"),
+				}},
+			wantStatus: v1.EnvironmentStatus{
+				Steps: map[string]v1.StepStatus{
+					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Running", Message: "new", Hash: ""},
+					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+				}},
+			wantStep: newStep(step.TypeInfra, "", "123"),
+			wantErr:  false,
+		},
+		{
+			it: "should return the second step of the plan when the first step has completed successfully (hashes match)",
+			args: args{
+				status: v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+					}},
+				plan: []step.Step{
+					newStep(step.TypeInfra, "", "123"),
+					newStep(step.TypeAddons, "foo", "456"),
+				}},
+			wantStatus: v1.EnvironmentStatus{
+				Steps: map[string]v1.StepStatus{
+					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+				}},
+			wantStep: newStep(step.TypeAddons, "foo", "456"),
+			wantErr:  false,
+		},
+		{
+			it: "should return nil when all step have completed (hashes match)",
+			args: args{
+				status: v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
+					}},
+				plan: []step.Step{
+					newStep(step.TypeInfra, "", "123"),
+					newStep(step.TypeAddons, "foo", "456"),
+				}},
+			wantStatus: v1.EnvironmentStatus{
+				Steps: map[string]v1.StepStatus{
+					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
+				}},
+			wantStep: nil,
+			wantErr:  false,
+		},
+		{
+			it: "should return the first step and clear states when hashes change",
+			args: args{
+				status: v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
+					}},
+				plan: []step.Step{
+					newStep(step.TypeInfra, "", "999123"),
+					newStep(step.TypeAddons, "foo", "999456"),
+				}},
+			wantStatus: v1.EnvironmentStatus{
+				Steps: map[string]v1.StepStatus{
+					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: "123"},
+					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: "456"},
+				}},
+			wantStep: newStep(step.TypeInfra, "", "999123"),
+			wantErr:  false,
+		},
+	}
+
+	setTime(0)
+	for _, tt := range tests {
+		t.Run(tt.it, func(t *testing.T) {
+			status := tt.args.status.DeepCopy()
+			gotStep, err := syncStatusWithPlan(status, tt.args.plan)
+			if assert.NoError(t, err) {
+				assert.Equal(t, tt.wantStep, gotStep)
+				assert.Equal(t, &tt.wantStatus, status)
+			}
+		})
+	}
+
+	timeNow = orgTimeNow
+}
+
+func Test_updateStatusConditions(t *testing.T) {
+	type args struct {
+		status *v1.EnvironmentStatus
+	}
+	tests := []struct {
+		it            string
+		args          args
+		wantCondition v1.EnvironmentCondition
+	}{
+		{
+			it: "should say status: Unknown when all steps states are unknown (empty)",
+			args: args{
+				status: &v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{State: "", Message: "new", Hash: "123"},
+						"Addonsfoo": v1.StepStatus{State: "", Message: "new", Hash: "456"},
+					}},
+			},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "Unknown", Reason: "", Message: "0/2 ready, 0 running, 0 error(s)"},
+		},
+		{
+			it: "should say status: False reason: Running when some step(s) are running",
+			args: args{
+				status: &v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{State: "Running", Message: "new", Hash: "123"},
+						"Addonsfoo": v1.StepStatus{State: "", Message: "new", Hash: "456"},
+					}},
+			},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "False", Reason: "Running", Message: "0/2 ready, 1 running, 0 error(s)"},
+		},
+		{
+			it: "should say status: False reason: Running when some step(s) are ready and some are running",
+			args: args{
+				status: &v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": v1.StepStatus{State: "Running", Message: "new", Hash: "456"},
+					}},
+			},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "False", Reason: "Running", Message: "1/2 ready, 1 running, 0 error(s)"},
+		},
+		{
+			it: "should say status: True reason: Failed when some step(s) are in error state",
+			args: args{
+				status: &v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{State: "Error", Message: "new", Hash: "123"},
+						"Addonsfoo": v1.StepStatus{State: "", Message: "new", Hash: "456"},
+					}},
+			},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "True", Reason: "Failed", Message: "0/2 ready, 0 running, 1 error(s)"},
+		},
+		{
+			it: "should say status: True, reason: Ready when all steps completed successfully",
+			args: args{
+				status: &v1.EnvironmentStatus{
+					Steps: map[string]v1.StepStatus{
+						"Infra":     v1.StepStatus{State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": v1.StepStatus{State: "Ready", Message: "new", Hash: "456"},
+					}},
+			},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "True", Reason: "Ready", Message: "2/2 ready, 0 running, 0 error(s)"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.it, func(t *testing.T) {
+			status := tt.args.status.DeepCopy()
+			updateStatusConditions(status)
+			if assert.Equal(t, 1, len(status.Conditions)) {
+				assert.Equal(t, tt.wantCondition, status.Conditions[0])
+			}
 		})
 	}
 }

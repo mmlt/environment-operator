@@ -514,17 +514,16 @@ func TestParseAsyncApplyResponse(t *testing.T) {
 		},
 	}
 
-	tf := &Terraform{
-		Log: testr.New(t),
-	}
+	tf := &Terraform{}
 
+	log := testr.New(t)
 	for _, tst := range tsts {
 		t.Run(tst.it, func(t *testing.T) {
 
 			rd, wr := io.Pipe()
 
 			// start parser
-			ch := tf.parseAsyncApplyResponse(rd)
+			ch := tf.parseAsyncApplyResponse(log, rd)
 
 			// send input
 			go func() {

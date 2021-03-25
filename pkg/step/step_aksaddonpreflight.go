@@ -23,13 +23,14 @@ type AKSAddonPreflightStep struct {
 }
 
 // Execute node pool upgrade for a cluster.
-func (st *AKSAddonPreflightStep) Execute(_ context.Context, _ []string, log logr.Logger) {
+func (st *AKSAddonPreflightStep) Execute(ctx context.Context, _ []string) {
 	const (
 		namespace = "kube-system"
 		name      = "preflight"
 	)
 	var err error
 
+	log := logr.FromContext(ctx).WithName("AKSAddonPreflightStep")
 	log.Info("start")
 
 	st.update(v1.StateRunning, "check api-server connection")

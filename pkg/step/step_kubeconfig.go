@@ -42,7 +42,9 @@ type KubeconfigStep struct {
 }
 
 // Run a step.
-func (st *KubeconfigStep) Execute(ctx context.Context, env []string, log logr.Logger) {
+func (st *KubeconfigStep) Execute(ctx context.Context, env []string) {
+	log := logr.FromContext(ctx).WithName("KubeconfigStep")
+	ctx = logr.NewContext(ctx, log)
 	log.Info("start")
 
 	st.update(v1.StateRunning, "get kubeconfig")

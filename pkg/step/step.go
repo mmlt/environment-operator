@@ -3,7 +3,6 @@ package step
 import (
 	"context"
 	"fmt"
-	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"strings"
 	"sync"
@@ -14,7 +13,7 @@ import (
 type Step interface {
 	Meta
 	// Execute a step.
-	Execute(context.Context, []string, logr.Logger)
+	Execute(context.Context, []string)
 }
 
 // Meta is behaviour that all steps have in common.
@@ -125,6 +124,10 @@ func (m *Metaa) error2(err error, msg string) {
 	m.mu.Lock()
 	m.lastError = err
 	m.mu.Unlock()
+
+	if err != nil {
+		msg = msg + " " + err.Error()
+	}
 
 	m.update(v1.StateError, msg)
 }

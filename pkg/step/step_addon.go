@@ -39,7 +39,9 @@ type AddonStep struct {
 }
 
 // Execute addon apply for a cluster.
-func (st *AddonStep) Execute(ctx context.Context, env []string, log logr.Logger) {
+func (st *AddonStep) Execute(ctx context.Context, env []string) {
+	log := logr.FromContext(ctx).WithName("InfraStep")
+	ctx = logr.NewContext(ctx, log)
 	log.Info("start")
 
 	st.update(v1.StateRunning, "values yaml")
