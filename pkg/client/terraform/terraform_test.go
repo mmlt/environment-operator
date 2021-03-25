@@ -527,10 +527,13 @@ func TestParseAsyncApplyResponse(t *testing.T) {
 
 			// send input
 			go func() {
+				var err error
 				for _, s := range tst.in {
-					wr.Write([]byte(s))
+					_, err = wr.Write([]byte(s))
+					assert.NoError(t, err)
 				}
-				wr.Close()
+				err = wr.Close()
+				assert.NoError(t, err)
 			}()
 
 			// read output

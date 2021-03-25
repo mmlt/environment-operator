@@ -185,6 +185,13 @@ spec:
                               maximum: 100
                               minimum: 1
                               type: integer
+                            mode:
+                              description: Mode selects the purpose of a pool; User
+                                (default) or System. AKS doc https://docs.microsoft.com/en-us/azure/aks/use-system-pools
+                              enum:
+                              - System
+                              - User
+                              type: string
                             nodeLabels:
                               additionalProperties:
                                 type: string
@@ -193,8 +200,8 @@ spec:
                               type: object
                             nodeTaints:
                               description: An optional list of Kubernetes node taints
-                                (e.g key=value:NoSchedule). Changing this forces a
-                                new resource to be created.
+                                (e.g CriticalAddonsOnly=true:NoSchedule). Changing
+                                this forces a new resource to be created.
                               items:
                                 type: string
                               type: array
@@ -369,6 +376,13 @@ spec:
                             maximum: 100
                             minimum: 1
                             type: integer
+                          mode:
+                            description: Mode selects the purpose of a pool; User
+                              (default) or System. AKS doc https://docs.microsoft.com/en-us/azure/aks/use-system-pools
+                            enum:
+                            - System
+                            - User
+                            type: string
                           nodeLabels:
                             additionalProperties:
                               type: string
@@ -377,8 +391,8 @@ spec:
                             type: object
                           nodeTaints:
                             description: An optional list of Kubernetes node taints
-                              (e.g key=value:NoSchedule). Changing this forces a new
-                              resource to be created.
+                              (e.g CriticalAddonsOnly=true:NoSchedule). Changing this
+                              forces a new resource to be created.
                             items:
                               type: string
                             type: array
@@ -646,7 +660,7 @@ spec:
                 properties:
                   hash:
                     description: An opaque value representing the config/parameters
-                      applied by the step.
+                      applied by a step. Only valid when state=Ready.
                     type: string
                   lastTransitionTime:
                     description: Last time the state transitioned. This should be

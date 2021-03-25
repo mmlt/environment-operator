@@ -281,12 +281,18 @@ type ClusterInfraSpec struct {
 
 // NodepoolSpec defines a cluster worker node pool.
 type NodepoolSpec struct {
+	// Mode selects the purpose of a pool; User (default) or System.
+	// AKS doc https://docs.microsoft.com/en-us/azure/aks/use-system-pools
+	// +optional
+	// +kubebuilder:validation:Enum=System;User
+	Mode string `json:"mode,omitempty"`
+
 	// An optional map of Kubernetes node labels.
 	// Changing this forces a new resource to be created.
 	// +optional
 	NodeLabels map[string]string `json:"nodeLabels,omitempty"`
 
-	// An optional list of Kubernetes node taints (e.g key=value:NoSchedule).
+	// An optional list of Kubernetes node taints (e.g CriticalAddonsOnly=true:NoSchedule).
 	// Changing this forces a new resource to be created.
 	// +optional
 	NodeTaints []string `json:"nodeTaints,omitempty"`

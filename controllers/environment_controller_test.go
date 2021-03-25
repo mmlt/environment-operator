@@ -169,8 +169,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 				}},
 			wantStatus: v1.EnvironmentStatus{
 				Steps: map[string]v1.StepStatus{
-					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
-					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+					"Infra":     {LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+					"Addonsfoo": {LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
 				}},
 			wantStep: newStep(step.TypeInfra, "", "123"),
 			wantErr:  false,
@@ -180,8 +180,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 			args: args{
 				status: v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Running", Message: "new", Hash: ""},
-						"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+						"Infra":     {LastTransitionTime: newTime(0), State: "Running", Message: "new", Hash: ""},
+						"Addonsfoo": {LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
 					}},
 				plan: []step.Step{
 					newStep(step.TypeInfra, "", "123"),
@@ -189,8 +189,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 				}},
 			wantStatus: v1.EnvironmentStatus{
 				Steps: map[string]v1.StepStatus{
-					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Running", Message: "new", Hash: ""},
-					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+					"Infra":     {LastTransitionTime: newTime(0), State: "Running", Message: "new", Hash: ""},
+					"Addonsfoo": {LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
 				}},
 			wantStep: newStep(step.TypeInfra, "", "123"),
 			wantErr:  false,
@@ -200,8 +200,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 			args: args{
 				status: v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
-						"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+						"Infra":     {LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": {LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
 					}},
 				plan: []step.Step{
 					newStep(step.TypeInfra, "", "123"),
@@ -209,8 +209,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 				}},
 			wantStatus: v1.EnvironmentStatus{
 				Steps: map[string]v1.StepStatus{
-					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
-					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
+					"Infra":     {LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+					"Addonsfoo": {LastTransitionTime: newTime(0), State: "", Message: "new", Hash: ""},
 				}},
 			wantStep: newStep(step.TypeAddons, "foo", "456"),
 			wantErr:  false,
@@ -220,8 +220,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 			args: args{
 				status: v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
-						"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
+						"Infra":     {LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": {LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
 					}},
 				plan: []step.Step{
 					newStep(step.TypeInfra, "", "123"),
@@ -229,8 +229,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 				}},
 			wantStatus: v1.EnvironmentStatus{
 				Steps: map[string]v1.StepStatus{
-					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
-					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
+					"Infra":     {LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+					"Addonsfoo": {LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
 				}},
 			wantStep: nil,
 			wantErr:  false,
@@ -240,8 +240,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 			args: args{
 				status: v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
-						"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
+						"Infra":     {LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": {LastTransitionTime: newTime(0), State: "Ready", Message: "new", Hash: "456"},
 					}},
 				plan: []step.Step{
 					newStep(step.TypeInfra, "", "999123"),
@@ -249,8 +249,8 @@ func Test_syncStatusWithPlan(t *testing.T) {
 				}},
 			wantStatus: v1.EnvironmentStatus{
 				Steps: map[string]v1.StepStatus{
-					"Infra":     v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: "123"},
-					"Addonsfoo": v1.StepStatus{LastTransitionTime: newTime(0), State: "", Message: "new", Hash: "456"},
+					"Infra":     {LastTransitionTime: newTime(0), State: "", Message: "new", Hash: "123"},
+					"Addonsfoo": {LastTransitionTime: newTime(0), State: "", Message: "new", Hash: "456"},
 				}},
 			wantStep: newStep(step.TypeInfra, "", "999123"),
 			wantErr:  false,
@@ -286,8 +286,8 @@ func Test_updateStatusConditions(t *testing.T) {
 			args: args{
 				status: &v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{State: "", Message: "new", Hash: "123"},
-						"Addonsfoo": v1.StepStatus{State: "", Message: "new", Hash: "456"},
+						"Infra":     {State: "", Message: "new", Hash: "123"},
+						"Addonsfoo": {State: "", Message: "new", Hash: "456"},
 					}},
 			},
 			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "Unknown", Reason: "", Message: "0/2 ready, 0 running, 0 error(s)"},
@@ -297,8 +297,8 @@ func Test_updateStatusConditions(t *testing.T) {
 			args: args{
 				status: &v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{State: "Running", Message: "new", Hash: "123"},
-						"Addonsfoo": v1.StepStatus{State: "", Message: "new", Hash: "456"},
+						"Infra":     {State: "Running", Message: "new", Hash: "123"},
+						"Addonsfoo": {State: "", Message: "new", Hash: "456"},
 					}},
 			},
 			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "False", Reason: "Running", Message: "0/2 ready, 1 running, 0 error(s)"},
@@ -308,8 +308,8 @@ func Test_updateStatusConditions(t *testing.T) {
 			args: args{
 				status: &v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{State: "Ready", Message: "new", Hash: "123"},
-						"Addonsfoo": v1.StepStatus{State: "Running", Message: "new", Hash: "456"},
+						"Infra":     {State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": {State: "Running", Message: "new", Hash: "456"},
 					}},
 			},
 			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "False", Reason: "Running", Message: "1/2 ready, 1 running, 0 error(s)"},
@@ -319,8 +319,8 @@ func Test_updateStatusConditions(t *testing.T) {
 			args: args{
 				status: &v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{State: "Error", Message: "new", Hash: "123"},
-						"Addonsfoo": v1.StepStatus{State: "", Message: "new", Hash: "456"},
+						"Infra":     {State: "Error", Message: "new", Hash: "123"},
+						"Addonsfoo": {State: "", Message: "new", Hash: "456"},
 					}},
 			},
 			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "True", Reason: "Failed", Message: "0/2 ready, 0 running, 1 error(s)"},
@@ -330,8 +330,8 @@ func Test_updateStatusConditions(t *testing.T) {
 			args: args{
 				status: &v1.EnvironmentStatus{
 					Steps: map[string]v1.StepStatus{
-						"Infra":     v1.StepStatus{State: "Ready", Message: "new", Hash: "123"},
-						"Addonsfoo": v1.StepStatus{State: "Ready", Message: "new", Hash: "456"},
+						"Infra":     {State: "Ready", Message: "new", Hash: "123"},
+						"Addonsfoo": {State: "Ready", Message: "new", Hash: "456"},
 					}},
 			},
 			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "True", Reason: "Ready", Message: "2/2 ready, 0 running, 0 error(s)"},
