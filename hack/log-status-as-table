@@ -1,0 +1,4 @@
+# Parse an environment-operator log file and show status json in table format
+# Usage: cat logfile | log-status-as-table
+
+printf "Infra\tAKSPool\tKubecon\tAKSAOP\tAddons\tstatus\treason\tmessage\n" && grep saveStatus | sed "s/.*\"status\"=\(.*\)/\1/" | jq -r '[.steps.Infra.state, .steps.AKSPoolcpe.state, .steps.Kubeconfigcpe.state, .steps.AKSAddonPreflightcpe.state, .steps.Addonscpe.state, .conditions[0].status, .conditions[0].reason, .conditions[0].message, .conditions[0].lastTransitionTime ] | @tsv'
