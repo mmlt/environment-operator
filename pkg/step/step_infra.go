@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
+	"github.com/mmlt/environment-operator/pkg/client/azure"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/tmplt"
@@ -28,6 +29,9 @@ type InfraStep struct {
 	SourcePath string
 	// Cloud provides generic cloud functionality.
 	Cloud cloud.Cloud
+	// Azure provides Azure resource manager functionality.
+	// (prefer to use Cloud instead of Azure)
+	Azure azure.AZer
 	// Terraform provides terraform functionality.
 	Terraform terraform.Terraformer
 
@@ -110,6 +114,19 @@ func (st *InfraStep) Execute(ctx context.Context, env []string) {
 		return
 	}
 
+	// Prevent the autoscaling from fighting a node pool update or delete.
+	pools, err := st.Terraform.GetPlanPools(ctx, env, st.SourcePath)
+	for _, p := range pools {
+		if p.Action&(terraform.ActionUpdate|terraform.ActionDelete) == 0 {
+			continue
+		}
+		err = st.Azure.Autoscaler(false, p.ResourceGroup, p.Cluster, p.Pool, p.MinCount, p.MaxCount)
+		if err != nil {
+			st.error2(err, "disable autoscaler")
+			return
+		}
+	}
+
 	// Apply
 	st.update(v1.StateRunning, fmt.Sprintf("terraform apply adds=%d changes=%d deletes=%d",
 		tfr.PlanAdded, tfr.PlanChanged, tfr.PlanDeleted))
@@ -124,6 +141,18 @@ func (st *InfraStep) Execute(ctx context.Context, env []string) {
 	var last *terraform.TFApplyResult
 	for r := range ch {
 		last = &r
+	}
+
+	// Re-enable autoscaling after change.
+	for _, p := range pools {
+		if p.Action&terraform.ActionUpdate == 0 {
+			continue
+		}
+		err = st.Azure.Autoscaler(true, p.ResourceGroup, p.Cluster, p.Pool, p.MinCount, p.MaxCount)
+		if err != nil {
+			st.error2(err, "enable autoscaler")
+			return
+		}
 	}
 
 	if cmd != nil {

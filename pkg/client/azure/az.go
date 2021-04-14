@@ -27,7 +27,7 @@ type AZer interface {
 	// Expect this call to block for VM count * 10m.
 	AKSNodepoolUpgrade(resourceGroup, cluster, nodepool, version string) (*AKSNodepool, error)
 	// Autoscaling enables or disables a Node autoscaler.
-	Autoscaler(enable bool, cluster string, pool AKSNodepool) error
+	Autoscaler(enable bool, resourceGroup string, cluster string, pool string, minCount int, maxCount int) error
 	// AllAutoscalers enables or disables the Node autoscalers of multiple clusters.
 	AllAutoscalers(enable bool, clusters []v1.ClusterSpec, resourceGroup string, log logr.Logger) error
 }

@@ -3,6 +3,7 @@ module github.com/mmlt/environment-operator
 go 1.14
 
 require (
+	github.com/Jeffail/gabs/v2 v2.6.0
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.3.0
@@ -19,7 +20,6 @@ require (
 	github.com/onsi/gomega v1.10.4 // indirect
 	github.com/otiai10/copy v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/prometheus/client_golang v1.7.1
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/rodaine/hclencoder v0.0.0-20190213202847-fb9757bb536e
 	github.com/securego/gosec v0.0.0-20200401082031-e946c8c39989

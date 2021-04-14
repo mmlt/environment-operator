@@ -83,7 +83,7 @@ func TestErrorRun(t *testing.T) {
 		// Fix error and reset step.
 		tf.DestroyMustSucceed()
 		testResetStep(t, testNSN, "Destroy")
-		time.Sleep(5 * time.Second) //TODO it will take some time for the condition to reflect the new status (should ResetStep also remove Condition?)
+		time.Sleep(5 * time.Second) // it will take some time for the condition to reflect the new status (should ResetStep also remove Condition?)
 
 		got = testGetCRWhenConditionReady(t, testNSN)
 

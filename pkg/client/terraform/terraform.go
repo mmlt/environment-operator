@@ -29,6 +29,8 @@ type Terraformer interface {
 	// Output gets terraform output values an returns them as a map of types and values.
 	// When outputs.tf contains output "xyz" { value = 7 } the returned map contains ["yxz"]["value"] == 7
 	Output(ctx context.Context, env []string, dir string) (map[string]interface{}, error)
+	// GetPlanPools reads an existing plan and returns AKSPools that are going to be updated or deleted.
+	GetPlanPools(ctx context.Context, env []string, dir string) ([]AKSPool, error)
 }
 
 // TFResults is the output of a terraform command.
@@ -76,10 +78,14 @@ type TFApplyResult struct {
 }
 
 // Terraform provisions infrastructure using terraform cli.
-type Terraform struct {
-}
+type Terraform struct{}
 
-// Init implements Terraformer.
+var _ Terraformer = &Terraform{}
+
+// PlanName is the name of the terraform plan.
+const planName = "newplan"
+
+// Init resolves (downloads) dependencies for the terraform configuration files in dir.
 func (t *Terraform) Init(ctx context.Context, env []string, dir string) *TFResult {
 	log := logr.FromContext(ctx).WithName("TFInit")
 
@@ -108,12 +114,12 @@ func parseInitResponse(text string, err error) *TFResult {
 	return r
 }
 
-// Plan implements Terraformer.
+// Plan creates an execution plan for the terraform configuration files in dir.
 func (t *Terraform) Plan(ctx context.Context, env []string, dir string) *TFResult {
 	log := logr.FromContext(ctx).WithName("TFPlan")
 
 	o, _, err := exe.Run(log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "plan",
-		"-out=newplan", "-detailed-exitcode", "-input=false", "-no-color")
+		"-out="+planName, "-detailed-exitcode", "-input=false", "-no-color")
 	return parsePlanResponse(o, err)
 }
 
@@ -159,13 +165,14 @@ func parsePlanResponse(text string, err error) *TFResult {
 	return r
 }
 
-// StartApply implements Terraformer.
+// StartApply applies the plan in dir without waiting for completion.
+// If a Cmd is returned cmd.Wait() should be called wait for completion and clean-up.
 func (t *Terraform) StartApply(ctx context.Context, env []string, dir string) (*exec.Cmd, chan TFApplyResult, error) {
 	log := logr.FromContext(ctx).WithName("TFApply")
 	ctx = logr.NewContext(ctx, log)
 
 	cmd := exe.RunAsync(ctx, log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "apply",
-		"-auto-approve", "-input=false", "-no-color", "newplan")
+		"-auto-approve", "-input=false", "-no-color", planName)
 
 	o, err := cmd.StdoutPipe()
 	if err != nil {
@@ -184,7 +191,8 @@ func (t *Terraform) StartApply(ctx context.Context, env []string, dir string) (*
 	return cmd, ch, nil
 }
 
-// StartDestroy implements Terraformer.
+// StartDestroy destroys the resources specified in the plan in dir without waiting for completion.
+// If a Cmd is returned cmd.Wait() should be called wait for completion and clean-up.
 func (t *Terraform) StartDestroy(ctx context.Context, env []string, dir string) (*exec.Cmd, chan TFApplyResult, error) {
 	log := logr.FromContext(ctx).WithName("TFDestroy")
 	ctx = logr.NewContext(ctx, log)
@@ -327,7 +335,8 @@ func normalizeAction(s string) string {
 	return strings.ToLower(s)
 }
 
-// Output implements Terraformer.
+// Output gets terraform output values an returns them as a map of types and values.
+// When outputs.tf contains output "xyz" { value = 7 } the returned map contains ["yxz"]["value"] == 7
 func (t *Terraform) Output(ctx context.Context, env []string, dir string) (map[string]interface{}, error) {
 	log := logr.FromContext(ctx).WithName("TFOutput")
 

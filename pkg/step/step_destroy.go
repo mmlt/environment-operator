@@ -80,10 +80,10 @@ func (st *DestroyStep) Execute(ctx context.Context, env []string) {
 		return
 	}
 
-	// Disable autoscaler(s)
+	// Disable autoscaler
 	err = st.Azure.AllAutoscalers(false, st.Values.Clusters, st.Values.Infra.AZ.ResourceGroup, log)
 	if err != nil {
-		st.error2(err, "az aks nodepool list")
+		st.error2(err, "disable autoscalers")
 		return
 	}
 

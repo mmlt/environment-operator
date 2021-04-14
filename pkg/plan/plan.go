@@ -70,16 +70,6 @@ func (p *Planner) Plan(nsn types.NamespacedName, src Sourcer, destroy bool, ispe
 	return pl, nil
 }
 
-// ExistingStep returns stepName step from a previous plan.
-// Returns nil if no such step is present.
-func (p *Planner) ExistingStep(nsn types.NamespacedName, stepName string) step.Step {
-	st, ok := p.currentPlanStep(nsn, stepName)
-	if !ok {
-		return nil
-	}
-	return st
-}
-
 // BuildPlan builds a plan containing the steps to create/update/delete a target environment.
 // An environment is identified by nsn.
 // Returns false if not all prerequisites are fulfilled.
@@ -152,6 +142,7 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 			},
 			SourcePath: tfPath,
 			Cloud:      p.Cloud,
+			Azure:      p.Azure,
 			Terraform:  p.Terraform,
 		})
 

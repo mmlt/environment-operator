@@ -109,7 +109,7 @@ func (c *AZFake) SetupFakeResults() {
 	}
 }
 
-func (c *AZFake) Autoscaler(enable bool, cluster string, pool AKSNodepool) error {
+func (c *AZFake) Autoscaler(enable bool, resourceGroup string, cluster string, pool string, minCount int, maxCount int) error {
 	return nil
 }
 

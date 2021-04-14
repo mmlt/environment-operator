@@ -10,7 +10,7 @@ import (
 // TerraformFake provides a Terraformer for testing.
 type TerraformFake struct {
 	// Tally is the number of times Init, Plan, Apply has been called.
-	InitTally, PlanTally, ApplyTally, DestroyTally, OutputTally int
+	InitTally, PlanTally, ApplyTally, DestroyTally, OutputTally, GetPlanPoolsTally int
 
 	// Results that are returned by the fake implementations of Init or Plan.
 	InitResult, PlanResult TFResult
@@ -20,6 +20,9 @@ type TerraformFake struct {
 
 	// OutputResult is the parsed JSON output of terraform output.
 	OutputResult map[string]interface{}
+
+	// GetPlanPoolsResult is the result of GetPlanPools().
+	GetPlanPoolsResult []AKSPool
 
 	// Log
 	Log logr.Logger
@@ -85,6 +88,12 @@ func (t *TerraformFake) StartDestroy(ctx context.Context, env []string, dir stri
 func (t *TerraformFake) Output(ctx context.Context, env []string, dir string) (map[string]interface{}, error) {
 	t.OutputTally++
 	return t.OutputResult, nil
+}
+
+// GetPlanPools reads an existing plan and returns AKSPools that are going to be updated or deleted.
+func (t *TerraformFake) GetPlanPools(ctx context.Context, env []string, dir string) ([]AKSPool, error) {
+	t.GetPlanPoolsTally++
+	return t.GetPlanPoolsResult, nil
 }
 
 // SetupFakeResults sets-up the receiver with data that is returned during testing.

@@ -66,11 +66,11 @@ func (st *AKSPoolStep) Execute(ctx context.Context, _ []string) {
 
 		// Disable autoscaling during upgrade.
 		if pool.EnableAutoScaling {
-			err = st.Azure.Autoscaler(false, st.Cluster, pool)
+			err = st.Azure.Autoscaler(false, pool.ResourceGroup, st.Cluster, pool.Name, pool.MinCount, pool.MaxCount)
 			log.Error(err, "disable autoscaler on cluster %s pool %s", st.Cluster, pool.Name)
 		}
 
-		// Upgrade a pool
+		// Upgrade a pool.
 		p, err := st.upgrade(ctx, pool.Name, log)
 		if err != nil {
 			st.error2(err, "upgrade k8s version")
@@ -79,7 +79,7 @@ func (st *AKSPoolStep) Execute(ctx context.Context, _ []string) {
 		_ = p // we might want to show the pool after upgrade
 
 		if pool.EnableAutoScaling {
-			err = st.Azure.Autoscaler(true, st.Cluster, pool)
+			err = st.Azure.Autoscaler(true, pool.ResourceGroup, st.Cluster, pool.Name, pool.MinCount, pool.MaxCount)
 			if err != nil {
 				st.error2(err, "enable autoscaler")
 				return

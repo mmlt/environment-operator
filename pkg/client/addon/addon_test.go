@@ -71,16 +71,15 @@ func Test_parseAddonResponseLine(t *testing.T) {
 		},
 	}
 
-	ao := &Addon{
-		Log: testr.New(t),
-	}
+	ao := &Addon{}
+	log := testr.New(t)
 
 	for _, tst := range tsts {
 		t.Run(tst.it, func(t *testing.T) {
 			rd, wr := io.Pipe()
 
 			// start parser
-			ch := ao.parseAsyncAddonResponse(rd)
+			ch := ao.parseAsyncAddonResponse(log, rd)
 
 			// send input
 			go func() {
