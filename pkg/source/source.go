@@ -21,19 +21,17 @@ import (
 	"time"
 )
 
-/*
-Usage of this package involves the following steps:
-1. Workspace are Registered - typically each infra and cluster config has its own workspace directory.
-2. Remote repos (or filesystems) are fetched.
-3. When no steps are running the workspace sources are 'get' from the local repo.
-4. Steps run commands in the workspace directories.
-
-               fetch             get
-remote repo  --------->  repo  ------->  workspace
-filesystem
-
-Change of filesystem during fetch might result in inconsistencies in repo content.
-*/
+//Usage of this package involves the following steps:
+//	1. Workspace are Registered - typically each infra and cluster config has its own workspace directory.
+//	2. Remote repos (or filesystems) are fetched.
+//	3. When no steps are running the workspace sources are 'get' from the local repo.
+//	4. Steps run commands in the workspace directories.
+//
+//                 fetch             get
+// 	remote repo  --------->  repo  ------->  workspace
+// 	filesystem
+//
+// Change of filesystem during fetch might result in inconsistencies in repo content.
 
 // Sources keeps a list of workspaces and associated the source repositories.
 // Sources are added with Register().
@@ -102,6 +100,7 @@ func (ss *Sources) Register(nsn types.NamespacedName, name string, spec v1.Sourc
 		// workspace exists but the spec has changed.
 		w.Spec = spec
 		w.Synced = false
+		ss.workspaces[id] = w
 
 		return nil
 	}
@@ -194,12 +193,12 @@ func (ss *Sources) fetch(spec v1.SourceSpec) error {
 	}
 
 	// rate limit
-	const rate = 5 * time.Minute
-	if r, ok := ss.repos[spec]; ok {
-		if timeNow().Before(r.lastFetched.Add(rate)) {
-			return nil
-		}
-	}
+	//const rate = 5 * time.Minute
+	//if r, ok := ss.repos[spec]; ok {
+	//	if timeNow().Before(r.lastFetched.Add(rate)) {
+	//		return nil
+	//	}
+	//}
 
 	// fetch
 	var err error
