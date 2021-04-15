@@ -127,8 +127,9 @@ type SourceSpec struct {
 
 	// Ref is the reference to the content to get.
 	// For type=git it can be 'master', 'refs/heads/my-branch' etc, see 'git reference' doc.
+	// For type=local the value can be omitted.
 	// +optional
-	Ref string `json:"ref"`
+	Ref string `json:"ref,omitempty"`
 
 	// Token is used to authenticate with the remote server.
 	// For Type=git a token should be specified (azure devops requires the token to be prefixed with 'x:')
