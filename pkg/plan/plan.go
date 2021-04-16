@@ -51,8 +51,14 @@ type Sourcer interface {
 // Plan returns a ordered collection of steps.
 // The step hash field reflects the current source/parameters for that step.
 func (p *Planner) Plan(nsn types.NamespacedName, src Sourcer, destroy bool, ispec v1.InfraSpec, cspec []v1.ClusterSpec) ([]step.Step, error) {
+	var err error
+
 	// Replace references to secret values with the value from vault.
-	ispec, err := vaultInfraValues(ispec, p.Cloud)
+	ispec, err = vaultInfraValues(ispec, p.Cloud)
+	if err != nil {
+		return nil, fmt.Errorf("vault ref: %w", err)
+	}
+	cspec, err = vaultClusterValues(cspec, p.Cloud)
 	if err != nil {
 		return nil, fmt.Errorf("vault ref: %w", err)
 	}

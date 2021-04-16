@@ -13,6 +13,8 @@ import (
 func vaultInfraValues(infra v1.InfraSpec, c cloud.Cloud) (v1.InfraSpec, error) {
 	var err error
 
+	err = vaultValue(&infra.Source.Ref, c, "infra.source.ref", err)
+
 	err = vaultValue(&infra.State.Access, c, "access", err)
 	err = vaultValue(&infra.AAD.TenantID, c, "tenantID", err)
 	err = vaultValue(&infra.AAD.ClientAppID, c, "clientAppID", err)
@@ -20,6 +22,18 @@ func vaultInfraValues(infra v1.InfraSpec, c cloud.Cloud) (v1.InfraSpec, error) {
 	err = vaultValue(&infra.AAD.ServerAppSecret, c, "serverAppSecret", err)
 
 	return infra, err
+}
+
+// VaultClusterValues replaces references to a vault value with the actual value.
+// A value is considered a reference when it uses the form "vault secretname secretfield"
+func vaultClusterValues(clusters []v1.ClusterSpec, c cloud.Cloud) ([]v1.ClusterSpec, error) {
+	var err error
+
+	for _, cluster := range clusters {
+		err = vaultValue(&cluster.Addons.Source.Ref, c, "addons.source.ref", err)
+	}
+
+	return clusters, err
 }
 
 // VaultValue changes an s with "vault name field" to the referenced value.

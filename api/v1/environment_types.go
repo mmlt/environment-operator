@@ -131,9 +131,9 @@ type SourceSpec struct {
 	// +optional
 	Ref string `json:"ref,omitempty"`
 
-	// Token is used to authenticate with the remote server.
-	// For Type=git a token should be specified (azure devops requires the token to be prefixed with 'x:')
-	// or an ~/.ssh key should be present.
+	// Token is used to authenticate with the remote server (only applicable when Type=git)
+	// Instead of a token a reference in the form "vault name field" o token can be used.
+	// An alternative authentication method is to have a SSG key present in ~/.ssh.
 	// +optional
 	Token string `json:"token,omitempty"`
 }
