@@ -263,7 +263,7 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 				for i := 0; i < v.NumField(); i++ {
 					n := v.Type().Field(i).Name
 					if n == "Metaa" {
-						// TODO fix vet warning about sync.Mutex copy (it does do any harm but should be fixed anyways)
+						// TODO fix vet warning about sync.Mutex copy (it does do any harm but it should be fixed anyways)
 						m := v.Field(i).Interface().(step.Metaa)
 						gotmeta = append(gotmeta, m)
 						break
@@ -278,8 +278,107 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 	}
 }
 
+// TestPlanner_Plan_step_hash check that changes to infra and cluster specs result in hash changes.
+func TestPlanner_Plan_step_hash(t *testing.T) {
+	tests := []struct {
+		id          string
+		mutateISpec func(*v1.InfraSpec)
+		mutateCSpec func(*[]v1.ClusterSpec)
+		want        []string
+	}{
+		{
+			id: "ispec change triggers Infra step",
+			mutateISpec: func(ispec *v1.InfraSpec) {
+				ispec.EnvDomain = "xxx"
+			},
+			want: []string{"Infra", "AKSAddonPreflightxyz"},
+		},
+		{
+			id: "add pool to cluster triggers Infra step",
+			mutateCSpec: func(cspec *[]v1.ClusterSpec) {
+				(*cspec)[0].Infra.Pools["new"] = (*cspec)[0].Infra.Pools["default"]
+			},
+			want: []string{"Infra", "AKSAddonPreflightxyz"},
+		},
+		{
+			id: "add 2nd cluster triggers Infra step",
+			mutateCSpec: func(cspec *[]v1.ClusterSpec) {
+				cl := clusterSpec("dont/care")[0]
+				cl.Name = "new"
+				*cspec = append(*cspec, cl)
+			},
+			want: []string{"Infra", "AKSAddonPreflightxyz", "AKSPoolnew", "Kubeconfignew", "AKSAddonPreflightnew", "Addonsnew"},
+		},
+		{
+			id: "cspec Addons change trigger Addons step",
+			mutateCSpec: func(cspec *[]v1.ClusterSpec) {
+				(*cspec)[0].Addons.X["key"] = "values"
+			},
+			want: []string{"Addonsxyz"},
+		},
+	}
+
+	l := stdr.New(log.New(os.Stdout, "", log.Lshortfile|log.Ltime))
+
+	nsn := metav1.NamespacedName{
+		Namespace: "default",
+		Name:      "test",
+	}
+
+	src := fakeSource{
+		workspace: source.Workspace{
+			Path:   "does/not/matter",
+			Hash:   "9999",
+			Synced: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			p := &Planner{
+				Azure: &azure.AZFake{},
+				Log:   l,
+			}
+
+			ispec := infraSpec("does/not/matter")
+			cspec := clusterSpec("does/not/matter/either")
+
+			p1, err := p.Plan(nsn, src, false, ispec, cspec)
+			assert.NoError(t, err)
+
+			if tt.mutateISpec != nil {
+				tt.mutateISpec(&ispec)
+			}
+			if tt.mutateCSpec != nil {
+				tt.mutateCSpec(&cspec)
+			}
+
+			p2, err := p.Plan(nsn, src, false, ispec, cspec)
+			assert.NoError(t, err)
+
+			// compare the step hashes of both plans and collect the names of the steps that have changed.
+			pm1 := planAsMap(p1)
+			var changed []string
+			for _, s2 := range p2 {
+				n := s2.GetID().ShortName()
+				s1, ok := pm1[n]
+				if !ok {
+					changed = append(changed, n)
+					continue
+				}
+
+				if s1.GetHash() != s2.GetHash() {
+					changed = append(changed, n)
+				}
+			}
+
+			assert.Equal(t, tt.want, changed)
+		})
+	}
+}
+
 // InfraSpec returns a InfraSpec with Source set to src.
-// If src is a relative path it's relative to the dir containing this _test.go file.
+// If src is a relative path id's relative to the dir containing this _test.go file.
 func infraSpec(src string) v1.InfraSpec {
 	return v1.InfraSpec{
 		EnvName:   "local",
@@ -309,7 +408,7 @@ func infraSpec(src string) v1.InfraSpec {
 }
 
 // ClusterSpec returns a slice of ClusterSpecs with Source set to src.
-// If src is a relative path it's relative to the dir containing this _test.go file.
+// If src is a relative path id's relative to the dir containing this _test.go file.
 func clusterSpec(src string) []v1.ClusterSpec {
 	return []v1.ClusterSpec{
 		{
@@ -347,3 +446,12 @@ func (f fakeSource) Workspace(_ metav1.NamespacedName, _ string) (source.Workspa
 }
 
 var _ Sourcer = fakeSource{}
+
+// planAsMap returns a map of steps indexed by their ShortName.
+func planAsMap(p []step.Step) map[string]step.Step {
+	r := make(map[string]step.Step, len(p))
+	for _, s := range p {
+		r[s.GetID().ShortName()] = s
+	}
+	return r
+}
