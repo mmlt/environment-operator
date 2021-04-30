@@ -2,10 +2,13 @@ package controllers
 
 import (
 	"errors"
+	"github.com/go-logr/stdr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"log"
+	"os"
 	"testing"
 	"time"
 )
@@ -257,11 +260,13 @@ func Test_syncStatusWithPlan(t *testing.T) {
 		},
 	}
 
+	l := stdr.New(log.New(os.Stdout, "", log.Lshortfile|log.Ltime))
+
 	setTime(0)
 	for _, tt := range tests {
 		t.Run(tt.it, func(t *testing.T) {
 			status := tt.args.status.DeepCopy()
-			gotStep, err := syncStatusWithPlan(status, tt.args.plan)
+			gotStep, err := getStepAndSyncStatusWithPlan(status, tt.args.plan, l)
 			if assert.NoError(t, err) {
 				assert.Equal(t, tt.wantStep, gotStep)
 				assert.Equal(t, &tt.wantStatus, status)

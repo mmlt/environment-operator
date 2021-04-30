@@ -191,7 +191,7 @@ func (r *EnvironmentReconciler) nextStep(cr *v1.Environment, req ctrl.Request, l
 	if err != nil {
 		return nil, fmt.Errorf("plan: %w", err)
 	}
-	stp, err := syncStatusWithPlan(&cr.Status, pln)
+	stp, err := getStepAndSyncStatusWithPlan(&cr.Status, pln, log)
 	if err != nil {
 		return nil, fmt.Errorf("sync status with plan: %w", err)
 	}
@@ -232,8 +232,9 @@ func inSchedule(schedule string, now time.Time) (bool, error) {
 	return ok, nil
 }
 
-// syncStatusWithPlan update status.steps with plan and returns the next step to execute.
-func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.Step, error) {
+// getStepAndSyncStatusWithPlan update status.steps with plan and returns the next step to execute.
+// Return nil if no step is to be executed.
+func getStepAndSyncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step, log logr.Logger) (step.Step, error) {
 	if status.Steps == nil {
 		status.Steps = make(map[string]v1.StepStatus)
 	}
@@ -254,11 +255,16 @@ func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.St
 
 		if stStp.Hash == stp.GetHash() {
 			// step is at desired state.
+			if stStp.State != v1.StateReady {
+				// state is inconsistent, fix it
+				log.Info("inconsistency in status: step state with matching hash should have State=Ready", "step", stStp)
+				stStp.State = v1.StateReady
+			}
 			continue
 		}
 
 		if r == nil {
-			// first step in plan with non-matching hash.
+			// the first step in the plan with a non-matching hash.
 			r = stp
 		}
 
@@ -280,6 +286,16 @@ func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.St
 	// Use case: envop has updated status.steps of a cr and then envop is reconfigured with --allowed-steps allowing
 	// less steps. This results in updateStatusConditions to take take steps that are not relevant anymore into account
 	// when setting Condition 'Ready'
+
+	// status consistency checks
+	if r == nil {
+		// if no step is selected to be run all steps must be Ready
+		for _, stStp := range status.Steps {
+			if stStp.State != v1.StateReady {
+				log.Info("inconsistency in status: if no step is to be run all states must be Ready", "step", stStp)
+			}
+		}
+	}
 
 	return r, nil
 }
