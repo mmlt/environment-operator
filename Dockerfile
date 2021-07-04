@@ -1,5 +1,5 @@
 # Build the controller binary
-FROM golang:1.13 as builder
+FROM golang:1.16 as builder
 
 ARG VERSION
 
@@ -14,6 +14,7 @@ RUN go mod download
 # Copy and build go source
 COPY main.go main.go
 COPY api/ api/
+COPY cmd/ cmd/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags "-X main.Version=$VERSION" -a -o manager main.go
@@ -23,14 +24,15 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags "-X m
 FROM docker.io/ubuntu:20.04
 
 ARG VERSION_TERRAFORM=0.13.5
-ARG VERSION_KUBECTL_TMPLT=v0.4.2
-ARG VERSION_KUBECTL=v1.18.10
+ARG VERSION_KUBECTL_TMPLT=0.4.3
+ARG VERSION_KUBECTL=v1.20.8
+ARG VERSION_CUE=v0.4.0
 
 RUN apt update \
  && apt install -y curl git jq unzip vim-tiny \
  && rm -rf /var/lib/apt/lists/*
 
-# Install environemnt-operator
+# Install environment-operator
 COPY --from=builder /workspace/manager /usr/local/bin/envop
 COPY envopwrap /usr/local/bin/envopwrap
 
@@ -43,15 +45,18 @@ RUN curl -Lo terraform.zip https://releases.hashicorp.com/terraform/${VERSION_TE
  && rm terraform.zip \
  && mv terraform /usr/local/bin/terraform
 
-# Install kubectl-tmplt
-RUN curl -Lo kubectl-tmplt https://github.com/mmlt/kubectl-tmplt/releases/download/${VERSION_KUBECTL_TMPLT}/kubectl-tmplt-${VERSION_KUBECTL_TMPLT}-linux-amd64 \
- && chmod +x kubectl-tmplt \
- && mv kubectl-tmplt /usr/local/bin/kubectl-tmplt
-
 # Install kubectl
 RUN curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/${VERSION_KUBECTL}/bin/linux/amd64/kubectl \
  && chmod +x kubectl \
  && mv kubectl /usr/local/bin/kubectl
+
+# Install kubectl-tmplt
+RUN curl -L https://github.com/mmlt/kubectl-tmplt/releases/download/v${VERSION_KUBECTL_TMPLT}/kubectl-tmplt_${VERSION_KUBECTL_TMPLT}_linux_amd64.tar.gz | tar xz \
+ && mv kubectl-tmplt /usr/local/bin/kubectl-tmplt
+
+# Install CUE
+RUN curl -L https://github.com/cuelang/cue/releases/download/${VERSION_CUE}/cue_${VERSION_CUE}_linux_amd64.tar.gz | tar xz \
+  && mv cue /usr/local/bin/cue
 
 # Create user
 RUN groupadd envop -g 1000 \

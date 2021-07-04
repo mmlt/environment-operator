@@ -1,0 +1,1 @@
+Package kube implements functions that are not supported by kubectl.

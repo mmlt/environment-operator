@@ -1,20 +1,13 @@
 
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.4
+    controller-gen.kubebuilder.io/version: v0.6.0
   creationTimestamp: null
   name: environments.clusterops.mmlt.nl
 spec:
-  additionalPrinterColumns:
-  - JSONPath: .status.conditions[?(@.type=="Ready")].reason
-    name: Status
-    type: string
-  - JSONPath: .status.conditions[?(@.type=="Ready")].message
-    name: Message
-    type: string
   group: clusterops.mmlt.nl
   names:
     kind: Environment
@@ -22,32 +15,237 @@ spec:
     plural: environments
     singular: environment
   scope: Namespaced
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      description: Environment is an environment at a cloud-provider with one or more
-        Kubernetes clusters, addons, conformance tested.
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          description: EnvironmentSpec defines the desired state of an Environment.
-          properties:
-            clusters:
-              description: Clusters defines the values specific for each cluster instance.
-              items:
-                description: ClusterSpec defines cluster specific infra and k8s resources.
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Status
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Message
+      type: string
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: Environment is an environment at a cloud-provider with one or
+          more Kubernetes clusters, addons, conformance tested.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: EnvironmentSpec defines the desired state of an Environment.
+            properties:
+              clusters:
+                description: Clusters defines the values specific for each cluster
+                  instance.
+                items:
+                  description: ClusterSpec defines cluster specific infra and k8s
+                    resources.
+                  properties:
+                    addons:
+                      description: ClusterAddonSpec defines the Kubernetes resources
+                        to deploy to have a functioning cluster.
+                      properties:
+                        jobs:
+                          description: Jobs is an array of paths to job files in the
+                            source tree.
+                          items:
+                            type: string
+                          type: array
+                        mkv:
+                          description: MKV is the path to a directory in the source
+                            tree that specifies the master key vault to use.
+                          type: string
+                        schedule:
+                          description: Schedule is a CRON formatted string defining
+                            when changed can be applied. If the schedule is omitted
+                            then changes will be applied immediately.
+                          type: string
+                        source:
+                          description: Source is the repository that contains the
+                            k8s addons resources.
+                          properties:
+                            ref:
+                              description: Ref is the reference to the content to
+                                get. For type=git it can be 'master', 'refs/heads/my-branch'
+                                etc, see 'git reference' doc. For type=local the value
+                                can be omitted.
+                              type: string
+                            token:
+                              description: Token is used to authenticate with the
+                                remote server (only applicable when Type=git) Instead
+                                of a token a reference in the form "vault name field"
+                                o token can be used. An alternative authentication
+                                method is to have a SSG key present in ~/.ssh.
+                              type: string
+                            type:
+                              description: 'Type is the type of repository to use
+                                as a source. Valid values are: - "git" (default):
+                                GIT repository. - "local": local filesystem.'
+                              enum:
+                              - git
+                              - local
+                              type: string
+                            url:
+                              description: "For type=git URL is the URL of the repo.
+                                When Token is specified the URL is expected to start
+                                with 'https://'. \n For type=local URL is path to
+                                a directory."
+                              type: string
+                          type: object
+                        x:
+                          additionalProperties:
+                            type: string
+                          description: X are extension values (when regular values
+                            don't fit the need)
+                          type: object
+                      type: object
+                    infra:
+                      description: Infra defines cluster specific infrastructure.
+                      properties:
+                        az:
+                          description: AZ contains Azure specific values for clusters.
+                          properties:
+                            availabilityZones:
+                              description: AvailabilityZones are the zones in a region
+                                over which nodes and control plane are spread. For
+                                example [1,2,3]
+                              items:
+                                format: int32
+                                type: integer
+                              type: array
+                            logAnalyticsWorkspace:
+                              description: LogAnalyticsWorkspace is a sink for Kubernetes
+                                control plane log data. This is an optional value.
+                              properties:
+                                name:
+                                  description: Name of the Log Analytics workspace.
+                                  type: string
+                                resourceGroupName:
+                                  description: ResourceGroup name of the Log Analytics
+                                    workspace.
+                                  type: string
+                                subscriptionName:
+                                  description: SubscriptionName of the Log Analytics
+                                    workspace. This name refers to infra.az.subscription
+                                    list of subscriptions.
+                                  type: string
+                              type: object
+                            serviceEndpoints:
+                              description: 'ServiceEndpoints provide direct connectivity
+                                to Azure services over the Azure backbone network.
+                                This is an optional list of one or more of the following
+                                values: Microsoft.AzureActiveDirectory, Microsoft.AzureCosmosDB,
+                                Microsoft.ContainerRegistry, Microsoft.EventHub, Microsoft.KeyVault,
+                                Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage
+                                and Microsoft.Web'
+                              items:
+                                enum:
+                                - Microsoft.AzureActiveDirectory
+                                - Microsoft.AzureCosmosDB
+                                - Microsoft.ContainerRegistry
+                                - Microsoft.EventHub
+                                - Microsoft.KeyVault
+                                - Microsoft.ServiceBus
+                                - Microsoft.Sql
+                                - Microsoft.Storage
+                                - Microsoft.Web
+                                type: string
+                              type: array
+                            sku:
+                              description: 'SKU (stock keeping unit) sets the SLA
+                                on the AKS control plane. Valid values are: - Free
+                                (default) - Paid'
+                              enum:
+                              - Free
+                              - Paid
+                              type: string
+                          type: object
+                        pools:
+                          additionalProperties:
+                            description: NodepoolSpec defines a cluster worker node
+                              pool.
+                            properties:
+                              maxPods:
+                                description: Max number of Pods per VM. Changing this
+                                  forces a new resource to be created.
+                                format: int32
+                                maximum: 250
+                                minimum: 10
+                                type: integer
+                              maxScale:
+                                description: Max number of VM's. Setting MaxScale
+                                  > Scale enables autoscaling.
+                                format: int32
+                                maximum: 100
+                                minimum: 1
+                                type: integer
+                              mode:
+                                description: Mode selects the purpose of a pool; User
+                                  (default) or System. AKS doc https://docs.microsoft.com/en-us/azure/aks/use-system-pools
+                                enum:
+                                - System
+                                - User
+                                type: string
+                              nodeLabels:
+                                additionalProperties:
+                                  type: string
+                                description: An optional map of Kubernetes node labels.
+                                  Changing this forces a new resource to be created.
+                                type: object
+                              nodeTaints:
+                                description: An optional list of Kubernetes node taints
+                                  (e.g CriticalAddonsOnly=true:NoSchedule). Changing
+                                  this forces a new resource to be created.
+                                items:
+                                  type: string
+                                type: array
+                              scale:
+                                description: Number of VM's.
+                                format: int32
+                                maximum: 100
+                                minimum: 1
+                                type: integer
+                              vmSize:
+                                description: Type of VM's. Changing this forces a
+                                  new resource to be created.
+                                type: string
+                            type: object
+                          description: Cluster worker pools. NB. For AKS a pool named
+                            'default' must be defined.
+                          type: object
+                        subnetNum:
+                          description: Cluster ordinal number starting at 1. (max
+                            2^subnetNewbits-1)
+                          format: int32
+                          minimum: 1
+                          type: integer
+                        version:
+                          description: Kubernetes version.
+                          type: string
+                        x:
+                          additionalProperties:
+                            type: string
+                          description: X are extension values (when regular values
+                            don't fit the need)
+                          type: object
+                      type: object
+                    name:
+                      description: Name is the cluster name.
+                      type: string
+                  type: object
+                type: array
+              defaults:
+                description: Defaults defines the values common to all Clusters.
                 properties:
                   addons:
                     description: ClusterAddonSpec defines the Kubernetes resources
@@ -75,13 +273,15 @@ spec:
                           ref:
                             description: Ref is the reference to the content to get.
                               For type=git it can be 'master', 'refs/heads/my-branch'
-                              etc, see 'git reference' doc.
+                              etc, see 'git reference' doc. For type=local the value
+                              can be omitted.
                             type: string
                           token:
                             description: Token is used to authenticate with the remote
-                              server. For Type=git a token should be specified (azure
-                              devops requires the token to be prefixed with 'x:')
-                              or an ~/.ssh key should be present.
+                              server (only applicable when Type=git) Instead of a
+                              token a reference in the form "vault name field" o token
+                              can be used. An alternative authentication method is
+                              to have a SSG key present in ~/.ssh.
                             type: string
                           type:
                             description: 'Type is the type of repository to use as
@@ -238,458 +438,268 @@ spec:
                     description: Name is the cluster name.
                     type: string
                 type: object
-              type: array
-            defaults:
-              description: Defaults defines the values common to all Clusters.
-              properties:
-                addons:
-                  description: ClusterAddonSpec defines the Kubernetes resources to
-                    deploy to have a functioning cluster.
-                  properties:
-                    jobs:
-                      description: Jobs is an array of paths to job files in the source
-                        tree.
-                      items:
+              destroy:
+                description: 'Destroy is true when an environment needs to be removed.
+                  Typically used in cluster delete/create test cases. (in addition
+                  to destroy: true a budget.deleteLimit: 99 is required)'
+                type: boolean
+              infra:
+                description: Infra defines infrastructure that much exist before clusters
+                  can be created.
+                properties:
+                  aad:
+                    description: AAD is the Azure Active Directory that is queried
+                      when a k8s user authorization is checked.
+                    properties:
+                      clientAppID:
+                        description: ClientAppID is the app registration used by kubectl
+                          or a reference to that value in the form "vault name field"
                         type: string
-                      type: array
-                    mkv:
-                      description: MKV is the path to a directory in the source tree
-                        that specifies the master key vault to use.
-                      type: string
-                    schedule:
-                      description: Schedule is a CRON formatted string defining when
-                        changed can be applied. If the schedule is omitted then changes
-                        will be applied immediately.
-                      type: string
-                    source:
-                      description: Source is the repository that contains the k8s
-                        addons resources.
-                      properties:
-                        ref:
-                          description: Ref is the reference to the content to get.
-                            For type=git it can be 'master', 'refs/heads/my-branch'
-                            etc, see 'git reference' doc.
-                          type: string
-                        token:
-                          description: Token is used to authenticate with the remote
-                            server. For Type=git a token should be specified (azure
-                            devops requires the token to be prefixed with 'x:') or
-                            an ~/.ssh key should be present.
-                          type: string
-                        type:
-                          description: 'Type is the type of repository to use as a
-                            source. Valid values are: - "git" (default): GIT repository.
-                            - "local": local filesystem.'
-                          enum:
-                          - git
-                          - local
-                          type: string
-                        url:
-                          description: "For type=git URL is the URL of the repo. When
-                            Token is specified the URL is expected to start with 'https://'.
-                            \n For type=local URL is path to a directory."
-                          type: string
-                      type: object
-                    x:
-                      additionalProperties:
+                      serverAppID:
+                        description: ServerAppID is an app registration allowed to
+                          query AD for user data or a reference to that value in the
+                          form "vault name field"
                         type: string
-                      description: X are extension values (when regular values don't
-                        fit the need)
-                      type: object
-                  type: object
-                infra:
-                  description: Infra defines cluster specific infrastructure.
-                  properties:
-                    az:
-                      description: AZ contains Azure specific values for clusters.
-                      properties:
-                        availabilityZones:
-                          description: AvailabilityZones are the zones in a region
-                            over which nodes and control plane are spread. For example
-                            [1,2,3]
-                          items:
-                            format: int32
-                            type: integer
-                          type: array
-                        logAnalyticsWorkspace:
-                          description: LogAnalyticsWorkspace is a sink for Kubernetes
-                            control plane log data. This is an optional value.
+                      serverAppSecret:
+                        description: ServerAppSecret is the secret of an app registration
+                          allowed to query AD for user data or a reference to that
+                          value in the form "vault name field"
+                        type: string
+                      tenantID:
+                        description: TenantID is the AD tenant or a reference to that
+                          value in the form "vault name field"
+                        type: string
+                    type: object
+                  az:
+                    description: AZ contains Azure specific values.
+                    properties:
+                      dns:
+                        description: DNS is an optional list of custom DNS servers.
+                          (VM's in VNet need to be restarted to propagate changes
+                          to this value)
+                        items:
+                          type: string
+                        type: array
+                      outbound:
+                        description: 'Outbound sets the network outbound type. Valid
+                          values are: - loadBalancer (default) - userDefinedRouting'
+                        enum:
+                        - loadBalancer
+                        - userDefinedRouting
+                        type: string
+                      resourceGroup:
+                        description: ResourceGroup
+                        type: string
+                      routes:
+                        description: Routes is an optional list of routes
+                        items:
+                          description: AZRoute is an entry in the routing table of
+                            the VNet.
                           properties:
+                            addressPrefix:
+                              type: string
                             name:
-                              description: Name of the Log Analytics workspace.
                               type: string
-                            resourceGroupName:
-                              description: ResourceGroup name of the Log Analytics
-                                workspace.
+                            nextHopInIPAddress:
                               type: string
-                            subscriptionName:
-                              description: SubscriptionName of the Log Analytics workspace.
-                                This name refers to infra.az.subscription list of
-                                subscriptions.
+                            nextHopType:
                               type: string
                           type: object
-                        serviceEndpoints:
-                          description: 'ServiceEndpoints provide direct connectivity
-                            to Azure services over the Azure backbone network. This
-                            is an optional list of one or more of the following values:
-                            Microsoft.AzureActiveDirectory, Microsoft.AzureCosmosDB,
-                            Microsoft.ContainerRegistry, Microsoft.EventHub, Microsoft.KeyVault,
-                            Microsoft.ServiceBus, Microsoft.Sql, Microsoft.Storage
-                            and Microsoft.Web'
-                          items:
-                            enum:
-                            - Microsoft.AzureActiveDirectory
-                            - Microsoft.AzureCosmosDB
-                            - Microsoft.ContainerRegistry
-                            - Microsoft.EventHub
-                            - Microsoft.KeyVault
-                            - Microsoft.ServiceBus
-                            - Microsoft.Sql
-                            - Microsoft.Storage
-                            - Microsoft.Web
-                            type: string
-                          type: array
-                        sku:
-                          description: 'SKU (stock keeping unit) sets the SLA on the
-                            AKS control plane. Valid values are: - Free (default)
-                            - Paid'
-                          enum:
-                          - Free
-                          - Paid
-                          type: string
-                      type: object
-                    pools:
-                      additionalProperties:
-                        description: NodepoolSpec defines a cluster worker node pool.
-                        properties:
-                          maxPods:
-                            description: Max number of Pods per VM. Changing this
-                              forces a new resource to be created.
-                            format: int32
-                            maximum: 250
-                            minimum: 10
-                            type: integer
-                          maxScale:
-                            description: Max number of VM's. Setting MaxScale > Scale
-                              enables autoscaling.
-                            format: int32
-                            maximum: 100
-                            minimum: 1
-                            type: integer
-                          mode:
-                            description: Mode selects the purpose of a pool; User
-                              (default) or System. AKS doc https://docs.microsoft.com/en-us/azure/aks/use-system-pools
-                            enum:
-                            - System
-                            - User
-                            type: string
-                          nodeLabels:
-                            additionalProperties:
+                        type: array
+                      subnetNewbits:
+                        description: Subnet newbits is the number of bits to add to
+                          the VNet address mask to produce the subnet mask. IOW 2^subnetNewbits-1
+                          is the max number of clusters in the VNet. For example given
+                          a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
+                        format: int32
+                        type: integer
+                      subscription:
+                        description: Subscription is a list of one or more subscriptions
+                          used during provisioning. The first subscription is the
+                          default subscription.
+                        items:
+                          description: AZSubscription is an Azure Subscription.
+                          properties:
+                            id:
+                              description: ID of the subscription.
                               type: string
-                            description: An optional map of Kubernetes node labels.
-                              Changing this forces a new resource to be created.
-                            type: object
-                          nodeTaints:
-                            description: An optional list of Kubernetes node taints
-                              (e.g CriticalAddonsOnly=true:NoSchedule). Changing this
-                              forces a new resource to be created.
-                            items:
+                            name:
+                              description: Name of the subscription.
                               type: string
-                            type: array
-                          scale:
-                            description: Number of VM's.
-                            format: int32
-                            maximum: 100
-                            minimum: 1
-                            type: integer
-                          vmSize:
-                            description: Type of VM's. Changing this forces a new
-                              resource to be created.
-                            type: string
-                        type: object
-                      description: Cluster worker pools. NB. For AKS a pool named
-                        'default' must be defined.
-                      type: object
-                    subnetNum:
-                      description: Cluster ordinal number starting at 1. (max 2^subnetNewbits-1)
-                      format: int32
-                      minimum: 1
-                      type: integer
-                    version:
-                      description: Kubernetes version.
-                      type: string
-                    x:
-                      additionalProperties:
+                          type: object
+                        type: array
+                      vnetCIDR:
+                        description: VNet CIDR is the network range used by one or
+                          more clusters.
                         type: string
-                      description: X are extension values (when regular values don't
-                        fit the need)
-                      type: object
-                  type: object
-                name:
-                  description: Name is the cluster name.
-                  type: string
-              type: object
-            destroy:
-              description: 'Destroy is true when an environment needs to be removed.
-                Typically used in cluster delete/create test cases. (in addition to
-                destroy: true a budget.deleteLimit: 99 is required)'
-              type: boolean
-            infra:
-              description: Infra defines infrastructure that much exist before clusters
-                can be created.
-              properties:
-                aad:
-                  description: AAD is the Azure Active Directory that is queried when
-                    a k8s user authorization is checked.
-                  properties:
-                    clientAppID:
-                      description: ClientAppID is the app registration used by kubectl
-                        or a reference to that value in the form "vault name field"
-                      type: string
-                    serverAppID:
-                      description: ServerAppID is an app registration allowed to query
-                        AD for user data or a reference to that value in the form
-                        "vault name field"
-                      type: string
-                    serverAppSecret:
-                      description: ServerAppSecret is the secret of an app registration
-                        allowed to query AD for user data or a reference to that value
-                        in the form "vault name field"
-                      type: string
-                    tenantID:
-                      description: TenantID is the AD tenant or a reference to that
-                        value in the form "vault name field"
-                      type: string
-                  type: object
-                az:
-                  description: AZ contains Azure specific values.
-                  properties:
-                    dns:
-                      description: DNS is an optional list of custom DNS servers.
-                        (VM's in VNet need to be restarted to propagate changes to
-                        this value)
-                      items:
+                    type: object
+                  budget:
+                    description: Budget defines how many changes the operator is allowed
+                      to apply to the infra. If the budget spec is omitted any number
+                      of changes is allowed.
+                    properties:
+                      addLimit:
+                        description: AddLimit is the maximum number of resources that
+                          the operator is allowed to add. Exceeded this number will
+                          result in an error.
+                        format: int32
+                        type: integer
+                      deleteLimit:
+                        description: DeleteLimit is the maximum number of resources
+                          that the operator is allowed to delete. Exceeded this number
+                          will result in an error.
+                        format: int32
+                        type: integer
+                      updateLimit:
+                        description: UpdateLimit is the maximum number of resources
+                          that the operator is allowed to update. Exceeded this number
+                          will result in an error.
+                        format: int32
+                        type: integer
+                    type: object
+                  envDomain:
+                    description: EnvDomain is the most significant part of the domain
+                      name for this environment. For example; example.com
+                    type: string
+                  envName:
+                    description: EnvName is the name of this environment. Typically
+                      a concatenation of region, cloud provider and environment type
+                      (test, production).
+                    type: string
+                  main:
+                    description: Main is the path in the source tree to the directory
+                      containing main.tf.
+                    type: string
+                  schedule:
+                    description: Schedule is a CRON formatted string defining when
+                      changed can be applied. If the schedule is omitted then changes
+                      will be applied immediately.
+                    type: string
+                  source:
+                    description: Source is the repository that contains Terraform
+                      infrastructure code.
+                    properties:
+                      ref:
+                        description: Ref is the reference to the content to get. For
+                          type=git it can be 'master', 'refs/heads/my-branch' etc,
+                          see 'git reference' doc. For type=local the value can be
+                          omitted.
                         type: string
-                      type: array
-                    outbound:
-                      description: 'Outbound sets the network outbound type. Valid
-                        values are: - loadBalancer (default) - userDefinedRouting'
-                      enum:
-                      - loadBalancer
-                      - userDefinedRouting
+                      token:
+                        description: Token is used to authenticate with the remote
+                          server (only applicable when Type=git) Instead of a token
+                          a reference in the form "vault name field" o token can be
+                          used. An alternative authentication method is to have a
+                          SSG key present in ~/.ssh.
+                        type: string
+                      type:
+                        description: 'Type is the type of repository to use as a source.
+                          Valid values are: - "git" (default): GIT repository. - "local":
+                          local filesystem.'
+                        enum:
+                        - git
+                        - local
+                        type: string
+                      url:
+                        description: "For type=git URL is the URL of the repo. When
+                          Token is specified the URL is expected to start with 'https://'.
+                          \n For type=local URL is path to a directory."
+                        type: string
+                    type: object
+                  state:
+                    description: State is where Terraform state is stored. If the
+                      state spec is omitted the state is stored locally.
+                    properties:
+                      access:
+                        description: Access is the secret that allows access to the
+                          storage account or a reference to that secret in the form
+                          "vault secret-name field-name"
+                        type: string
+                      storageAccount:
+                        description: StorageAccount is the name of the Storage Account.
+                        type: string
+                    type: object
+                  x:
+                    additionalProperties:
                       type: string
-                    resourceGroup:
-                      description: ResourceGroup
-                      type: string
-                    routes:
-                      description: Routes is an optional list of routes
-                      items:
-                        description: AZRoute is an entry in the routing table of the
-                          VNet.
-                        properties:
-                          addressPrefix:
-                            type: string
-                          name:
-                            type: string
-                          nextHopInIPAddress:
-                            type: string
-                          nextHopType:
-                            type: string
-                        type: object
-                      type: array
-                    subnetNewbits:
-                      description: Subnet newbits is the number of bits to add to
-                        the VNet address mask to produce the subnet mask. IOW 2^subnetNewbits-1
-                        is the max number of clusters in the VNet. For example given
-                        a /16 VNetCIDR and subnetNewbits=4 would result in /20 subnets.
-                      format: int32
-                      type: integer
-                    subscription:
-                      description: Subscription is a list of one or more subscriptions
-                        used during provisioning. The first subscription is the default
-                        subscription.
-                      items:
-                        description: AZSubscription is an Azure Subscription.
-                        properties:
-                          id:
-                            description: ID of the subscription.
-                            type: string
-                          name:
-                            description: Name of the subscription.
-                            type: string
-                        type: object
-                      type: array
-                    vnetCIDR:
-                      description: VNet CIDR is the network range used by one or more
-                        clusters.
-                      type: string
-                  type: object
-                budget:
-                  description: Budget defines how many changes the operator is allowed
-                    to apply to the infra. If the budget spec is omitted any number
-                    of changes is allowed.
+                    description: X are extension values (when regular values don't
+                      fit the need)
+                    type: object
+                type: object
+            type: object
+          status:
+            description: EnvironmentStatus defines the observed state of an Environment.
+            properties:
+              conditions:
+                description: Conditions are a synopsis of the StepStates.
+                items:
+                  description: EnvironmentCondition provides a synopsis of the current
+                    environment state. See KEP sig-api-machinery/1623-standardize-conditions
+                    is going to introduce it as k8s.io/apimachinery/pkg/apis/meta/v1
                   properties:
-                    addLimit:
-                      description: AddLimit is the maximum number of resources that
-                        the operator is allowed to add. Exceeded this number will
-                        result in an error.
-                      format: int32
-                      type: integer
-                    deleteLimit:
-                      description: DeleteLimit is the maximum number of resources
-                        that the operator is allowed to delete. Exceeded this number
-                        will result in an error.
-                      format: int32
-                      type: integer
-                    updateLimit:
-                      description: UpdateLimit is the maximum number of resources
-                        that the operator is allowed to update. Exceeded this number
-                        will result in an error.
-                      format: int32
-                      type: integer
-                  type: object
-                envDomain:
-                  description: EnvDomain is the most significant part of the domain
-                    name for this environment. For example; example.com
-                  type: string
-                envName:
-                  description: EnvName is the name of this environment. Typically
-                    a concatenation of region, cloud provider and environment type
-                    (test, production).
-                  type: string
-                main:
-                  description: Main is the path in the source tree to the directory
-                    containing main.tf.
-                  type: string
-                schedule:
-                  description: Schedule is a CRON formatted string defining when changed
-                    can be applied. If the schedule is omitted then changes will be
-                    applied immediately.
-                  type: string
-                source:
-                  description: Source is the repository that contains Terraform infrastructure
-                    code.
-                  properties:
-                    ref:
-                      description: Ref is the reference to the content to get. For
-                        type=git it can be 'master', 'refs/heads/my-branch' etc, see
-                        'git reference' doc.
+                    lastTransitionTime:
+                      description: Last time the condition transitioned from one status
+                        to another. This should be when the underlying condition changed.  If
+                        that is not known, then using the time when the API field
+                        changed is acceptable.
+                      format: date-time
                       type: string
-                    token:
-                      description: Token is used to authenticate with the remote server.
-                        For Type=git a token should be specified (azure devops requires
-                        the token to be prefixed with 'x:') or an ~/.ssh key should
-                        be present.
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition
+                        in CamelCase.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
                       type: string
                     type:
-                      description: 'Type is the type of repository to use as a source.
-                        Valid values are: - "git" (default): GIT repository. - "local":
-                        local filesystem.'
-                      enum:
-                      - git
-                      - local
+                      description: Type of condition in CamelCase.
                       type: string
-                    url:
-                      description: "For type=git URL is the URL of the repo. When
-                        Token is specified the URL is expected to start with 'https://'.
-                        \n For type=local URL is path to a directory."
-                      type: string
+                  required:
+                  - lastTransitionTime
+                  - reason
+                  - status
+                  - type
                   type: object
-                state:
-                  description: State is where Terraform state is stored. If the state
-                    spec is omitted the state is stored locally.
+                type: array
+              steps:
+                additionalProperties:
+                  description: StepStatus is the last observed status of a Step.
                   properties:
-                    access:
-                      description: Access is the secret that allows access to the
-                        storage account or a reference to that secret in the form
-                        "vault secret-name field-name"
+                    hash:
+                      description: An opaque value representing the config/parameters
+                        applied by a step. Only valid when state=Ready.
                       type: string
-                    storageAccount:
-                      description: StorageAccount is the name of the Storage Account.
+                    lastTransitionTime:
+                      description: Last time the state transitioned. This should be
+                        when the underlying condition changed.  If that is not known,
+                        then using the time when the API field changed is acceptable.
+                      format: date-time
                       type: string
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    state:
+                      description: The reason for the StepState's last transition
+                        in CamelCase.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - state
                   type: object
-                x:
-                  additionalProperties:
-                    type: string
-                  description: X are extension values (when regular values don't fit
-                    the need)
-                  type: object
-              type: object
-          type: object
-        status:
-          description: EnvironmentStatus defines the observed state of an Environment.
-          properties:
-            conditions:
-              description: Conditions are a synopsis of the StepStates.
-              items:
-                description: EnvironmentCondition provides a synopsis of the current
-                  environment state. See KEP sig-api-machinery/1623-standardize-conditions
-                  is going to introduce it as k8s.io/apimachinery/pkg/apis/meta/v1
-                properties:
-                  lastTransitionTime:
-                    description: Last time the condition transitioned from one status
-                      to another. This should be when the underlying condition changed.  If
-                      that is not known, then using the time when the API field changed
-                      is acceptable.
-                    format: date-time
-                    type: string
-                  message:
-                    description: A human readable message indicating details about
-                      the transition.
-                    type: string
-                  reason:
-                    description: The reason for the condition's last transition in
-                      CamelCase.
-                    type: string
-                  status:
-                    description: Status of the condition, one of True, False, Unknown.
-                    type: string
-                  type:
-                    description: Type of condition in CamelCase.
-                    type: string
-                required:
-                - lastTransitionTime
-                - reason
-                - status
-                - type
+                description: Step contains the latest available observations of the
+                  Environment's state.
                 type: object
-              type: array
-            steps:
-              additionalProperties:
-                description: StepStatus is the last observed status of a Step.
-                properties:
-                  hash:
-                    description: An opaque value representing the config/parameters
-                      applied by a step. Only valid when state=Ready.
-                    type: string
-                  lastTransitionTime:
-                    description: Last time the state transitioned. This should be
-                      when the underlying condition changed.  If that is not known,
-                      then using the time when the API field changed is acceptable.
-                    format: date-time
-                    type: string
-                  message:
-                    description: A human readable message indicating details about
-                      the transition.
-                    type: string
-                  state:
-                    description: The reason for the StepState's last transition in
-                      CamelCase.
-                    type: string
-                required:
-                - lastTransitionTime
-                - state
-                type: object
-              description: Step contains the latest available observations of the
-                Environment's state.
-              type: object
-          type: object
-      type: object
-  version: v1
-  versions:
-  - name: v1
+            type: object
+        type: object
     served: true
     storage: true
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

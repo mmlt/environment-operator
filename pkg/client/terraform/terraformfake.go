@@ -101,9 +101,9 @@ func (t *TerraformFake) GetPlanPools(ctx context.Context, env []string, dir stri
 //	map[string]interface{}{
 //		"mycluster": map[string]interface{}{
 //			"kube_admin_config": map[string]interface{}{
-//				"client_certificate":     "LS0tLS1Cclientcert",
-//				"client_key":             "LS0tLS1CRclientkey",
-//				"cluster_ca_certificate": "LS0tLS1CRcacert",
+//				"client_certificate":     string with base64 encoded value,
+//				"client_key":             <idem>,
+//				"cluster_ca_certificate": <idem>,
 //				"host":                   "https://api.kubernetes.example.com:443",
 //				"password":               "4ee5bb2",
 //				"username":               "someadmin",
@@ -115,9 +115,9 @@ func (t *TerraformFake) SetupFakeResults(clusters map[string]interface{}) {
 		clusters = map[string]interface{}{
 			"mycluster": map[string]interface{}{
 				"kube_admin_config": map[string]interface{}{
-					"client_certificate":     "LS0tLS1Cclientcert",
-					"client_key":             "LS0tLS1CRclientkey",
-					"cluster_ca_certificate": "LS0tLS1CRcacert",
+					"client_certificate":     "Y2xpZW50X2NlcnRpZmljYXRl",
+					"client_key":             "Y2xpZW50X2tleQ==",
+					"cluster_ca_certificate": "Y2x1c3Rlcl9jYV9jZXJ0aWZpY2F0ZQ==",
 					"host":                   "https://api.kubernetes.example.com:443",
 					"password":               "4ee5bb2",
 					"username":               "someadmin",

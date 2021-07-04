@@ -101,7 +101,7 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// Ignore when not within time schedule.
-	ok, err := inSchedule(cr.Spec.Infra.Schedule, time.Now())
+	ok, err := inSchedule(cr.Spec.Infra.Schedule, timeNow())
 	if err != nil {
 		// Schedule contains error (needs user to fix it first so do noy retry).
 		r.Recorder.Event(cr, "Warning", "Config", "infra.schedule:"+err.Error())
@@ -278,7 +278,7 @@ func syncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step) (step.St
 
 	// TODO remove stStp that are not in plan anymore.
 	// Use case: envop has updated status.steps of a cr and then envop is reconfigured with --allowed-steps allowing
-	// less steps. This results in updateStatusConditions to take take steps that are not relevant anymore into account
+	// less steps. This results in updateStatusConditions to take steps that are not relevant anymore into account
 	// when setting Condition 'Ready'
 
 	return r, nil
@@ -291,12 +291,15 @@ func (r *EnvironmentReconciler) saveStatus2(ctx context.Context, cr *v1.Environm
 	log := logr.FromContext(ctx)
 	log.Info("saveStatus", "status", cr.Status)
 
+	// TODO consider retry (might be faster then waiting for another reconcile)
+	// also see client-go retry.RetryOnConflict()
 	return r.Status().Update(ctx, cr)
 }
 
 // UpdateStatusConditions updates Status.Conditions to reflect steps state.
 // Ready = True when all steps are in their final state, Reason is Ready or Failed.
 // Ready = False when a step is running, Reason is Running.
+// Ready = Unknown when no steps are present.
 func updateStatusConditions(status *v1.EnvironmentStatus) {
 	var runningCnt, readyCnt, errorCnt, totalCnt int
 	var latestTime metav1.Time
@@ -327,7 +330,7 @@ func updateStatusConditions(status *v1.EnvironmentStatus) {
 	case runningCnt > 0:
 		c.Status = metav1.ConditionFalse
 		c.Reason = v1.ReasonRunning
-	case readyCnt == totalCnt:
+	case readyCnt == totalCnt && totalCnt > 0:
 		c.Status = metav1.ConditionTrue
 		c.Reason = v1.ReasonReady
 	default:
@@ -335,17 +338,29 @@ func updateStatusConditions(status *v1.EnvironmentStatus) {
 		c.Reason = ""
 	}
 	c.Message = fmt.Sprintf("%d/%d ready, %d running, %d error(s)", readyCnt, totalCnt, runningCnt, errorCnt)
+	if latestTime.IsZero() {
+		latestTime = metav1.Time{Time: timeNow()}
+	}
 	c.LastTransitionTime = latestTime
 
-	var exists bool
+	// update condition
+	ci := -1
 	for i, v := range status.Conditions {
 		if v.Type == c.Type {
-			exists = true
-			status.Conditions[i] = c
+			ci = i
 			break
 		}
 	}
-	if !exists {
+	if ci >= 0 {
+		x := status.Conditions[ci]
+		if x.Status == c.Status &&
+			x.Reason == c.Reason &&
+			x.Message == c.Message {
+			// no change in condition
+			return
+		}
+		status.Conditions[ci] = c
+	} else {
 		status.Conditions = append(status.Conditions, c)
 	}
 }

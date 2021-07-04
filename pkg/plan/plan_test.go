@@ -256,15 +256,14 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 			}
 			got, err := p.Plan(tt.args.nsn, tt.args.src, tt.args.destroy, tt.args.ispec, tt.args.cspec)
 
-			// collect metaa
-			var gotmeta []step.Metaa
+			// collect metaa struct refs
+			var gotmeta []*step.Metaa
 			for _, st := range got {
 				v := reflect.ValueOf(st).Elem()
 				for i := 0; i < v.NumField(); i++ {
 					n := v.Type().Field(i).Name
 					if n == "Metaa" {
-						// TODO fix vet warning about sync.Mutex copy (it does do any harm but should be fixed anyways)
-						m := v.Field(i).Interface().(step.Metaa)
+						m := v.Field(i).Addr().Interface().(*step.Metaa)
 						gotmeta = append(gotmeta, m)
 						break
 					}
@@ -272,7 +271,11 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 			}
 
 			if assert.NoError(t, err) {
-				assert.Equal(t, tt.want, gotmeta)
+				var want [](*step.Metaa)
+				for i, _ := range tt.want {
+					want = append(want, &tt.want[i])
+				}
+				assert.Equal(t, want, gotmeta)
 			}
 		})
 	}

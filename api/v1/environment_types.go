@@ -436,6 +436,7 @@ const (
 	ReasonFailed  EnvironmentConditionReason = "Failed"
 )
 
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].reason"

@@ -5,12 +5,12 @@ IMG ?= envop:${VERSION}
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# This is a requirement for 'setup-envtest.sh' in the install-tools target.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
+
 
 all: manager
 
@@ -25,24 +25,24 @@ manager: generate fmt vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
-	go run ./main.go
+	go run ./main.go controller
 
 # Install CRDs into a cluster
 install: manifests
-	kustomize build config/crd | kubectl apply -f -
+	kubectl apply -k config/crd
 
 # Uninstall CRDs from a cluster
 uninstall: manifests
-	kustomize build config/crd | kubectl delete -f -
+	kubectl delete -k config/crd
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests
-	cd config/manager && kustomize edit set image controller=${IMG}
-	kustomize build config/default | kubectl apply -f -
+#deploy: manifests
+#	cd config/manager && kustomize edit set image controller=${IMG}
+#	kustomize build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+manifests:
+	bin/controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 # Run go fmt against code
 fmt:
@@ -51,11 +51,16 @@ fmt:
 # Run go vet against code
 vet:
 	go vet ./...
-	gosec -quiet -exclude=G204,G304,G401,G505 ./...
+	bin/gosec -quiet -exclude=G204,G304,G401,G505 ./...
 
 # Generate code
-generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
+generate-controller:
+	bin/controller-gen object:headerFile=./hack/boilerplate.go.txt paths="./..."
+
+generate-clientgo:
+	# pre-requisite: the repo is cloned at github.com/mmlt/environment-operator
+	bin/client-gen --clientset-name versioned --input-base "" --input github.com/mmlt/environment-operator/api/clusterops/v1 --output-package github.com/mmlt/environment-operator/pkg/generated/clientset --go-header-file ./hack/boilerplate.go.txt --output-base ../../..
+	bin/informer-gen --input-dirs github.com/mmlt/environment-operator/api/clusterops/v1 --versioned-clientset-package github.com/mmlt/environment-operator/pkg/generated/clientset/versioned --listers-package github.com/mmlt/environment-operator/pkg/generated/listers --output-package github.com/mmlt/environment-operator/pkg/generated/informers --go-header-file ./hack/boilerplate.go.txt --output-base ../../..
 
 # Build the docker image
 docker-build:
@@ -70,26 +75,17 @@ docker-push-local:
 	docker tag ${IMG} localhost:32000/${IMG}
 	docker push localhost:32000/${IMG}
 
-# find or download controller-gen
-# download controller-gen if necessary
-controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.4 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
-
-# Install developer tools.
+# Install tools.
+ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
 install-tools:
-	grep _ pkg/internal/tools/tools.go | cut -d'"' -f2 | xargs go install
+	# tools of which the version is defined in go.mod
+	grep _ pkg/internal/tools/tools.go | cut -d'"' -f2 | xargs -n1 go build -o bin/
+	# envtest
+	mkdir -p ${ENVTEST_ASSETS_DIR}
+	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR)
+
+
 
 gogenerate:
 	go generate

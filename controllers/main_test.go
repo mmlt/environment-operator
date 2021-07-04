@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"github.com/go-logr/stdr"
 	clusteropsv1 "github.com/mmlt/environment-operator/api/v1"
@@ -64,8 +65,9 @@ func TestMain(m *testing.M) {
 
 	// Setup.
 	testEnv = &envtest.Environment{
-		UseExistingCluster: &useExistingCluster,
-		CRDDirectoryPaths:  []string{filepath.Join("..", "config", "crd", "bases")},
+		BinaryAssetsDirectory: "../testbin/bin",
+		UseExistingCluster:    &useExistingCluster,
+		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
 	}
 
 	var err error
@@ -129,9 +131,9 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 	tf.SetupFakeResults(map[string]interface{}{
 		"xyz": map[string]interface{}{
 			"kube_admin_config": map[string]interface{}{
-				"client_certificate":     cfg.CertData,
-				"client_key":             cfg.KeyData,
-				"cluster_ca_certificate": cfg.CAData,
+				"client_certificate":     base64.StdEncoding.EncodeToString(cfg.CertData),
+				"client_key":             base64.StdEncoding.EncodeToString(cfg.KeyData),
+				"cluster_ca_certificate": base64.StdEncoding.EncodeToString(cfg.CAData),
 				"host":                   cfg.Host,
 				"password":               cfg.Password,
 				"username":               cfg.Username,

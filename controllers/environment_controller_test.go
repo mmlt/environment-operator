@@ -273,6 +273,10 @@ func Test_syncStatusWithPlan(t *testing.T) {
 }
 
 func Test_updateStatusConditions(t *testing.T) {
+	var (
+		time1 = metav1.Time{Time: time.Date(2000, 1, 1, 1, 1, 1, 0, time.UTC)}
+	)
+
 	type args struct {
 		status *v1.EnvironmentStatus
 	}
@@ -290,7 +294,7 @@ func Test_updateStatusConditions(t *testing.T) {
 						"Addonsfoo": {State: "", Message: "new", Hash: "456"},
 					}},
 			},
-			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "Unknown", Reason: "", Message: "0/2 ready, 0 running, 0 error(s)"},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "Unknown", Reason: "", Message: "0/2 ready, 0 running, 0 error(s)", LastTransitionTime: time1},
 		},
 		{
 			it: "should say status: False reason: Running when some step(s) are running",
@@ -301,7 +305,7 @@ func Test_updateStatusConditions(t *testing.T) {
 						"Addonsfoo": {State: "", Message: "new", Hash: "456"},
 					}},
 			},
-			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "False", Reason: "Running", Message: "0/2 ready, 1 running, 0 error(s)"},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "False", Reason: "Running", Message: "0/2 ready, 1 running, 0 error(s)", LastTransitionTime: time1},
 		},
 		{
 			it: "should say status: False reason: Running when some step(s) are ready and some are running",
@@ -312,7 +316,7 @@ func Test_updateStatusConditions(t *testing.T) {
 						"Addonsfoo": {State: "Running", Message: "new", Hash: "456"},
 					}},
 			},
-			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "False", Reason: "Running", Message: "1/2 ready, 1 running, 0 error(s)"},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "False", Reason: "Running", Message: "1/2 ready, 1 running, 0 error(s)", LastTransitionTime: time1},
 		},
 		{
 			it: "should say status: True reason: Failed when some step(s) are in error state",
@@ -323,7 +327,7 @@ func Test_updateStatusConditions(t *testing.T) {
 						"Addonsfoo": {State: "", Message: "new", Hash: "456"},
 					}},
 			},
-			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "True", Reason: "Failed", Message: "0/2 ready, 0 running, 1 error(s)"},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "True", Reason: "Failed", Message: "0/2 ready, 0 running, 1 error(s)", LastTransitionTime: time1},
 		},
 		{
 			it: "should say status: True, reason: Ready when all steps completed successfully",
@@ -334,9 +338,22 @@ func Test_updateStatusConditions(t *testing.T) {
 						"Addonsfoo": {State: "Ready", Message: "new", Hash: "456"},
 					}},
 			},
-			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "True", Reason: "Ready", Message: "2/2 ready, 0 running, 0 error(s)"},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "True", Reason: "Ready", Message: "2/2 ready, 0 running, 0 error(s)", LastTransitionTime: time1},
+		},
+		{
+			it: "should say status: Unknown, reason: empty when no steps have been defined",
+			args: args{
+				status: &v1.EnvironmentStatus{},
+			},
+			wantCondition: v1.EnvironmentCondition{Type: "Ready", Status: "Unknown", Reason: "", Message: "0/0 ready, 0 running, 0 error(s)", LastTransitionTime: time1},
 		},
 	}
+
+	// fake time
+	tn := timeNow
+	defer func() { timeNow = tn }()
+	timeNow = func() time.Time { return time1.Time }
+
 	for _, tt := range tests {
 		t.Run(tt.it, func(t *testing.T) {
 			status := tt.args.status.DeepCopy()
@@ -346,4 +363,5 @@ func Test_updateStatusConditions(t *testing.T) {
 			}
 		})
 	}
+
 }
