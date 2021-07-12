@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-//Usage of this package involves the following steps:
+// Usage of this package involves the following steps:
 //	1. Workspace are Registered - typically each infra and cluster config has its own workspace directory.
 //	2. Remote repos (or filesystems) are fetched.
 //	3. When no steps are running the workspace sources are 'get' from the local repo.
@@ -65,7 +65,7 @@ type Workspace struct {
 	Path string
 	// Spec of the required repo.
 	Spec v1.SourceSpec
-	// Hash of the content.
+	// Hash of the content (limited to area).
 	Hash string
 	// Synced is true if the repo content is copied to the workspace.
 	// Synced is false as long as a repo hasn't been fetched or Get() isn't called or Get() has been called but new repo
@@ -119,7 +119,7 @@ func (ss *Sources) Register(nsn types.NamespacedName, name string, spec v1.Sourc
 	return nil
 }
 
-// Get copies the source content to a workspace and returns true if the workspace is changed.
+// Get copies the source content to a workspace and returns true if the workspace has changed.
 func (ss *Sources) Get(nsn types.NamespacedName, name string) (bool, error) {
 	name = defaultName(name)
 
@@ -130,12 +130,20 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (bool, error) {
 		return false, fmt.Errorf("source: workspace not found: %s", name)
 	}
 
-	r, ok := ss.repos[w.Spec]
+	_, ok = ss.repos[w.Spec]
 	if !ok {
 		return false, fmt.Errorf("source: get(%s): repo not fetched yet", name)
 	}
 
-	if w.Hash == r.hash {
+	// get hash of area within repo.
+	// (if we didn't care about area we could have used repo.hash)
+	h, err := ss.hashAll(filepath.Join(w.Spec.URL, w.Spec.Area))
+	if err != nil {
+		return false, err
+	}
+	hs := hex.EncodeToString(h.Sum(nil))
+
+	if w.Hash == hs {
 		return false, nil
 	}
 
@@ -143,14 +151,14 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (bool, error) {
 
 	p := ss.repoPath(w.Spec)
 	// TODO sync with fetch to prevent inconsistent copies
-	err := otia10copy.Copy(p, w.Path, otia10copy.Options{
+	err = otia10copy.Copy(p, w.Path, otia10copy.Options{
 		Skip: func(p string) bool { return strings.HasSuffix(p, ".git") },
 	})
 	if err != nil {
 		return false, fmt.Errorf("source: get(%s): %w", name, err)
 	}
 
-	w.Hash = r.hash
+	w.Hash = hs
 	w.Synced = true
 	ss.workspaces[id] = w
 
@@ -245,7 +253,7 @@ func (ss *Sources) localFetch(spec v1.SourceSpec) (string, error) {
 		return "", fmt.Errorf("fetch: %w", err)
 	}
 
-	h, err := hashAll(spec.URL) // TODO use hashAll(p) when dir is properly synced (see previous to do)
+	h, err := ss.hashAll(spec.URL) // TODO use hashAll(p) when dir is properly synced (see previous to do)
 	if err != nil {
 		return "", err
 	}
@@ -324,7 +332,7 @@ func (ss *Sources) workspacePath(id consumerID) string {
 }
 
 // HashAll returns a hash calculated over the directory tree rooted at path.
-func hashAll(path string) (hash.Hash, error) {
+func (ss *Sources) hashAll(path string) (hash.Hash, error) {
 	h := sha1.New()
 	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -340,7 +348,12 @@ func hashAll(path string) (hash.Hash, error) {
 		if err != nil {
 			return err
 		}
-		defer r.Close() // #nosec
+		defer func(r *os.File) {
+			err := r.Close()
+			if err != nil {
+				ss.Log.Error(err, "hashAll")
+			}
+		}(r)
 		_, err = io.Copy(h, r)
 		if err != nil {
 			return err

@@ -74,6 +74,14 @@ spec:
                           description: Source is the repository that contains the
                             k8s addons resources.
                           properties:
+                            area:
+                              description: Area is a directory path to the part of
+                                the repo that contains the required contents. Typically
+                                area is empty indicating that the whole repo is used.
+                                When only part of the repo is used and changes to
+                                other parts of the repo should be ignored let point
+                                area to that relevant part.
+                              type: string
                             ref:
                               description: Ref is the reference to the content to
                                 get. For type=git it can be 'master', 'refs/heads/my-branch'
@@ -270,6 +278,14 @@ spec:
                         description: Source is the repository that contains the k8s
                           addons resources.
                         properties:
+                          area:
+                            description: Area is a directory path to the part of the
+                              repo that contains the required contents. Typically
+                              area is empty indicating that the whole repo is used.
+                              When only part of the repo is used and changes to other
+                              parts of the repo should be ignored let point area to
+                              that relevant part.
+                            type: string
                           ref:
                             description: Ref is the reference to the content to get.
                               For type=git it can be 'master', 'refs/heads/my-branch'
@@ -579,6 +595,13 @@ spec:
                     description: Source is the repository that contains Terraform
                       infrastructure code.
                     properties:
+                      area:
+                        description: Area is a directory path to the part of the repo
+                          that contains the required contents. Typically area is empty
+                          indicating that the whole repo is used. When only part of
+                          the repo is used and changes to other parts of the repo
+                          should be ignored let point area to that relevant part.
+                        type: string
                       ref:
                         description: Ref is the reference to the content to get. For
                           type=git it can be 'master', 'refs/heads/my-branch' etc,

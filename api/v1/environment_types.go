@@ -136,6 +136,13 @@ type SourceSpec struct {
 	// An alternative authentication method is to have a SSG key present in ~/.ssh.
 	// +optional
 	Token string `json:"token,omitempty"`
+
+	// Area is a directory path to the part of the repo that contains the required contents.
+	// Typically area is empty indicating that the whole repo is used.
+	// When only part of the repo is used and changes to other parts of the repo should be ignored let point area to
+	// that relevant part.
+	// +optional
+	Area string `json:"area,omitempty"`
 }
 
 // EnvironmentSourceType is the type of repository to use as a source.
