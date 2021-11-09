@@ -49,9 +49,9 @@ func NewCmdController() *cobra.Command {
 			log := klogr.New()
 			ctrl.SetLogger(log)
 
-			labelSet, err := labels.ConvertSelectorToLabelsMap(selector)
-			if err != nil {
-				return fmt.Errorf("flag --selector: %w", err)
+			labelSet := labels.Set{}
+			if selector != "" {
+				labelSet[LabelKey] = selector
 			}
 
 			steps, err := step.TypesFromString(allowedSteps)
@@ -83,7 +83,7 @@ func NewCmdController() *cobra.Command {
 				Client:   mgr.GetClient(),
 				Scheme:   mgr.GetScheme(),
 				Recorder: mgr.GetEventRecorderFor("envop"),
-				Selector: selector,
+				LabelSet: labelSet,
 				Environ:  util.KVSliceToMap(os.Environ()),
 			}
 			r.Sources = &source.Sources{

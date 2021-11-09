@@ -15,6 +15,7 @@ import (
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
@@ -50,6 +51,11 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 			log := klogr.New()
 			ctrl.SetLogger(log)
 
+			labelSet := labels.Set{}
+			if selector != "" {
+				labelSet[LabelKey] = selector
+			}
+
 			steps, err := step.TypesFromString(allowedSteps)
 			if err != nil {
 				return fmt.Errorf("flag --allowed-steps: %w", err)
@@ -78,6 +84,7 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 				Client:   mgr.GetClient(),
 				Scheme:   mgr.GetScheme(),
 				Recorder: mgr.GetEventRecorderFor("envop"),
+				LabelSet: labelSet,
 				Environ: map[string]string{
 					"PATH": "/usr/local/bin", //kubectl-tmplt uses kubectl
 				},
@@ -100,7 +107,7 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 			ao.SetupFakeResult()
 			clc := cluster.Client{
 				Client: r.Client,
-				// Labels is empty
+				Labels: labelSet,
 			}
 			r.Planner = &plan.Planner{
 				AllowedStepTypes: steps,

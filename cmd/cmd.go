@@ -8,8 +8,12 @@ import (
 )
 
 const (
-	CLIName        = "envopctl"
+	// CLIName is the name of the command line interface.
+	CLIName = "envopctl"
+	// ControllerName is the name used by this operator when interacting with Kubernetes.
 	ControllerName = "envop"
+	// LabelKey is the label that selects the resources accessed by this operator.
+	LabelKey = "clusterops.mmlt.nl/operator"
 )
 
 func must(err error) {

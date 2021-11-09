@@ -1,4 +1,4 @@
-package controllers
+package e2e
 
 import (
 	"context"
@@ -17,10 +17,10 @@ func TestGoodRun(t *testing.T) {
 
 	logf.SetLogger(testr.New(t))
 
-	wg := testManagerWithFakeClients(t, ctx)
+	wg := testManagerWithFakeClients(t, ctx, testLabels)
 
 	t.Run("should_run_all_steps", func(t *testing.T) {
-		testCreateCR(t, testEnvironmentCR(testNSN, testSpecLocal()))
+		testCreateCR(t, testEnvironmentCR(testNSN, testLabels, testSpecLocal()))
 
 		got := testGetCRWhenConditionReady(t, testNSN)
 
@@ -48,6 +48,13 @@ func TestGoodRun(t *testing.T) {
 
 		assert.Equal(t, v1.StateReady, got.Status.Steps["Addonsxyz"].State, "Status.Steps[Addonsxyz].State")
 		assert.Equal(t, "kubectl-tmplt errors=0 added=0 changed=1 deleted=0", got.Status.Steps["Addonsxyz"].Message)
+
+		// Check cluster Secret creation.
+		ss := testListSecrets(t)
+		if assert.Equal(t, 1, len(ss)) {
+			// label propagation
+			assert.Equal(t, map[string]string(testLabels), ss[0].Labels)
+		}
 	})
 
 	// teardown manager
@@ -60,14 +67,14 @@ func TestErrorRun(t *testing.T) {
 
 	logf.SetLogger(testr.New(t))
 
-	wg := testManagerWithFakeClients(t, ctx)
+	wg := testManagerWithFakeClients(t, ctx, testLabels)
 
 	t.Run("should_be_able_to_reset_step", func(t *testing.T) {
 		tf := testReconciler.Planner.Terraform.(*terraform.TerraformFake)
 
 		// Run step that will fail.
 		tf.DestroyMustFail()
-		testCreateCR(t, testEnvironmentCR(testNSN, testSpecLocalDestroy()))
+		testCreateCR(t, testEnvironmentCR(testNSN, testLabels, testSpecLocalDestroy()))
 
 		got := testGetCRWhenConditionReady(t, testNSN)
 

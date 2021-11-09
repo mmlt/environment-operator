@@ -1,9 +1,10 @@
-package controllers
+package e2e
 
 import (
 	"fmt"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -74,4 +75,14 @@ func testResetStep(t *testing.T, nsn types.NamespacedName, step string) {
 	p := fmt.Sprintf(`[{"op": "remove", "path": "/status/steps/%s"}]`, step)
 	err := k8sClient.Status().Patch(testCtx, cr, client.RawPatch(types.JSONPatchType, []byte(p)))
 	assert.NoError(t, err)
+}
+
+func testListSecrets(t *testing.T) []corev1.Secret {
+	t.Helper()
+
+	obj := &corev1.SecretList{}
+	err := k8sClient.List(testCtx, obj)
+	assert.NoError(t, err)
+
+	return obj.Items
 }

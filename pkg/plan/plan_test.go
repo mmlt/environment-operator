@@ -121,7 +121,7 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 						Name:        "test",
 						ClusterName: "",
 					},
-					Hash: "b2e166111bf1c016",
+					Hash: "b134dc8eca86e844", //"b2e166111bf1c016",
 				},
 			},
 		},
@@ -148,7 +148,7 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 						Name:        "test",
 						ClusterName: "",
 					},
-					Hash: "4b76faac2401a19f",
+					Hash: "1762976ecb35a230", //"4b76faac2401a19f",
 				},
 			},
 		},
@@ -202,7 +202,7 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 						Name:        "test",
 						ClusterName: "",
 					},
-					Hash: "f122548f6c981695",
+					Hash: "ff311b4a7990bdc2", //"f122548f6c981695",
 				},
 				{
 					ID: step.ID{
@@ -229,7 +229,7 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 						Name:        "test",
 						ClusterName: "xyz",
 					},
-					Hash: "f122548f6c981695",
+					Hash: "ff311b4a7990bdc2", //"f122548f6c981695",
 				},
 				{
 					ID: step.ID{

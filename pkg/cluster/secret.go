@@ -43,7 +43,7 @@ func (lhs Cluster) Equal(rhs Cluster) bool {
 }
 
 // SecretToCluster returns the cluster data contained by secret.
-func SecretToCluster(secret *corev1.Secret) (*Cluster, error) {
+func SecretToCluster(secret corev1.Secret) (*Cluster, error) {
 	c := &Cluster{}
 	err := json.Unmarshal(secret.Data["cluster"], c)
 	if err != nil {
@@ -90,12 +90,12 @@ func (cl Client) List(ctx context.Context, namespace string) ([]Cluster, error) 
 
 	var result []Cluster
 	for _, secret := range secrets.Items {
-		cl, err := SecretToCluster(&secret)
+		cluster, err := SecretToCluster(secret)
 		if err != nil {
 			return nil, err
 		}
 
-		result = append(result, *cl)
+		result = append(result, *cluster)
 	}
 
 	return result, nil

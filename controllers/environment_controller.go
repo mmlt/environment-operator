@@ -27,10 +27,12 @@ import (
 	"github.com/robfig/cron/v3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
 	v1 "github.com/mmlt/environment-operator/api/v1"
@@ -42,9 +44,10 @@ type EnvironmentReconciler struct {
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 
-	// Selector much match the value of resource label to be handled this instance.
-	// An empty Selector matches all resources.
-	Selector string
+	// LabelSet are the labels that resources must have to be handled by this reconciler.
+	// Resources created this resconciler also have these labels.
+	// An empty set matches all resources.
+	LabelSet labels.Set
 
 	// Sources fetches tf or yaml source code.
 	Sources *source.Sources
@@ -58,8 +61,6 @@ type EnvironmentReconciler struct {
 	// Invocation counters
 	reconTally int
 }
-
-const label = "clusterops.mmlt.nl/operator"
 
 // TimeNow for testing.
 var timeNow = time.Now
@@ -88,17 +89,6 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
 		log.V(2).Info("unable to get kind Environment (retried)", "error", err)
 		return requeueSoon, ignoreNotFound(err)
-	}
-
-	// Ignore environments that do not match selector.
-	// (implemented as client side filtering, for server side see https://github.com/kubernetes-sigs/controller-runtime/issues/244)
-	// TODO instead use WithEventFilter in SetupWithManager
-	if len(r.Selector) > 0 {
-		v, ok := cr.Labels[label]
-		if !ok || v != r.Selector {
-			log.V(2).Info("ignored, label selector doesn't match", "label", label, "value", v, "selector", r.Selector)
-			return noRequeue, nil
-		}
 	}
 
 	// Ignore when not within time schedule.
@@ -410,8 +400,16 @@ func (r *EnvironmentReconciler) update(ctx context.Context, cr *v1.Environment, 
 
 // SetupWithManager initializes the receiver and adds it to mgr.
 func (r *EnvironmentReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	selector := r.LabelSet.AsSelector()
+	lp := predicate.NewPredicateFuncs(
+		func(o client.Object) bool {
+			return selector.Matches(labels.Set(o.GetLabels()))
+		},
+	)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.Environment{}).
+		WithEventFilter(lp).
 		Complete(r)
 }
 

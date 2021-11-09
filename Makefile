@@ -15,16 +15,16 @@ SHELL = /usr/bin/env bash -o pipefail
 all: manager
 
 # Run tests
-test: generate fmt vet manifests
+test: fmt vet manifests
 	go test ./... -coverprofile cover.out
 	go tool cover -func cover.out | tail -n 1
 
 # Build manager binary
-manager: generate fmt vet
+manager: fmt vet
 	go build -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
+run: fmt vet manifests
 	go run ./main.go controller
 
 # Install CRDs into a cluster

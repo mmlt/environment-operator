@@ -34,7 +34,7 @@ func TestController_flattenedClusterSpec(t *testing.T) {
 					Addons: v1.ClusterAddonSpec{
 						Source: v1.SourceSpec{
 							Type: "local",
-							URL:  "testdata/addons",
+							URL:  "../e2e/testdata/addons",
 						},
 						Jobs: []string{"cluster/local/minikube/all.yaml"},
 					},
@@ -50,7 +50,7 @@ func TestController_flattenedClusterSpec(t *testing.T) {
 					Addons: v1.ClusterAddonSpec{
 						Source: v1.SourceSpec{
 							Type: "local",
-							URL:  "testdata/addons",
+							URL:  "../e2e/testdata/addons",
 						},
 						Jobs: []string{"cluster/local/minikube/all.yaml"},
 					},

@@ -1,11 +1,11 @@
-package controllers
+package e2e
 
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"github.com/go-logr/stdr"
 	clusteropsv1 "github.com/mmlt/environment-operator/api/v1"
+	"github.com/mmlt/environment-operator/controllers"
 	"github.com/mmlt/environment-operator/pkg/client/addon"
 	"github.com/mmlt/environment-operator/pkg/client/azure"
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
@@ -14,11 +14,13 @@ import (
 	"github.com/mmlt/environment-operator/pkg/cluster"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
+	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api/v1"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 	"sync"
 	"testing"
 )
@@ -35,7 +38,7 @@ var (
 	cfg            *rest.Config
 	k8sClient      client.Client
 	testEnv        *envtest.Environment
-	testReconciler *EnvironmentReconciler
+	testReconciler *controllers.EnvironmentReconciler
 )
 
 // Tests use the following config.
@@ -53,6 +56,10 @@ var (
 	testNSN = types.NamespacedName{
 		Namespace: "default",
 		Name:      "env314",
+	}
+	// Labels for test resources.
+	testLabels = labels.Set{
+		"envop.example.com/env": "localenv",
 	}
 
 	testCtx = context.Background()
@@ -84,10 +91,12 @@ func TestMain(m *testing.M) {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	mustNotErr("creating client", err)
 
-	if !useExistingCluster {
-		// to access envtest api server (set alwaysShowLog=true to see this message in time)
-		fmt.Printf("kubectl --server=%s\n", cfg.Host)
-	}
+	// write kubeconfig to envtest
+	// use an alias to access envtest during debugging: alias k="kubectl --kubeconfig e2e/envtest"
+	kc, err := restConfigToKubeConfig(cfg)
+	mustNotErr("convert to kubeconfig", err)
+	err = ioutil.WriteFile("envtest", kc, 0644)
+	mustNotErr("write kubeconfig to envtest", err)
 
 	// Run.
 	r := m.Run()
@@ -99,13 +108,9 @@ func TestMain(m *testing.M) {
 	os.Exit(r)
 }
 
-// TestManagerWithFakeClients starts a Manager with the fake clients.
-func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGroup {
+// TestManagerWithFakeClients starts a Manager and Reconciler with the fake clients.
+func testManagerWithFakeClients(t *testing.T, ctx context.Context, labelSet labels.Set) *sync.WaitGroup {
 	t.Helper()
-
-	selector := ""
-	labelSet, err := labels.ConvertSelectorToLabelsMap(selector)
-	mustNotErr("label selector", err)
 
 	// Setup manager (similar to controller.go)
 
@@ -115,11 +120,11 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 	})
 	mustNotErr("new manager", err)
 
-	testReconciler = &EnvironmentReconciler{
+	testReconciler = &controllers.EnvironmentReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("envop"),
-		Selector: selector,
+		LabelSet: labelSet,
 		Environ: map[string]string{
 			"PATH": "/usr/local/bin", //kubectl-tmplt uses kubectl
 		},
@@ -183,4 +188,52 @@ func mustNotErr(msg string, err error) {
 	if err != nil {
 		panic(msg + ": " + err.Error())
 	}
+}
+
+// RestConfigToKubeConfig converts a client-go rest.Config to a kubeconfig text.
+func restConfigToKubeConfig(cfg *rest.Config) ([]byte, error) {
+	const clusterName = "local"
+	const userName = "admin"
+
+	c := clientcmdapi.Config{
+		Clusters: []clientcmdapi.NamedCluster{
+			{
+				Name: clusterName,
+				Cluster: clientcmdapi.Cluster{
+					Server:                   cfg.Host,
+					CertificateAuthorityData: cfg.CAData,
+				},
+			},
+		},
+		Contexts: []clientcmdapi.NamedContext{
+			{
+				Name: "default",
+				Context: clientcmdapi.Context{
+					Cluster:  clusterName,
+					AuthInfo: userName,
+				},
+			},
+		},
+		AuthInfos: []clientcmdapi.NamedAuthInfo{
+			{
+				Name: userName,
+				AuthInfo: clientcmdapi.AuthInfo{
+					ClientCertificateData: cfg.CertData,
+					ClientKeyData:         cfg.KeyData,
+					Token:                 cfg.BearerToken,
+					Username:              cfg.Username,
+					Password:              cfg.Password,
+				},
+			},
+		},
+		CurrentContext: "default",
+	}
+
+	out, err := yaml.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+
 }
