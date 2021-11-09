@@ -11,9 +11,11 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
+	"github.com/mmlt/environment-operator/pkg/cluster"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -101,7 +103,11 @@ func TestMain(m *testing.M) {
 func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGroup {
 	t.Helper()
 
-	// Setup manager (similar to main.go)
+	selector := ""
+	labelSet, err := labels.ConvertSelectorToLabelsMap(selector)
+	mustNotErr("label selector", err)
+
+	// Setup manager (similar to controller.go)
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:         scheme.Scheme,
@@ -113,6 +119,7 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("envop"),
+		Selector: selector,
 		Environ: map[string]string{
 			"PATH": "/usr/local/bin", //kubectl-tmplt uses kubectl
 		},
@@ -142,12 +149,17 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context) *sync.WaitGro
 	})
 	cl := &cloud.Fake{}
 	kc := &kubectl.KubectlFake{}
+	clc := cluster.Client{
+		Client: testReconciler.Client,
+		Labels: labelSet,
+	}
 	testReconciler.Planner = &plan.Planner{
 		Terraform: tf,
 		Kubectl:   kc,
 		Azure:     az,
 		Cloud:     cl,
 		Addon:     &addon.Addon{},
+		Client:    clc,
 		Log:       ctrl.Log.WithName("planner"),
 	}
 

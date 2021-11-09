@@ -10,6 +10,7 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
+	"github.com/mmlt/environment-operator/pkg/cluster"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
@@ -97,6 +98,10 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 			kc := &kubectl.KubectlFake{}
 			ao := &addon.AddonFake{}
 			ao.SetupFakeResult()
+			clc := cluster.Client{
+				Client: r.Client,
+				// Labels is empty
+			}
 			r.Planner = &plan.Planner{
 				AllowedStepTypes: steps,
 				Terraform:        tf,
@@ -104,6 +109,7 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 				Azure:            az,
 				Cloud:            cl,
 				Addon:            ao,
+				Client:           clc,
 				Log:              l,
 			}
 

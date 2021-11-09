@@ -92,6 +92,7 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// Ignore environments that do not match selector.
 	// (implemented as client side filtering, for server side see https://github.com/kubernetes-sigs/controller-runtime/issues/244)
+	// TODO instead use WithEventFilter in SetupWithManager
 	if len(r.Selector) > 0 {
 		v, ok := cr.Labels[label]
 		if !ok || v != r.Selector {

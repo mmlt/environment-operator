@@ -11,6 +11,7 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
+	"github.com/mmlt/environment-operator/pkg/cluster"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,7 +27,7 @@ type Planner struct {
 	// AllowedStepTypes is a set of step types that are allowed to execute.
 	// A nil set allows all steps.
 	AllowedStepTypes map[step.Type]struct{}
-	// Cloud provides generic cloud functions.
+	// Cloud provides generic cloud access functions.
 	Cloud cloud.Cloud
 	// Terraform is the terraform implementation to use.
 	Terraform terraform.Terraformer
@@ -36,6 +37,8 @@ type Planner struct {
 	Azure azure.AZer
 	// Addon can deploy k8s addon resources.
 	Addon addon.Addonr
+	// Client can access the cluster envop is running in.
+	Client cluster.Client
 
 	Log logr.Logger
 }
@@ -87,7 +90,7 @@ func (p *Planner) buildPlan(nsn types.NamespacedName, src Sourcer, destroy bool,
 		pl, ok = p.buildDestroyPlan(nsn, src, ispec, cspec)
 
 	default:
-		pl, ok = p.buildCreatePlan(nsn, src, ispec, cspec)
+		pl, ok = p.buildCreatePlan(nsn, src, ispec, cspec, p.Client)
 	}
 	if !ok {
 		return nil, false
@@ -125,7 +128,7 @@ func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src Sourcer, ispec 
 }
 
 // BuildCreatePlan builds a plan to create or update a target environment.
-func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec) (plan, bool) {
+func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec, client cluster.Client) (plan, bool) {
 	tfw, ok := src.Workspace(nsn, "")
 	if !ok || !tfw.Synced {
 		return nil, false
@@ -180,6 +183,8 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 				Cloud:       p.Cloud,
 				Terraform:   p.Terraform,
 				Kubectl:     p.Kubectl,
+				Values:      cl.Addons.X,
+				Client:      client,
 			},
 			&step.AKSAddonPreflightStep{
 				Metaa:   stepMeta(nsn, cl.Name, step.TypeAKSAddonPreflight, h),

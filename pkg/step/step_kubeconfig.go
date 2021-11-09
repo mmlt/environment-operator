@@ -9,6 +9,7 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
+	"github.com/mmlt/environment-operator/pkg/cluster"
 	"github.com/mmlt/environment-operator/pkg/util"
 	"github.com/mmlt/environment-operator/pkg/util/backoff"
 	"io/ioutil"
@@ -18,7 +19,7 @@ import (
 	"time"
 )
 
-// KubeconfigStep reads data from terraform and creates a kubeconfig file.
+// KubeconfigStep reads data from terraform, creates a kubeconfig file and syncs Secrets containing kubeconfigs.
 type KubeconfigStep struct {
 	Metaa
 
@@ -39,6 +40,12 @@ type KubeconfigStep struct {
 	Terraform terraform.Terraformer
 	// Kubectl is the kubectl implementation to use.
 	Kubectl kubectl.Kubectrler
+
+	// Values are key-values like k8sEnvironment, k8sCluster, k8sDomain, k8sProvider
+	Values map[string]string
+
+	// Client is used to access the cluster envop is running in.
+	Client cluster.Client
 }
 
 // Run a step.
@@ -72,6 +79,12 @@ func (st *KubeconfigStep) Execute(ctx context.Context, env []string) {
 	err = ioutil.WriteFile(st.KCPath, kc, 0600)
 	if err != nil {
 		st.error2(err, "write kubeconfig")
+		return
+	}
+
+	err = st.syncClusterSecrets(o)
+	if err != nil {
+		st.error2(err, "sync cluster secrets")
 		return
 	}
 
@@ -118,7 +131,61 @@ func (st *KubeconfigStep) waitForDefaultStorageClass() error {
 	return fmt.Errorf("time-out")
 }
 
-// Kubeconfig returns a kube config from a terraform output value json.
+// SyncClusterSecrets creates/updates/deletes cluster Secrets to match Terraform json output.
+func (st *KubeconfigStep) syncClusterSecrets(json map[string]interface{}) error {
+	ctx := context.TODO()
+
+	// desired state
+	m, err := getMSIPath(json, "clusters", "value")
+	if err != nil {
+		return err
+	}
+
+	desired := []cluster.Cluster{}
+	for n, _ := range m {
+		kc, err := kubeconfig(json, n)
+		if err != nil {
+			return err
+		}
+
+		if v := st.Values["k8sCluster"]; n != v {
+			return fmt.Errorf("cluster name '%s' should equal k8sCluster value '%s'", n, v)
+		}
+
+		desired = append(desired, cluster.Cluster{
+			Environment: st.Values["k8sEnvironment"],
+			Name:        st.Values["k8sCluster"],
+			Domain:      st.Values["k8sDomain"],
+			Provider:    st.Values["k8sProvider"],
+			Config:      kc,
+		})
+	}
+
+	// current state
+	current, err := st.Client.List(ctx, st.Metaa.ID.Namespace)
+	if err != nil {
+		return err
+	}
+
+	c, u, d := cluster.Diff(current, desired)
+
+	err = st.Client.Create(ctx, st.Metaa.ID.Namespace, c)
+	if err != nil {
+		return err
+	}
+	err = st.Client.Update(ctx, st.Metaa.ID.Namespace, u)
+	if err != nil {
+		return err
+	}
+	err = st.Client.Delete(ctx, st.Metaa.ID.Namespace, d)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Kubeconfig returns a kube config from Terraform json output.
 func kubeconfig(json map[string]interface{}, clusterName string) ([]byte, error) {
 	m, err := getMSIPath(json, "clusters", "value", clusterName, "kube_admin_config")
 	if err != nil {
@@ -194,6 +261,7 @@ func kubeconfig(json map[string]interface{}, clusterName string) ([]byte, error)
 	return out, nil
 }
 
+// GetMSIPath returns the subtree at keys path in data.
 func getMSIPath(data map[string]interface{}, keys ...string) (map[string]interface{}, error) {
 	for _, k := range keys {
 		v, ok := data[k]
@@ -208,6 +276,7 @@ func getMSIPath(data map[string]interface{}, keys ...string) (map[string]interfa
 	return data, nil
 }
 
+// Get returns a string value at m[k]
 func get(m map[string]interface{}, k string) (string, error) {
 	v, ok := m[k]
 	if !ok {
@@ -220,6 +289,7 @@ func get(m map[string]interface{}, k string) (string, error) {
 	return s, nil
 }
 
+// Get returns a base 64 encoded []byte value at m[k]
 func get64(m map[string]interface{}, k string) ([]byte, error) {
 	s, err := get(m, k)
 	if err != nil {

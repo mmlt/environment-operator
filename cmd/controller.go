@@ -10,11 +10,13 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
+	"github.com/mmlt/environment-operator/pkg/cluster"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
 	"github.com/mmlt/environment-operator/pkg/util"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
@@ -46,6 +48,11 @@ func NewCmdController() *cobra.Command {
 		RunE: func(c *cobra.Command, args []string) error {
 			log := klogr.New()
 			ctrl.SetLogger(log)
+
+			labelSet, err := labels.ConvertSelectorToLabelsMap(selector)
+			if err != nil {
+				return fmt.Errorf("flag --selector: %w", err)
+			}
 
 			steps, err := step.TypesFromString(allowedSteps)
 			if err != nil {
@@ -102,6 +109,10 @@ func NewCmdController() *cobra.Command {
 					Log: l,
 				},
 				Addon: &addon.Addon{},
+				Client: cluster.Client{
+					Client: r.Client,
+					Labels: labelSet,
+				},
 			}
 
 			err = r.SetupWithManager(mgr)

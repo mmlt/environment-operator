@@ -141,7 +141,7 @@ func testSpecLocal() *v1.EnvironmentSpec {
 				},
 				Addons: v1.ClusterAddonSpec{
 					X: map[string]string{
-						"k8sDomain": "xyz",
+						"k8sCluster": "xyz",
 					},
 				},
 			},

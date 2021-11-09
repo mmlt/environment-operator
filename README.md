@@ -58,14 +58,14 @@ This has the benefit that humans can use the CLI's to perform repair actions tha
 
 ## Constrain changes
 
-The envop can be contrained in the changes it can make.
+The envop can be constrained in the changes it can make.
 
 With `--allowed-steps` the list of steps is specified that can be run.
 
 In the Environment `budget`s can be specified. These are limits on the maximum number of resources that can be added, changed or deleted by the Infra step.
 Setting all to 0 has the same effect as not having `Infra` in the list of allowed-steps; no Infra changes can be made.
 
-Finally the environment.yaml can specify a schedule. This is a time period in which steps are allowed to run.
+Finally, the environment.yaml can specify a schedule. This is a time period in which steps are allowed to run.
 
 
 ## Environment Custom Resource
@@ -76,12 +76,12 @@ The CR `spec.infra` specifies infra that is used by all clusters.
 The CR `spec.clusters` specifies cluster specific config and contains config for zero or more clusters.
 To reduce repetition common cluster values can be set under `defaults`.
 
-Besides literal values fields like `state` and `az.aad` can reference KeyVault values. 
+Besides, literal values fields like `state` and `az.aad` can reference KeyVault values. 
 To use a value from vault specify the value in `"vault secretname optional-field-name"` format.
 If the optional-field-name is present the vault secret must be a JSON string with that particular field name. 
 
 The `infra` and `clusters` blocks each specify a `source` that refers to the code to use.
-For `infra` this is terraform code and for `clusters` this is kubectl-tmplt code.
+For `infra` this is Terraform code and for `clusters` this is kubectl-tmplt code.
 The source can be of type `local` meaning `url` points to a directory containing the code or it can be of type `git` where `url` refers to a GIT repository.
 
 
