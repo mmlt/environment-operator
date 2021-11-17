@@ -1,7 +1,7 @@
 _*
 _*/
 
-*_environment.*
+*_environment.yaml
 
 .kube
 .azure
