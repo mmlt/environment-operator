@@ -1,4 +1,4 @@
-package plan
+package controllers
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 func vaultInfraValues(infra v1.InfraSpec, c cloud.Cloud) (v1.InfraSpec, error) {
 	var err error
 
-	err = vaultValue(&infra.Source.Ref, c, "infra.source.ref", err)
+	err = vaultValue(&infra.Source.Token, c, "infra.source.token", err)
 
 	err = vaultValue(&infra.State.Access, c, "access", err)
 	err = vaultValue(&infra.AAD.TenantID, c, "tenantID", err)
@@ -29,8 +29,8 @@ func vaultInfraValues(infra v1.InfraSpec, c cloud.Cloud) (v1.InfraSpec, error) {
 func vaultClusterValues(clusters []v1.ClusterSpec, c cloud.Cloud) ([]v1.ClusterSpec, error) {
 	var err error
 
-	for _, cluster := range clusters {
-		err = vaultValue(&cluster.Addons.Source.Ref, c, "addons.source.ref", err)
+	for i := range clusters {
+		err = vaultValue(&clusters[i].Addons.Source.Token, c, "addons.source.token", err)
 	}
 
 	return clusters, err

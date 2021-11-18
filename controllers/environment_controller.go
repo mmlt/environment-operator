@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/imdario/mergo"
+	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/plan"
 	"github.com/mmlt/environment-operator/pkg/source"
 	"github.com/mmlt/environment-operator/pkg/step"
@@ -48,6 +49,9 @@ type EnvironmentReconciler struct {
 	// Resources created this resconciler also have these labels.
 	// An empty set matches all resources.
 	LabelSet labels.Set
+
+	// Cloud provides generic cloud access functions.
+	Cloud cloud.Cloud
 
 	// Sources fetches tf or yaml source code.
 	Sources *source.Sources
@@ -140,7 +144,7 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 // NextStep fetches sources, makes a plan, updates cr and returns the next step.
-// Step is nil if there is nothing to do.
+// Return nil if there is nothing to do.
 func (r *EnvironmentReconciler) nextStep(cr *v1.Environment, req ctrl.Request, log logr.Logger) (step.Step, error) {
 	// Get ClusterSpecs with defaults.
 	cspec, err := flattenedClusterSpec(cr.Spec)
@@ -150,8 +154,18 @@ func (r *EnvironmentReconciler) nextStep(cr *v1.Environment, req ctrl.Request, l
 		return nil, fmt.Errorf("spec: %w", err)
 	}
 
+	// Replace references to secret values with the value from vault.
+	ispec, err := vaultInfraValues(cr.Spec.Infra, r.Cloud)
+	if err != nil {
+		return nil, fmt.Errorf("vault ref: %w", err)
+	}
+	cspec, err = vaultClusterValues(cspec, r.Cloud)
+	if err != nil {
+		return nil, fmt.Errorf("vault ref: %w", err)
+	}
+
 	// Register and fetch sources.
-	err = r.Sources.Register(req.NamespacedName, "", cr.Spec.Infra.Source)
+	err = r.Sources.Register(req.NamespacedName, "", ispec.Source)
 	if err != nil {
 		return nil, fmt.Errorf("source: register infra: %w", err)
 	}
@@ -178,7 +192,7 @@ func (r *EnvironmentReconciler) nextStep(cr *v1.Environment, req ctrl.Request, l
 	}
 
 	// Make a plan
-	pln, err := r.Planner.Plan(req.NamespacedName, r.Sources, cr.Spec.Destroy, cr.Spec.Infra, cspec)
+	pln, err := r.Planner.Plan(req.NamespacedName, r.Sources, cr.Spec.Destroy, ispec, cspec)
 	if err != nil {
 		return nil, fmt.Errorf("plan: %w", err)
 	}

@@ -80,6 +80,7 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 
 			l := ctrl.Log.WithName("recon")
 
+			cl := &cloud.Fake{}
 			r := &controllers.EnvironmentReconciler{
 				Client:   mgr.GetClient(),
 				Scheme:   mgr.GetScheme(),
@@ -88,6 +89,7 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 				Environ: map[string]string{
 					"PATH": "/usr/local/bin", //kubectl-tmplt uses kubectl
 				},
+				Cloud: cl,
 			}
 
 			r.Sources = &source.Sources{
@@ -101,7 +103,6 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 				Log: l,
 			}
 			tf.SetupFakeResults(nil)
-			cl := &cloud.Fake{}
 			kc := &kubectl.KubectlFake{}
 			ao := &addon.AddonFake{}
 			ao.SetupFakeResult()

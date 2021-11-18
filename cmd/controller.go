@@ -79,12 +79,22 @@ func NewCmdController() *cobra.Command {
 			l := ctrl.Log.WithName("recon")
 
 			// Create environment reconciler and all it's dependencies.
+
+			cl := &cloud.Azure{
+				CredentialsFile: credentialsFile,
+				Vault:           vault,
+				Client: &azure.AZ{
+					Log: l,
+				},
+				Log: l,
+			}
 			r := &controllers.EnvironmentReconciler{
 				Client:   mgr.GetClient(),
 				Scheme:   mgr.GetScheme(),
 				Recorder: mgr.GetEventRecorderFor("envop"),
 				LabelSet: labelSet,
 				Environ:  util.KVSliceToMap(os.Environ()),
+				Cloud:    cl,
 			}
 			r.Sources = &source.Sources{
 				RootPath: workDir,
@@ -93,15 +103,8 @@ func NewCmdController() *cobra.Command {
 			r.Planner = &plan.Planner{
 				AllowedStepTypes: steps,
 				Log:              l,
-				Cloud: &cloud.Azure{
-					CredentialsFile: credentialsFile,
-					Vault:           vault,
-					Client: &azure.AZ{
-						Log: l,
-					},
-					Log: l,
-				},
-				Terraform: &terraform.Terraform{},
+				Cloud:            cl,
+				Terraform:        &terraform.Terraform{},
 				Kubectl: &kubectl.Kubectl{
 					Log: l,
 				},

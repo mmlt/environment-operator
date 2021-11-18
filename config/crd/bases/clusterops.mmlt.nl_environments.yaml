@@ -93,7 +93,7 @@ spec:
                                 remote server (only applicable when Type=git) Instead
                                 of a token a reference in the form "vault name field"
                                 o token can be used. An alternative authentication
-                                method is to have a SSG key present in ~/.ssh.
+                                method is to have an SSH key present in ~/.ssh.
                               type: string
                             type:
                               description: 'Type is the type of repository to use
@@ -297,7 +297,7 @@ spec:
                               server (only applicable when Type=git) Instead of a
                               token a reference in the form "vault name field" o token
                               can be used. An alternative authentication method is
-                              to have a SSG key present in ~/.ssh.
+                              to have an SSH key present in ~/.ssh.
                             type: string
                           type:
                             description: 'Type is the type of repository to use as
@@ -612,8 +612,8 @@ spec:
                         description: Token is used to authenticate with the remote
                           server (only applicable when Type=git) Instead of a token
                           a reference in the form "vault name field" o token can be
-                          used. An alternative authentication method is to have a
-                          SSG key present in ~/.ssh.
+                          used. An alternative authentication method is to have an
+                          SSH key present in ~/.ssh.
                         type: string
                       type:
                         description: 'Type is the type of repository to use as a source.

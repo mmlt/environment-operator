@@ -120,6 +120,7 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context, labelSet labe
 	})
 	mustNotErr("new manager", err)
 
+	cl := &cloud.Fake{}
 	testReconciler = &controllers.EnvironmentReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
@@ -128,6 +129,7 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context, labelSet labe
 		Environ: map[string]string{
 			"PATH": "/usr/local/bin", //kubectl-tmplt uses kubectl
 		},
+		Cloud: cl,
 	}
 
 	testReconciler.Sources = &source.Sources{
@@ -152,7 +154,6 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context, labelSet labe
 			},
 		},
 	})
-	cl := &cloud.Fake{}
 	kc := &kubectl.KubectlFake{}
 	clc := cluster.Client{
 		Client: testReconciler.Client,

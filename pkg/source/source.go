@@ -274,7 +274,7 @@ func (ss *Sources) gitFetch(spec v1.SourceSpec) (string, error) {
 			return "", err
 		}
 
-		_, _, err = exe.Run(ss.Log, &exe.Opt{Dir: d}, "", "git", "clone", spec.URL)
+		_, _, err = exe.Run(ss.Log, &exe.Opt{Dir: d}, "", "git", "clone", urlWithToken(spec.URL, spec.Token))
 		if err != nil {
 			return "", err
 		}
@@ -371,4 +371,18 @@ func defaultName(name string) string {
 		return "_infra_"
 	}
 	return name
+}
+
+// URLWithToken merges an optional token into url that starts with 'https://'
+func urlWithToken(url, token string) string {
+	if token == "" {
+		return url
+	}
+
+	const prefix = "https://"
+	if !strings.HasPrefix(url, prefix) {
+		return url
+	}
+
+	return prefix + token + "@" + url[len(prefix):]
 }
