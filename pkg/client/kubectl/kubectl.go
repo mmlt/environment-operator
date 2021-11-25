@@ -60,8 +60,7 @@ func (k Kubectl) PodState(kubeconfigPath, namespace, name string) (string, error
 // PodRun runs a Pod.
 func (k Kubectl) PodRun(kubeconfigPath, namespace, name, image, cmd string) error {
 	args := []string{"--kubeconfig", kubeconfigPath, "-n", namespace,
-		"run", "--generator", "run-pod/v1", "--restart", "OnFailure", "--image", image, name,
-		"--", "sh", "-c", cmd}
+		"run", "--restart", "OnFailure", "--image", image, name, "--", "sh", "-c", cmd}
 	_, _, err := exe.Run(k.Log, nil, "", "kubectl", args...)
 
 	return err

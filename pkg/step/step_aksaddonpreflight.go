@@ -48,7 +48,7 @@ func (st *AKSAddonPreflightStep) Execute(ctx context.Context, _ []string) {
 
 	// Run probe.
 	// TODO parameterize image (consider using envop config for this)
-	err = st.Kubectl.PodRun(st.KCPath, namespace, name, "docker.io/curlimages/curl:7.72.0",
+	err = st.Kubectl.PodRun(st.KCPath, namespace, name, "docker.io/curlimages/curl:7.80.0",
 		"until curl -ksS --max-time 2 https://kubernetes.default | grep Status ; do date -Iseconds; sleep 5 ; done")
 	if err != nil {
 		st.error2(err, "run pod")
