@@ -135,9 +135,11 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (bool, error) {
 		return false, fmt.Errorf("source: get(%s): repo not fetched yet", name)
 	}
 
+	rp := ss.repoPath(w.Spec)
+
 	// get hash of area within repo.
 	// (if we didn't care about area we could have used repo.hash)
-	h, err := ss.hashAll(filepath.Join(w.Spec.URL, w.Spec.Area))
+	h, err := ss.hashAll(filepath.Join(rp, w.Spec.Area))
 	if err != nil {
 		return false, err
 	}
@@ -149,9 +151,8 @@ func (ss *Sources) Get(nsn types.NamespacedName, name string) (bool, error) {
 
 	ss.Log.Info("Get workspace (repo changed)", "request", nsn, "name", name)
 
-	p := ss.repoPath(w.Spec)
 	// TODO sync with fetch to prevent inconsistent copies
-	err = otia10copy.Copy(p, w.Path, otia10copy.Options{
+	err = otia10copy.Copy(rp, w.Path, otia10copy.Options{
 		Skip: func(p string) bool { return strings.HasSuffix(p, ".git") },
 	})
 	if err != nil {
