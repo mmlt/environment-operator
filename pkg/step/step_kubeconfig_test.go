@@ -2,6 +2,7 @@ package step
 
 import (
 	"encoding/json"
+	"github.com/mmlt/environment-operator/pkg/cluster"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -169,6 +170,108 @@ users:
 				assert.Equal(t, tt.wantErr, err.Error())
 			}
 			assert.Equal(t, tt.want, string(got))
+		})
+	}
+}
+
+func Test_clusters(t *testing.T) {
+	tests := []struct {
+		it      string
+		inJSON  string
+		inName  string
+		want    []cluster.Cluster
+		wantErr string
+	}{
+		{
+			it: "should return clusters from terraform output json",
+			inJSON: `{
+  "clusters": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "cpe": [
+          "object",
+          {
+            "kube_admin_config": [
+              "object",
+              {
+                "client_certificate": "string",
+                "client_key": "string",
+                "cluster_ca_certificate": "string",
+                "host": "string",
+                "password": "string",
+                "username": "string"
+              }
+            ]
+          }
+        ],
+        "one": [
+          "object",
+          {
+            "kube_admin_config": [
+              "object",
+              {
+                "client_certificate": "string",
+                "client_key": "string",
+                "cluster_ca_certificate": "string",
+                "host": "string",
+                "password": "string",
+                "username": "string"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "value": {
+      "cpe": {
+        "kube_admin_config": {
+          "client_certificate": "eA==",
+          "client_key": "eA==",
+          "cluster_ca_certificate": "eA==",
+          "host": "https://xxxd-cpe-xxx.hcp.westeurope.azmk8s.io:443",
+          "password": "eA==",
+          "username": "clusterAdmin_dxxxs_daksxxx-cpe"
+        }
+      },
+      "one": {
+        "kube_admin_config": {
+          "client_certificate": "eA==",
+          "client_key": "eA==",
+          "cluster_ca_certificate": "eA==",
+          "host": "https://xxxd-one-xxx.hcp.westeurope.azmk8s.io:443",
+          "password": "eA==",
+          "username": "clusterAdmin_dxxxs_daksxxx-one"
+        }
+      }
+    }
+  }
+}
+`,
+			inName: "xyz",
+			want: []cluster.Cluster{
+				{Environment: "env", Name: "cpe", Domain: "dom", Provider: "prov", Config: []uint8{0x78}},
+				{Environment: "env", Name: "one", Domain: "dom", Provider: "prov", Config: []uint8{0x78}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.it, func(t *testing.T) {
+			j := testUnmarshall(t, tt.inJSON)
+			got, err := clusters(j, "env", "dom", "prov")
+			if tt.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Equal(t, tt.wantErr, err.Error())
+			}
+
+			// strip kc, we test them separately
+			for k := range got {
+				got[k].Config = []byte("x")
+			}
+
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

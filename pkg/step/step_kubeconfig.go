@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api/v1"
 	"sigs.k8s.io/yaml"
+	"sort"
 	"strings"
 	"time"
 )
@@ -136,29 +137,9 @@ func (st *KubeconfigStep) syncClusterSecrets(json map[string]interface{}) error 
 	ctx := context.TODO()
 
 	// desired state
-	m, err := getMSIPath(json, "clusters", "value")
+	desired, err := clusters(json, st.Values["k8sEnvironment"], st.Values["k8sDomain"], st.Values["k8sProvider"])
 	if err != nil {
 		return err
-	}
-
-	desired := []cluster.Cluster{}
-	for n, _ := range m {
-		kc, err := kubeconfig(json, n)
-		if err != nil {
-			return err
-		}
-
-		if v := st.Values["k8sCluster"]; n != v {
-			return fmt.Errorf("cluster name '%s' should equal k8sCluster value '%s'", n, v)
-		}
-
-		desired = append(desired, cluster.Cluster{
-			Environment: st.Values["k8sEnvironment"],
-			Name:        st.Values["k8sCluster"],
-			Domain:      st.Values["k8sDomain"],
-			Provider:    st.Values["k8sProvider"],
-			Config:      kc,
-		})
 	}
 
 	// current state
@@ -183,6 +164,37 @@ func (st *KubeconfigStep) syncClusterSecrets(json map[string]interface{}) error 
 	}
 
 	return nil
+}
+
+// Clusters returns a slice of clusters from Terraform json output.
+// Expect json to contain clusters in the same environment, domain, provider.
+func clusters(json map[string]interface{}, environment, domain, provider string) ([]cluster.Cluster, error) {
+	m, err := getMSIPath(json, "clusters", "value")
+	if err != nil {
+		return nil, err
+	}
+
+	result := []cluster.Cluster{}
+	for n := range m {
+		kc, err := kubeconfig(json, n)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, cluster.Cluster{
+			Environment: environment,
+			Name:        n,
+			Domain:      domain,
+			Provider:    provider,
+			Config:      kc,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
+	})
+
+	return result, nil
 }
 
 // Kubeconfig returns a kube config from Terraform json output.
