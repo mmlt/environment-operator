@@ -18,39 +18,13 @@ func Test_kubeconfig(t *testing.T) {
 		{
 			it: "should create a kubeconfig from terraform output json",
 			inJSON: `{
-  "clusters": {
-    "sensitive": false,
-    "type": [
-      "object",
-      {
-        "xyz": [
-          "object",
-          {
-            "client_certificate": "string",
-            "client_key": "string",
-            "cluster_ca_certificate": "string",
-            "host": "string",
-            "password": "string",
-            "username": "string"
-          }
-        ]
-      }
-    ],
-    "value": {
-      "xyz": {
-        "kube_admin_config": {
-          "client_certificate": "LS0tY2xpZW50X2NlcnRpZmljYXRl",
-          "client_key": "LS0tY2xpZW50X2tleQ==",
-          "cluster_ca_certificate": "LS0tY2xpZW50X2NhX2NlcnRpZmljYXRl",
-          "host": "https://env-xyz-123.hcp.northpole.azmk8s.io:443",
-          "password": "4ee5bb2b31",
-          "username": "clusterAdmin-rg_env-xyz"
-        }
-      }
-    }
-  }
-}
-`,
+			  "client_certificate": "LS0tY2xpZW50X2NlcnRpZmljYXRl",
+			  "client_key": "LS0tY2xpZW50X2tleQ==",
+			  "cluster_ca_certificate": "LS0tY2xpZW50X2NhX2NlcnRpZmljYXRl",
+			  "host": "https://env-xyz-123.hcp.northpole.azmk8s.io:443",
+			  "password": "4ee5bb2b31",
+			  "username": "clusterAdmin-rg_env-xyz"
+			}`,
 			inName: "xyz",
 			want: `clusters:
 - cluster:
@@ -76,35 +50,11 @@ users:
 		{
 			it: "should create a kubeconfig when only username/password is provided",
 			inJSON: `{
-  "clusters": {
-    "sensitive": false,
-    "type": [
-      "object",
-      {
-        "xyz": [
-          "object",
-          {
-            "cluster_ca_certificate": "string",
-            "host": "string",
-            "password": "string",
-            "username": "string"
-          }
-        ]
-      }
-    ],
-    "value": {
-      "xyz": {
-        "kube_admin_config": {
-          "cluster_ca_certificate": "LS0tY2xpZW50X2NhX2NlcnRpZmljYXRl",
-          "host": "https://env-xyz-123.hcp.northpole.azmk8s.io:443",
-          "password": "4ee5bb2b31",
-          "username": "clusterAdmin-rg_env-xyz"
-        }
-      }
-    }
-  }
-}
-`,
+			  "cluster_ca_certificate": "LS0tY2xpZW50X2NhX2NlcnRpZmljYXRl",
+			  "host": "https://env-xyz-123.hcp.northpole.azmk8s.io:443",
+			  "password": "4ee5bb2b31",
+			  "username": "clusterAdmin-rg_env-xyz"
+			}`,
 			inName: "xyz",
 			want: `clusters:
 - cluster:
@@ -128,34 +78,10 @@ users:
 		{
 			it: "should error when an username without password is provided",
 			inJSON: `{
-  "clusters": {
-    "sensitive": false,
-    "type": [
-      "object",
-      {
-        "xyz": [
-          "object",
-          {
-            "cluster_ca_certificate": "string",
-            "host": "string",
-            "password": "string",
-            "username": "string"
-          }
-        ]
-      }
-    ],
-    "value": {
-      "xyz": {
-        "kube_admin_config": {
-          "cluster_ca_certificate": "LS0tY2xpZW50X2NhX2NlcnRpZmljYXRl",
-          "host": "https://env-xyz-123.hcp.northpole.azmk8s.io:443",
-          "username": "clusterAdmin-rg_env-xyz"
-        }
-      }
-    }
-  }
-}
-`,
+			  "cluster_ca_certificate": "LS0tY2xpZW50X2NhX2NlcnRpZmljYXRl",
+			  "host": "https://env-xyz-123.hcp.northpole.azmk8s.io:443",
+			  "username": "clusterAdmin-rg_env-xyz"
+			}`,
 			inName:  "xyz",
 			wantErr: "expected client_certificate,client_key or username,password",
 		},
@@ -277,6 +203,7 @@ func Test_clusters(t *testing.T) {
 }
 
 func testUnmarshall(t *testing.T, in string) map[string]interface{} {
+	t.Helper()
 	out := map[string]interface{}{}
 	err := json.Unmarshal([]byte(in), &out)
 	if err != nil {

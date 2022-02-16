@@ -9,15 +9,19 @@ import (
 	"github.com/mmlt/environment-operator/pkg/client/azure"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
+	"github.com/mmlt/environment-operator/pkg/cluster"
 	"github.com/mmlt/environment-operator/pkg/tmplt"
 	"github.com/mmlt/environment-operator/pkg/util"
 	"io/ioutil"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api/v1"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
+	"sort"
 	"strings"
 )
 
-// InfraStep performs a terraform init, plan and apply.
+// InfraStep performs a terraform init, plan, apply and creates cluster credentials.
 type InfraStep struct {
 	Metaa
 
@@ -34,6 +38,10 @@ type InfraStep struct {
 	Azure azure.AZer
 	// Terraform provides terraform functionality.
 	Terraform terraform.Terraformer
+	// Client is used to access the cluster envop is running in.
+	Client cluster.Client
+	// KubeconfigPathFn is a function that takes a cluster name and returns the path to the cluster kubeconfig file.
+	KubeconfigPathFn func(string) (string, error)
 
 	/* Results */
 
@@ -47,7 +55,7 @@ type InfraValues struct {
 	Clusters []v1.ClusterSpec
 }
 
-// Run a step.
+// Execute performs the terraform commands.
 func (st *InfraStep) Execute(ctx context.Context, env []string) {
 	log := logr.FromContext(ctx).WithName("InfraStep")
 	ctx = logr.NewContext(ctx, log)
@@ -167,7 +175,6 @@ func (st *InfraStep) Execute(ctx context.Context, env []string) {
 		writeText(last.Text, st.SourcePath, "apply.txt", log)
 	}
 
-	// Return results.
 	if last == nil {
 		st.error2(nil, "did not receive response from terraform apply")
 		return
@@ -178,12 +185,188 @@ func (st *InfraStep) Execute(ctx context.Context, env []string) {
 		return
 	}
 
+	// Update cluster access data.
+
+	to, err := st.Terraform.Output(ctx, env, st.SourcePath)
+	if err != nil {
+		st.error2(err, "terraform output")
+		return
+	}
+
+	desired, err := clusters(to, st.Values.Infra.EnvName, st.Values.Infra.EnvDomain, "aks")
+	if err != nil {
+		st.error2(err, "clusters from terraform output")
+		return
+	}
+
+	err = st.syncKubeconfigs(ctx, desired)
+	if err != nil {
+		st.error2(err, "sync kubeconfigs")
+		return
+	}
+
+	err = st.syncClusterSecrets(ctx, desired)
+	if err != nil {
+		st.error2(err, "sync cluster secrets")
+		return
+	}
+
+	// Return results.
+
 	st.Added = last.TotalAdded
 	st.Changed = last.TotalChanged
 	st.Deleted = last.TotalDestroyed
 
 	st.update(v1.StateReady, fmt.Sprintf("terraform apply errors=0 added=%d changed=%d deleted=%d",
 		last.TotalAdded, last.TotalChanged, last.TotalDestroyed))
+}
+
+// SyncClusterSecrets creates/updates/deletes cluster Secrets to match desired state.
+func (st *InfraStep) syncClusterSecrets(ctx context.Context, desired []cluster.Cluster) error {
+	current, err := st.Client.List(ctx, st.Metaa.ID.Namespace)
+	if err != nil {
+		return err
+	}
+
+	c, u, d := cluster.Diff(current, desired)
+
+	err = st.Client.Create(ctx, st.Metaa.ID.Namespace, c)
+	if err != nil {
+		return err
+	}
+	err = st.Client.Update(ctx, st.Metaa.ID.Namespace, u)
+	if err != nil {
+		return err
+	}
+	err = st.Client.Delete(ctx, st.Metaa.ID.Namespace, d)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SyncKubeconfigs creates kubeconfig files.
+func (st *InfraStep) syncKubeconfigs(_ context.Context, desired []cluster.Cluster) error {
+	for _, cl := range desired {
+		p, err := st.KubeconfigPathFn(cl.Name)
+		if err != nil {
+			return err
+		}
+		err = ioutil.WriteFile(p, cl.Config, 0600)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Clusters returns a slice of clusters from Terraform json output.
+// Expect json to contain clusters.value.<name>.kube_admin_config in the same environment, domain, provider.
+func clusters(json map[string]interface{}, environment, domain, provider string) ([]cluster.Cluster, error) {
+	m, err := getObjAtPath(json, "clusters", "value")
+	if err != nil {
+		return nil, err
+	}
+
+	result := []cluster.Cluster{}
+	for n := range m {
+		m, err := getObjAtPath(m, n, "kube_admin_config")
+		if err != nil {
+			return nil, err
+		}
+
+		kc, err := kubeconfig(m, n)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, cluster.Cluster{
+			Environment: environment,
+			Name:        n,
+			Domain:      domain,
+			Provider:    provider,
+			Config:      kc,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
+	})
+
+	return result, nil
+}
+
+// Kubeconfig returns a kube config from Terraform json output kube_admin_config field.
+
+func kubeconfig(m map[string]interface{}, clusterName string) ([]byte, error) {
+	host, err := get(m, "host")
+	if err != nil {
+		return nil, err
+	}
+	ca, err := get64(m, "cluster_ca_certificate")
+	if err != nil && strings.HasPrefix(host, "https://") /*testenv host is just a plain IP address*/ {
+		return nil, err
+	}
+
+	var ai clientcmdapi.AuthInfo
+	b, err := get64(m, "client_certificate")
+	if err == nil {
+		ai.ClientCertificateData = b
+	}
+	b, err = get64(m, "client_key")
+	if err == nil {
+		ai.ClientKeyData = b
+	}
+	s, err := get(m, "username")
+	if err == nil {
+		ai.Username = s
+	}
+	s, err = get(m, "password")
+	if err == nil {
+		ai.Password = s
+	}
+	if !strings.HasPrefix(host, "127.0") {
+		// API server on loopback adapter doesn't need auth.
+		if (ai.ClientCertificateData == nil || ai.ClientKeyData == nil) && (ai.Username == "" || ai.Password == "") {
+			return nil, fmt.Errorf("expected client_certificate,client_key or username,password")
+		}
+	}
+
+	c := &clientcmdapi.Config{
+		Clusters: []clientcmdapi.NamedCluster{
+			{
+				Name: clusterName,
+				Cluster: clientcmdapi.Cluster{
+					Server:                   host,
+					CertificateAuthorityData: ca,
+				},
+			},
+		},
+		Contexts: []clientcmdapi.NamedContext{
+			{
+				Name: "default",
+				Context: clientcmdapi.Context{
+					Cluster:  clusterName,
+					AuthInfo: "admin",
+				},
+			},
+		},
+		AuthInfos: []clientcmdapi.NamedAuthInfo{
+			{
+				Name:     "admin",
+				AuthInfo: ai,
+			},
+		},
+		CurrentContext: "default",
+	}
+
+	out, err := yaml.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 // TerraformEnviron returns terraform specific environment variables.

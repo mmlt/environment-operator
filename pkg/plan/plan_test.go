@@ -215,15 +215,6 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 				},
 				{
 					ID: step.ID{
-						Type:        step.TypeKubeconfig,
-						Namespace:   "default",
-						Name:        "test",
-						ClusterName: "xyz",
-					},
-					Hash: "68b850e1b0c7cf04",
-				},
-				{
-					ID: step.ID{
 						Type:        step.TypeAKSAddonPreflight,
 						Namespace:   "default",
 						Name:        "test",
@@ -272,7 +263,7 @@ func TestPlanner_Plan_ignore_parameters(t *testing.T) {
 
 			if assert.NoError(t, err) {
 				var want [](*step.Metaa)
-				for i, _ := range tt.want {
+				for i := range tt.want {
 					want = append(want, &tt.want[i])
 				}
 				assert.Equal(t, want, gotmeta)
@@ -310,7 +301,7 @@ func TestPlanner_Plan_step_hash(t *testing.T) {
 				cl.Name = "new"
 				*cspec = append(*cspec, cl)
 			},
-			want: []string{"Infra", "AKSAddonPreflightxyz", "AKSPoolnew", "Kubeconfignew", "AKSAddonPreflightnew", "Addonsnew"},
+			want: []string{"Infra", "AKSAddonPreflightxyz", "AKSPoolnew", "AKSAddonPreflightnew", "Addonsnew"},
 		},
 		{
 			id: "cspec Addons change trigger Addons step",

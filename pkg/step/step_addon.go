@@ -38,7 +38,7 @@ type AddonStep struct {
 	Added, Changed, Deleted int
 }
 
-// Execute addon apply for a cluster.
+// Execute performs a kubectl-tmplt apply.
 func (st *AddonStep) Execute(ctx context.Context, env []string) {
 	log := logr.FromContext(ctx).WithName("AddonStep")
 	ctx = logr.NewContext(ctx, log)

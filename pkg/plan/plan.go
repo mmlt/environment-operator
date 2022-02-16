@@ -116,6 +116,7 @@ func (p *Planner) buildDestroyPlan(nsn types.NamespacedName, src Sourcer, ispec 
 }
 
 // BuildCreatePlan builds a plan to create or update a target environment.
+// Returns false if workspaces are not prepped with sources.
 func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v1.InfraSpec, cspec []v1.ClusterSpec, client cluster.Client) (plan, bool) {
 	tfw, ok := src.Workspace(nsn, "")
 	if !ok || !tfw.Synced {
@@ -141,6 +142,14 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 			Cloud:      p.Cloud,
 			Azure:      p.Azure,
 			Terraform:  p.Terraform,
+			Client:     client,
+			KubeconfigPathFn: func(n string) (string, error) {
+				cw, ok := src.Workspace(nsn, n)
+				if !ok {
+					return "", fmt.Errorf("no workspace for nsn=%v cluster=%v", nsn, n)
+				}
+				return filepath.Join(cw.Path, "kubeconfig"), nil
+			},
 		})
 
 	for _, cl := range cspec {
@@ -162,18 +171,20 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 				Version:       cl.Infra.Version,
 				Azure:         az,
 			},
-			&step.KubeconfigStep{
-				Metaa:       stepMeta(nsn, cl.Name, step.TypeKubeconfig, p.hash(tfw.Hash)),
-				TFPath:      tfPath,
-				ClusterName: cl.Name,
-				KCPath:      kcPath,
-				Access:      ispec.State.Access,
-				Cloud:       p.Cloud,
-				Terraform:   p.Terraform,
-				Kubectl:     p.Kubectl,
-				Values:      cl.Addons.X,
-				Client:      client,
-			},
+			//TODO remove
+			//&step.KubeconfigStep{
+			//	Metaa:       stepMeta(nsn, cl.Name, step.TypeKubeconfig, p.hash(tfw.Hash)),
+			//	TFPath:      tfPath,
+			//	ClusterName: cl.Name,
+			//	KCPath:      kcPath,
+			//	Access:      ispec.State.Access,
+			//	Cloud:       p.Cloud,
+			//	Terraform:   p.Terraform,
+			//	Kubectl:     p.Kubectl,
+			//	//TODO remove
+			//	//Values:      cl.Addons.X,
+			//	//Client:      client,
+			//},
 			&step.AKSAddonPreflightStep{
 				Metaa:   stepMeta(nsn, cl.Name, step.TypeAKSAddonPreflight, h),
 				KCPath:  kcPath,

@@ -22,7 +22,7 @@ type AKSAddonPreflightStep struct {
 	Kubectl kubectl.Kubectrler
 }
 
-// Execute node pool upgrade for a cluster.
+// Execute runs preflight checks.
 func (st *AKSAddonPreflightStep) Execute(ctx context.Context, _ []string) {
 	const (
 		namespace = "kube-system"
@@ -77,5 +77,44 @@ func (st *AKSAddonPreflightStep) Execute(ctx context.Context, _ []string) {
 		return
 	}
 
+	// Wait for AKS to have resources deployed.
+	// On 20200821 when AKS provisioning is completed (according to terraform) it still takes 5 minutes or more for
+	// the default StorageClass to appear. During that time window PVC's that don't set 'storageClass:' will fail.
+	st.update(v1.StateRunning, "waiting for default StorageClass")
+	err = st.waitForDefaultStorageClass()
+	if err != nil {
+		st.error2(err, "waiting for default StorageClass")
+		return
+	}
+
 	st.update(v1.StateReady, fmt.Sprintf("%s completed", name))
+}
+
+// WaitForDefaultStorageClass waits until the target cluster contains a StorageClass with 'default' annotation.
+func (st *AKSAddonPreflightStep) waitForDefaultStorageClass() error {
+	var errTally int
+
+	end := time.Now().Add(10 * time.Minute)
+	for exp := backoff.NewExponential(30 * time.Second); !time.Now().After(end); exp.Sleep() {
+		scs, err := st.Kubectl.StorageClasses(st.KCPath)
+		if err != nil {
+			errTally++
+			if errTally > 3 {
+				return fmt.Errorf("kubectl: %w", err)
+			}
+			continue
+		}
+		for _, sc := range scs {
+			v := sc.Annotations["storageclass.kubernetes.io/is-default-class"]
+			if v == "" {
+				// AKS uses .beta.
+				v = sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"]
+			}
+			if v == "true" {
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("time-out")
 }

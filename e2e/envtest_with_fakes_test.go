@@ -35,14 +35,12 @@ func TestGoodRun(t *testing.T) {
 		assert.Equal(t, v1.ReasonReady, got.Status.Conditions[0].Reason)
 
 		// Steps
-		assert.Equal(t, 5, len(got.Status.Steps), "number of Status.Steps")
+		assert.Equal(t, 4, len(got.Status.Steps), "number of Status.Steps")
 
 		assert.Equal(t, v1.StateReady, got.Status.Steps["Infra"].State, "Status.Steps[Infra].State")
 		assert.Equal(t, "terraform apply errors=0 added=1 changed=2 deleted=1", got.Status.Steps["Infra"].Message)
 
 		assert.Equal(t, v1.StateReady, got.Status.Steps["AKSPoolxyz"].State, "Status.Steps[AKSPoolxyz].State")
-
-		assert.Equal(t, v1.StateReady, got.Status.Steps["Kubeconfigxyz"].State, "Status.Steps[Kubeconfigxyz].State")
 
 		assert.Equal(t, v1.StateReady, got.Status.Steps["AKSAddonPreflightxyz"].State, "Status.Steps[AKSAddonPreflightxyz].State")
 
