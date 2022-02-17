@@ -16,6 +16,8 @@ type KubectlFake struct {
 	probePodState FakePodState
 }
 
+var _ Kubectrler = &KubectlFake{}
+
 //go:generate stringer -type=FakePodState
 
 type FakePodState int
@@ -91,4 +93,9 @@ func (k KubectlFake) StorageClasses(kubeconfigPath string) ([]storagev1.StorageC
 		},
 	}
 	return r, nil
+}
+
+// WipeCluster removes resources before cluster delete.
+func (k *KubectlFake) WipeCluster(kubeconfigPath string) error {
+	return nil
 }

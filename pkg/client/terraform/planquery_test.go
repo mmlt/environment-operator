@@ -1,16 +1,38 @@
 package terraform
 
 import (
+	"github.com/Jeffail/gabs/v2"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 )
 
-func Test_parseShowResponsePools(t *testing.T) {
-	t.Skip("WIP; needs plan.json file")
+func Test_ClustersFromPlan(t *testing.T) {
+	//t.Skip("WIP; needs plan.json file")
 
 	b, err := ioutil.ReadFile(filepath.Join("testdata", "plan.json"))
+	assert.NoError(t, err)
+	json, err := gabs.ParseJSON(b)
+	assert.NoError(t, err)
+
+	// cat pkg/client/terraform/testdata/plan.json | jq '.resource_changes[] | select(.type == "azurerm_kubernetes_cluster")' | more
+	want := []AKSCluster{
+		{ResourceGroup: "srgr001k8s", Cluster: "saks001eu99y-cpe", Action: ActionDelete},
+	}
+
+	got, err := ClustersFromPlan(json)
+	if assert.NoError(t, err) {
+		assert.Equal(t, want, got)
+	}
+}
+
+func Test_PoolsFromPlan(t *testing.T) {
+	//t.Skip("WIP; needs plan.json file")
+
+	b, err := ioutil.ReadFile(filepath.Join("testdata", "plan.json"))
+	assert.NoError(t, err)
+	json, err := gabs.ParseJSON(b)
 	assert.NoError(t, err)
 
 	// cat pkg/client/terraform/testdata/plan.json | jq '.resource_changes[] | select(.type == "azurerm_kubernetes_cluster_node_pool")' | more
@@ -20,7 +42,7 @@ func Test_parseShowResponsePools(t *testing.T) {
 		{ResourceGroup: "srgr001k8s", Cluster: "saks001eu99y-cpe", Pool: "extra2", MinCount: 1, MaxCount: 10, Action: ActionDelete},
 		{ResourceGroup: "srgr001k8s", Cluster: "saks001eu99y-cpe", Pool: "extra3", MinCount: 1, MaxCount: 10, Action: ActionDelete},
 	}
-	got, err := parseShowResponsePools(string(b))
+	got, err := PoolsFromPlan(json)
 	if assert.NoError(t, err) {
 		assert.Equal(t, want, got)
 	}
@@ -37,8 +59,8 @@ func Test_pathToMap(t *testing.T) {
 			it: "should handle input with proper key/value pairs",
 			in: "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/managedClusters/saks001eu99y-cpe/agentPools/extra",
 			want: map[string]string{
-				"agentPools":      "extra",
-				"managedClusters": "saks001eu99y-cpe",
+				"agentpools":      "extra",
+				"managedclusters": "saks001eu99y-cpe",
 				"resourcegroups":  "srgr001k8s",
 				"subscriptions":   "ea-xx-xx-xx-5",
 			},

@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"context"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/go-logr/logr"
 	"os/exec"
 	"time"
@@ -10,7 +11,7 @@ import (
 // TerraformFake provides a Terraformer for testing.
 type TerraformFake struct {
 	// Tally is the number of times Init, Plan, Apply has been called.
-	InitTally, PlanTally, ApplyTally, DestroyTally, OutputTally, GetPlanPoolsTally int
+	InitTally, PlanTally, ApplyTally, DestroyTally, OutputTally, GetPlanTally int
 
 	// Results that are returned by the fake implementations of Init or Plan.
 	InitResult, PlanResult TFResult
@@ -21,8 +22,8 @@ type TerraformFake struct {
 	// OutputResult is the parsed JSON output of terraform output.
 	OutputResult map[string]interface{}
 
-	// GetPlanPoolsResult is the result of GetPlanPools().
-	GetPlanPoolsResult []AKSPool
+	// GetPlanResult is the result of GetPlan().
+	GetPlanResult string
 
 	// Log
 	Log logr.Logger
@@ -91,9 +92,9 @@ func (t *TerraformFake) Output(ctx context.Context, env []string, dir string) (m
 }
 
 // GetPlanPools reads an existing plan and returns AKSPools that are going to be updated or deleted.
-func (t *TerraformFake) GetPlanPools(ctx context.Context, env []string, dir string) ([]AKSPool, error) {
-	t.GetPlanPoolsTally++
-	return t.GetPlanPoolsResult, nil
+func (t *TerraformFake) GetPlan(ctx context.Context, env []string, dir string) (*gabs.Container, error) {
+	t.GetPlanTally++
+	return gabs.ParseJSON([]byte(t.GetPlanResult))
 }
 
 // SetupFakeResults sets-up the receiver with data that is returned during testing.
@@ -125,6 +126,13 @@ func (t *TerraformFake) SetupFakeResults(clusters map[string]interface{}) {
 			},
 		}
 	}
+	t.OutputResult = map[string]interface{}{
+		"clusters": map[string]interface{}{
+			"value": clusters,
+		},
+	}
+
+	t.GetPlanResult = "{}"
 
 	t.InitResult = TFResult{
 		Info: 1,
@@ -161,12 +169,6 @@ func (t *TerraformFake) SetupFakeResults(clusters map[string]interface{}) {
 		{Creating: 1, Modifying: 2, Destroying: 1, TotalAdded: 1, TotalChanged: 2, TotalDestroyed: 1, Object: "", Action: "", Elapsed: ""}}
 
 	t.DestroyMustSucceed()
-
-	t.OutputResult = map[string]interface{}{
-		"clusters": map[string]interface{}{
-			"value": clusters,
-		},
-	}
 }
 
 // DestroyMustSucceed makes the fake replay failed destroy.

@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/azure"
+	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/environment-operator/pkg/cloud"
 	"github.com/mmlt/environment-operator/pkg/cluster"
@@ -40,6 +41,8 @@ type InfraStep struct {
 	Terraform terraform.Terraformer
 	// Client is used to access the cluster envop is running in.
 	Client cluster.Client
+	// Kubectl is the kubectl implementation to use to access external clusters.
+	Kubectl kubectl.Kubectrler
 	// KubeconfigPathFn is a function that takes a cluster name and returns the path to the cluster kubeconfig file.
 	KubeconfigPathFn func(string) (string, error)
 
@@ -122,8 +125,44 @@ func (st *InfraStep) Execute(ctx context.Context, env []string) {
 		return
 	}
 
-	// Prevent the autoscaling from fighting a node pool update or delete.
-	pools, err := st.Terraform.GetPlanPools(ctx, env, st.SourcePath)
+	// Get plan to determine if work-a-rounds for terraform/azure_rm issues are needed.
+	plan, err := st.Terraform.GetPlan(ctx, env, st.SourcePath)
+	if err != nil {
+		st.error2(err, "terraform get plan")
+		return
+	}
+
+	// Prevent the node drain error on cluster delete.
+	// https://github.com/hashicorp/terraform-provider-azurerm/issues/10411
+	cs, _ := terraform.ClustersFromPlan(plan)
+	if err != nil {
+		st.error2(err, "clusters from terraform plan")
+		return
+	}
+	for _, c := range cs {
+		if c.Action&terraform.ActionDelete == 0 {
+			continue
+		}
+
+		kc, err := st.KubeconfigPathFn(c.Cluster)
+		if err != nil {
+			st.error2(err, "get kubeconfig")
+			return
+		}
+
+		err = st.Kubectl.WipeCluster(kc)
+		if err != nil {
+			st.error2(err, "wipe cluster")
+			return
+		}
+	}
+
+	// Prevent the node autoscaler from fighting a node pool update or delete.
+	pools, _ := terraform.PoolsFromPlan(plan)
+	if err != nil {
+		st.error2(err, "pools from terraform plan")
+		return
+	}
 	for _, p := range pools {
 		if p.Action&(terraform.ActionUpdate|terraform.ActionDelete) == 0 {
 			continue

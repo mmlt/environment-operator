@@ -1,6 +1,7 @@
 package kubectl
 
 import (
+	"fmt"
 	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
 	"github.com/mmlt/environment-operator/pkg/util/exe"
@@ -22,12 +23,16 @@ type Kubectrler interface {
 	PodDelete(kubeconfigPath, namespace, name string) error
 	// StorageClasses returns all the StorageClasses in the cluster addressed by kubeconfigPath.
 	StorageClasses(kubeconfigPath string) ([]storagev1.StorageClass, error)
+	// WipeCluster removes resources so all cluster nodes can be drained without errors.
+	WipeCluster(kubeconfigPath string) error
 }
 
 // Kubectl is able to perform kubectl cli commands.
 type Kubectl struct {
 	Log logr.Logger
 }
+
+var _ Kubectrler = &Kubectl{}
 
 // PodState returns the "Ready" status reason of the Pod in the cluster addressed by kubeconfigPath.
 // State is PodRunning, PodCompleted, ContainersNotReady or empty when no Pod is found.
@@ -97,4 +102,30 @@ func (k Kubectl) StorageClasses(kubeconfigPath string) ([]storagev1.StorageClass
 	}
 
 	return r.Items, nil
+}
+
+// WipeCluster removes resources so all cluster nodes can be drained without errors.
+func (k Kubectl) WipeCluster(kubeconfigPath string) error {
+	var err error
+	var args []string
+
+	args = []string{"--kubeconfig", kubeconfigPath, "delete", "validatingwebhookconfiguration", "--all", "--ignore-not-found=true"}
+	_, _, err = exe.Run(k.Log, nil, "", "kubectl", args...)
+	if err != nil {
+		return fmt.Errorf("delete all validatingwebhookconfiguration: %w", err)
+	}
+
+	args = []string{"--kubeconfig", kubeconfigPath, "delete", "mutatingwebhookconfiguration", "--all", "--ignore-not-found=true"}
+	_, _, err = exe.Run(k.Log, nil, "", "kubectl", args...)
+	if err != nil {
+		return fmt.Errorf("delete all mutatingwebhookconfiguration: %w", err)
+	}
+
+	args = []string{"--kubeconfig", kubeconfigPath, "delete", "namespace", "-l", "control-plane!=true"}
+	_, _, err = exe.Run(k.Log, nil, "", "kubectl", args...)
+	if err != nil {
+		return fmt.Errorf("delete namespaces: %w", err)
+	}
+
+	return nil
 }

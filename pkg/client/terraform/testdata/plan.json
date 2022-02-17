@@ -1,0 +1,4542 @@
+{
+  "format_version": "0.1",
+  "terraform_version": "0.13.5",
+  "planned_values": {
+    "outputs": {
+      "clusters": {
+        "sensitive": false,
+        "value": {
+          "cpe": {
+            "kube_admin_config": {
+              "client_certificate": "REDACTED",
+              "client_key": "REDACTED",
+              "cluster_ca_certificate": "REDACTED",
+              "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+              "password": "REDACTED",
+              "username": "clusterAdmin_srgr001k8s_saks001eu99y-cpe"
+            }
+          }
+        }
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "azurerm_network_security_group.nsg1",
+          "mode": "managed",
+          "type": "azurerm_network_security_group",
+          "name": "nsg1",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe",
+            "location": "antarctica",
+            "name": "snsg001eu99y-cpe",
+            "resource_group_name": "srgr001k8s",
+            "security_rule": [
+              {
+                "access": "Allow",
+                "description": "Allow traffic between pods/nodes",
+                "destination_address_prefix": "10.11.13.0/24",
+                "destination_address_prefixes": [],
+                "destination_application_security_group_ids": [],
+                "destination_port_range": "*",
+                "destination_port_ranges": [],
+                "direction": "Inbound",
+                "name": "AllowInboundIntraSubnet",
+                "priority": 4086,
+                "protocol": "*",
+                "source_address_prefix": "10.11.13.0/24",
+                "source_address_prefixes": [],
+                "source_application_security_group_ids": [],
+                "source_port_range": "*",
+                "source_port_ranges": []
+              },
+              {
+                "access": "Allow",
+                "description": "Allow traffic from internet to external load balancer (exlb)",
+                "destination_address_prefix": "10.11.12.0/25",
+                "destination_address_prefixes": [],
+                "destination_application_security_group_ids": [],
+                "destination_port_range": "443",
+                "destination_port_ranges": [],
+                "direction": "Inbound",
+                "name": "AllowInboundExternalLB",
+                "priority": 4088,
+                "protocol": "*",
+                "source_address_prefix": "*",
+                "source_address_prefixes": [],
+                "source_application_security_group_ids": [],
+                "source_port_range": "*",
+                "source_port_ranges": []
+              },
+              {
+                "access": "Allow",
+                "description": "Allow traffic from load balancer health probes to pods/nodes",
+                "destination_address_prefix": "10.11.13.0/24",
+                "destination_address_prefixes": [],
+                "destination_application_security_group_ids": [],
+                "destination_port_range": "*",
+                "destination_port_ranges": [],
+                "direction": "Inbound",
+                "name": "AllowInboundAzureLBHealthProbe",
+                "priority": 4094,
+                "protocol": "*",
+                "source_address_prefix": "AzureLoadBalancer",
+                "source_address_prefixes": [],
+                "source_application_security_group_ids": [],
+                "source_port_range": "*",
+                "source_port_ranges": []
+              },
+              {
+                "access": "Allow",
+                "description": "Allow traffic from on-prem to internal load balancer (inlb)",
+                "destination_address_prefix": "10.11.12.128/25",
+                "destination_address_prefixes": [],
+                "destination_application_security_group_ids": [],
+                "destination_port_range": "*",
+                "destination_port_ranges": [],
+                "direction": "Inbound",
+                "name": "AllowInboundInternalLBOnprem",
+                "priority": 4090,
+                "protocol": "*",
+                "source_address_prefix": "10.0.0.0/8",
+                "source_address_prefixes": [],
+                "source_application_security_group_ids": [],
+                "source_port_range": "*",
+                "source_port_ranges": []
+              },
+              {
+                "access": "Deny",
+                "description": "Deny all inbound traffic",
+                "destination_address_prefix": "*",
+                "destination_address_prefixes": [],
+                "destination_application_security_group_ids": [],
+                "destination_port_range": "*",
+                "destination_port_ranges": [],
+                "direction": "Inbound",
+                "name": "DenyIP",
+                "priority": 4096,
+                "protocol": "*",
+                "source_address_prefix": "*",
+                "source_address_prefixes": [],
+                "source_application_security_group_ids": [],
+                "source_port_range": "*",
+                "source_port_ranges": []
+              }
+            ],
+            "tags": {
+              "AvailabilityHours": "1",
+              "CIName": "KUBERNETES",
+              "Criticality": "Low",
+              "EnvironmentType": "s",
+              "FWPI": "BAR",
+              "Owner": "FOO",
+              "Project and Release Definition Id": "/releasedefinitions/48",
+              "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+              "SI": "XX"
+            },
+            "timeouts": null
+          }
+        },
+        {
+          "address": "azurerm_route_table.env",
+          "mode": "managed",
+          "type": "azurerm_route_table",
+          "name": "env",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "disable_bgp_route_propagation": false,
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+            "location": "antarctica",
+            "name": "sudr001eu99y",
+            "resource_group_name": "srgr001k8s",
+            "route": [
+              {
+                "address_prefix": "0.0.0.0/0",
+                "name": "default",
+                "next_hop_in_ip_address": "",
+                "next_hop_type": "Internet"
+              }
+            ],
+            "subnets": [
+              "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+              "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+              "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb"
+            ],
+            "tags": {
+              "AvailabilityHours": "1",
+              "CIName": "KUBERNETES",
+              "Criticality": "Low",
+              "EnvironmentType": "s",
+              "FWPI": "BAR",
+              "Owner": "FOO",
+              "Project and Release Definition Id": "/releasedefinitions/48",
+              "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+              "SI": "XX"
+            },
+            "timeouts": null
+          }
+        },
+        {
+          "address": "azurerm_storage_account.env",
+          "mode": "managed",
+          "type": "azurerm_storage_account",
+          "name": "env",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 2,
+          "values": {
+            "access_tier": "Hot",
+            "account_kind": "BlobStorage",
+            "account_replication_type": "GRS",
+            "account_tier": "Standard",
+            "allow_blob_public_access": false,
+            "blob_properties": [
+              {
+                "cors_rule": [],
+                "delete_retention_policy": [
+                  {
+                    "days": 90
+                  }
+                ]
+              }
+            ],
+            "custom_domain": [],
+            "enable_https_traffic_only": true,
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc",
+            "identity": [],
+            "is_hns_enabled": false,
+            "large_file_share_enabled": null,
+            "location": "antarctica",
+            "min_tls_version": "TLS1_0",
+            "name": "eu99yxabc",
+            "network_rules": [
+              {
+                "bypass": [
+                  "AzureServices"
+                ],
+                "default_action": "Allow",
+                "ip_rules": [],
+                "virtual_network_subnet_ids": []
+              }
+            ],
+            "primary_access_key": "REDACTED",
+            "primary_blob_connection_string": "REDACTED",
+            "primary_blob_endpoint": "https://eu99yxabc.blob.core.windows.net/",
+            "primary_blob_host": "eu99yxabc.blob.core.windows.net",
+            "primary_connection_string": "REDACTED",
+            "primary_dfs_endpoint": "https://eu99yxabc.dfs.core.windows.net/",
+            "primary_dfs_host": "eu99yxabc.dfs.core.windows.net",
+            "primary_file_endpoint": "",
+            "primary_file_host": "",
+            "primary_location": "antarctica",
+            "primary_queue_endpoint": "",
+            "primary_queue_host": "",
+            "primary_table_endpoint": "https://eu99yxabc.table.core.windows.net/",
+            "primary_table_host": "eu99yxabc.table.core.windows.net",
+            "primary_web_endpoint": "",
+            "primary_web_host": "",
+            "queue_properties": [],
+            "resource_group_name": "srgr001k8s",
+            "secondary_access_key": "REDACTED",
+            "secondary_blob_connection_string": "REDACTED",
+            "secondary_blob_endpoint": null,
+            "secondary_blob_host": null,
+            "secondary_connection_string": "REDACTED",
+            "secondary_dfs_endpoint": null,
+            "secondary_dfs_host": null,
+            "secondary_file_endpoint": null,
+            "secondary_file_host": null,
+            "secondary_location": "northpool",
+            "secondary_queue_endpoint": null,
+            "secondary_queue_host": null,
+            "secondary_table_endpoint": null,
+            "secondary_table_host": null,
+            "secondary_web_endpoint": null,
+            "secondary_web_host": null,
+            "static_website": [],
+            "tags": {
+              "AvailabilityHours": "1",
+              "CIName": "KUBERNETES",
+              "Criticality": "Low",
+              "EnvironmentType": "s",
+              "FWPI": "BAR",
+              "Owner": "FOO",
+              "Project and Release Definition Id": "/releasedefinitions/48",
+              "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+              "SI": "XX"
+            },
+            "timeouts": null
+          }
+        },
+        {
+          "address": "azurerm_subnet.exlb",
+          "mode": "managed",
+          "type": "azurerm_subnet",
+          "name": "exlb",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "address_prefix": "10.11.12.0/25",
+            "address_prefixes": [
+              "10.11.12.0/25"
+            ],
+            "delegation": [],
+            "enforce_private_link_endpoint_network_policies": false,
+            "enforce_private_link_service_network_policies": false,
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+            "name": "exlb",
+            "resource_group_name": "srgr001k8s",
+            "service_endpoint_policy_ids": [],
+            "service_endpoints": [],
+            "timeouts": null,
+            "virtual_network_name": "svne001eu99y"
+          }
+        },
+        {
+          "address": "azurerm_subnet.inlb",
+          "mode": "managed",
+          "type": "azurerm_subnet",
+          "name": "inlb",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "address_prefix": "10.11.12.128/25",
+            "address_prefixes": [
+              "10.11.12.128/25"
+            ],
+            "delegation": [],
+            "enforce_private_link_endpoint_network_policies": false,
+            "enforce_private_link_service_network_policies": false,
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+            "name": "inlb",
+            "resource_group_name": "srgr001k8s",
+            "service_endpoint_policy_ids": [],
+            "service_endpoints": [],
+            "timeouts": null,
+            "virtual_network_name": "svne001eu99y"
+          }
+        },
+        {
+          "address": "azurerm_subnet_network_security_group_association.nsg1",
+          "mode": "managed",
+          "type": "azurerm_subnet_network_security_group_association",
+          "name": "nsg1",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+            "network_security_group_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe",
+            "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+            "timeouts": null
+          }
+        },
+        {
+          "address": "azurerm_subnet_route_table_association.env-exlb",
+          "mode": "managed",
+          "type": "azurerm_subnet_route_table_association",
+          "name": "env-exlb",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+            "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+            "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+            "timeouts": null
+          }
+        },
+        {
+          "address": "azurerm_subnet_route_table_association.env-inlb",
+          "mode": "managed",
+          "type": "azurerm_subnet_route_table_association",
+          "name": "env-inlb",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+            "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+            "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+            "timeouts": null
+          }
+        },
+        {
+          "address": "azurerm_virtual_network.env",
+          "mode": "managed",
+          "type": "azurerm_virtual_network",
+          "name": "env",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "address_space": [
+              "10.11.12.0/20"
+            ],
+            "bgp_community": "",
+            "ddos_protection_plan": [],
+            "dns_servers": [],
+            "guid": "b2999999-9999-9999-9999-99999999964",
+            "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y",
+            "location": "antarctica",
+            "name": "svne001eu99y",
+            "resource_group_name": "srgr001k8s",
+            "subnet": [
+              {
+                "address_prefix": "10.11.12.0/25",
+                "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+                "name": "exlb",
+                "security_group": ""
+              },
+              {
+                "address_prefix": "10.11.12.128/25",
+                "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+                "name": "inlb",
+                "security_group": ""
+              },
+              {
+                "address_prefix": "10.11.13.0/24",
+                "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                "name": "cpe",
+                "security_group": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe"
+              }
+            ],
+            "tags": {
+              "AvailabilityHours": "1",
+              "CIName": "KUBERNETES",
+              "Criticality": "Low",
+              "EnvironmentType": "s",
+              "FWPI": "BAR",
+              "Owner": "FOO",
+              "Project and Release Definition Id": "/releasedefinitions/48",
+              "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+              "SI": "XX"
+            },
+            "timeouts": null,
+            "vm_protection_enabled": false
+          }
+        }
+      ],
+      "child_modules": [
+        {
+          "resources": [
+            {
+              "address": "module.aks1.azurerm_kubernetes_cluster.this",
+              "mode": "managed",
+              "type": "azurerm_kubernetes_cluster",
+              "name": "this",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "schema_version": 0,
+              "values": {
+                "addon_profile": [
+                  {
+                    "aci_connector_linux": [],
+                    "azure_policy": [],
+                    "http_application_routing": [],
+                    "kube_dashboard": [
+                      {
+                        "enabled": false
+                      }
+                    ],
+                    "oms_agent": []
+                  }
+                ],
+                "api_server_authorized_ip_ranges": [],
+                "auto_scaler_profile": [
+                  {
+                    "balance_similar_node_groups": false,
+                    "max_graceful_termination_sec": "600",
+                    "new_pod_scale_up_delay": "0s",
+                    "scale_down_delay_after_add": "10m",
+                    "scale_down_delay_after_delete": "10s",
+                    "scale_down_delay_after_failure": "3m",
+                    "scale_down_unneeded": "10m",
+                    "scale_down_unready": "20m",
+                    "scale_down_utilization_threshold": "0.5",
+                    "scan_interval": "10s",
+                    "skip_nodes_with_local_storage": false,
+                    "skip_nodes_with_system_pods": true
+                  }
+                ],
+                "automatic_channel_upgrade": "",
+                "default_node_pool": [
+                  {
+                    "availability_zones": [
+                      "1",
+                      "2",
+                      "3"
+                    ],
+                    "enable_auto_scaling": false,
+                    "enable_host_encryption": false,
+                    "enable_node_public_ip": false,
+                    "max_count": 0,
+                    "max_pods": 30,
+                    "min_count": 0,
+                    "name": "default",
+                    "node_count": 1,
+                    "node_labels": {},
+                    "node_taints": [],
+                    "only_critical_addons_enabled": false,
+                    "orchestrator_version": "1.2.3",
+                    "os_disk_size_gb": 128,
+                    "os_disk_type": "Managed",
+                    "proximity_placement_group_id": "",
+                    "tags": {},
+                    "type": "VirtualMachineScaleSets",
+                    "upgrade_settings": [],
+                    "vm_size": "Standard_DS2_v2",
+                    "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+                  }
+                ],
+                "disk_encryption_set_id": "",
+                "dns_prefix": "eu99y-cpe",
+                "enable_pod_security_policy": false,
+                "fqdn": "eu99y-cpe-abcd.hcp.antarctica.azmk8s.io",
+                "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+                "identity": [
+                  {
+                    "principal_id": "REDACTED",
+                    "tenant_id": "REDACTED",
+                    "type": "SystemAssigned",
+                    "user_assigned_identity_id": ""
+                  }
+                ],
+                "kube_admin_config": [
+                  {
+                    "client_certificate": "REDACTED",
+                    "client_key": "REDACTED",
+                    "cluster_ca_certificate": "REDACTED",
+                    "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+                    "password": "REDACTED",
+                    "username": "clusterAdmin_srgr001k8s_saks001eu99y-cpe"
+                  }
+                ],
+                "kube_admin_config_raw": "REDACTED",
+                "kube_config": [
+                  {
+                    "client_certificate": "",
+                    "client_key": "",
+                    "cluster_ca_certificate": "REDACTED",
+                    "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+                    "password": "REDACTED",
+                    "username": "clusterUser_srgr001k8s_saks001eu99y-cpe"
+                  }
+                ],
+                "kube_config_raw": "REDACTED",
+                "kubelet_identity": [
+                  {
+                    "client_id": "REDACTED",
+                    "object_id": "REDACTED",
+                    "user_assigned_identity_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/MC_srgr001k8s_saks001eu99y-cpe_antarctica/providers/Microsoft.ManagedIdentity/userAssignedIdentities/saks001eu99y-cpe-agentpool"
+                  }
+                ],
+                "kubernetes_version": "1.2.3",
+                "linux_profile": [],
+                "location": "antarctica",
+                "name": "saks001eu99y-cpe",
+                "network_profile": [
+                  {
+                    "dns_service_ip": "172.18.0.10",
+                    "docker_bridge_cidr": "172.17.0.1/16",
+                    "load_balancer_profile": [
+                      {
+                        "effective_outbound_ips": [
+                          "/subscriptions/ea-xx-xx-xx-5/resourceGroups/MC_srgr001k8s_saks001eu99y-cpe_antarctica/providers/Microsoft.Network/publicIPAddresses/40999999-9999-9999-9999-999999999999"
+                        ],
+                        "idle_timeout_in_minutes": 0,
+                        "managed_outbound_ip_count": 1,
+                        "outbound_ip_address_ids": [],
+                        "outbound_ip_prefix_ids": [],
+                        "outbound_ports_allocated": 0
+                      }
+                    ],
+                    "load_balancer_sku": "Standard",
+                    "network_mode": "",
+                    "network_plugin": "azure",
+                    "network_policy": "calico",
+                    "outbound_type": "loadBalancer",
+                    "pod_cidr": "",
+                    "service_cidr": "172.18.0.0/16"
+                  }
+                ],
+                "node_resource_group": "MC_srgr001k8s_saks001eu99y-cpe_antarctica",
+                "private_cluster_enabled": true,
+                "private_dns_zone_id": "",
+                "private_fqdn": "",
+                "private_link_enabled": false,
+                "resource_group_name": "srgr001k8s",
+                "role_based_access_control": [
+                  {
+                    "azure_active_directory": [
+                      {
+                        "admin_group_object_ids": [],
+                        "client_app_id": "REDACTED",
+                        "managed": false,
+                        "server_app_id": "REDACTED",
+                        "server_app_secret": "REDACTED",
+                        "tenant_id": "REDACTED"
+                      }
+                    ],
+                    "enabled": true
+                  }
+                ],
+                "service_principal": [],
+                "sku_tier": "Free",
+                "tags": {
+                  "AvailabilityHours": "1",
+                  "CIName": "KUBERNETES",
+                  "Criticality": "Low",
+                  "EnvironmentType": "s",
+                  "FWPI": "BAR",
+                  "Owner": "FOO",
+                  "Project and Release Definition Id": "/releasedefinitions/48",
+                  "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+                  "SI": "XX"
+                },
+                "timeouts": null,
+                "windows_profile": [
+                  {
+                    "admin_password": "",
+                    "admin_username": "azureuser"
+                  }
+                ]
+              }
+            },
+            {
+              "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra\"]",
+              "mode": "managed",
+              "type": "azurerm_kubernetes_cluster_node_pool",
+              "name": "this",
+              "index": "extra",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "schema_version": 0,
+              "values": {
+                "availability_zones": [
+                  "1",
+                  "2",
+                  "3"
+                ],
+                "enable_auto_scaling": true,
+                "enable_host_encryption": false,
+                "enable_node_public_ip": false,
+                "eviction_policy": "",
+                "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra",
+                "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+                "max_count": 10,
+                "max_pods": 30,
+                "min_count": 3,
+                "mode": "User",
+                "name": "extra",
+                "node_count": 1,
+                "node_labels": {},
+                "node_taints": [],
+                "orchestrator_version": "1.2.3",
+                "os_disk_size_gb": 128,
+                "os_disk_type": "Managed",
+                "os_type": "Linux",
+                "priority": "Regular",
+                "proximity_placement_group_id": "",
+                "spot_max_price": -1,
+                "tags": {},
+                "timeouts": null,
+                "upgrade_settings": [],
+                "vm_size": "Standard_DS2_v2",
+                "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+              }
+            },
+            {
+              "address": "module.aks1.azurerm_role_assignment.this",
+              "mode": "managed",
+              "type": "azurerm_role_assignment",
+              "name": "this",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "schema_version": 0,
+              "values": {
+                "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/providers/Microsoft.Authorization/roleAssignments/79999999-8888-8888-888-99999999999e",
+                "name": "79999999-8888-8888-888-99999999999e",
+                "principal_id": "REDACTED",
+                "principal_type": "ServicePrincipal",
+                "role_definition_id": "/subscriptions/ea-xx-xx-xx-5/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7",
+                "role_definition_name": "Network Contributor",
+                "scope": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y",
+                "skip_service_principal_aad_check": null,
+                "timeouts": null
+              }
+            },
+            {
+              "address": "module.aks1.azurerm_subnet.this",
+              "mode": "managed",
+              "type": "azurerm_subnet",
+              "name": "this",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "schema_version": 0,
+              "values": {
+                "address_prefix": "10.11.13.0/24",
+                "address_prefixes": [
+                  "10.11.13.0/24"
+                ],
+                "delegation": [],
+                "enforce_private_link_endpoint_network_policies": false,
+                "enforce_private_link_service_network_policies": false,
+                "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                "name": "cpe",
+                "resource_group_name": "srgr001k8s",
+                "service_endpoint_policy_ids": [],
+                "service_endpoints": [],
+                "timeouts": null,
+                "virtual_network_name": "svne001eu99y"
+              }
+            },
+            {
+              "address": "module.aks1.azurerm_subnet_route_table_association.this",
+              "mode": "managed",
+              "type": "azurerm_subnet_route_table_association",
+              "name": "this",
+              "provider_name": "registry.terraform.io/hashicorp/azurerm",
+              "schema_version": 0,
+              "values": {
+                "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+                "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                "timeouts": null
+              }
+            }
+          ],
+          "address": "module.aks1"
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "azurerm_management_lock.env-sa",
+      "mode": "managed",
+      "type": "azurerm_management_lock",
+      "name": "env-sa",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc/providers/Microsoft.Authorization/locks/CanNotDelete",
+          "lock_level": "CanNotDelete",
+          "name": "CanNotDelete",
+          "notes": "",
+          "scope": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc",
+          "timeouts": null
+        },
+        "after": null,
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_monitor_diagnostic_setting.aks1",
+      "mode": "managed",
+      "type": "azurerm_monitor_diagnostic_setting",
+      "name": "aks1",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "eventhub_authorization_rule_id": "",
+          "eventhub_name": "",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe|Autoset - D11 Security Control enforcement- Log Analytics",
+          "log": [
+            {
+              "category": "cluster-autoscaler",
+              "enabled": true,
+              "retention_policy": [
+                {
+                  "days": 0,
+                  "enabled": false
+                }
+              ]
+            },
+            {
+              "category": "guard",
+              "enabled": true,
+              "retention_policy": [
+                {
+                  "days": 0,
+                  "enabled": false
+                }
+              ]
+            },
+            {
+              "category": "kube-apiserver",
+              "enabled": true,
+              "retention_policy": [
+                {
+                  "days": 0,
+                  "enabled": false
+                }
+              ]
+            },
+            {
+              "category": "kube-audit",
+              "enabled": true,
+              "retention_policy": [
+                {
+                  "days": 0,
+                  "enabled": false
+                }
+              ]
+            },
+            {
+              "category": "kube-audit-admin",
+              "enabled": true,
+              "retention_policy": [
+                {
+                  "days": 0,
+                  "enabled": false
+                }
+              ]
+            },
+            {
+              "category": "kube-controller-manager",
+              "enabled": true,
+              "retention_policy": [
+                {
+                  "days": 0,
+                  "enabled": false
+                }
+              ]
+            },
+            {
+              "category": "kube-scheduler",
+              "enabled": true,
+              "retention_policy": [
+                {
+                  "days": 0,
+                  "enabled": false
+                }
+              ]
+            }
+          ],
+          "log_analytics_destination_type": "",
+          "log_analytics_workspace_id": "/subscriptions/31b58fee-11c2-4a37-b828-640732a3d604/resourceGroups/prgr001asclogsplayground/providers/Microsoft.OperationalInsights/workspaces/plan001asclogsplayground",
+          "metric": [
+            {
+              "category": "AllMetrics",
+              "enabled": false,
+              "retention_policy": [
+                {
+                  "days": 0,
+                  "enabled": false
+                }
+              ]
+            }
+          ],
+          "name": "Autoset - D11 Security Control enforcement- Log Analytics",
+          "storage_account_id": "",
+          "target_resource_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+          "timeouts": null
+        },
+        "after": null,
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_network_security_group.nsg1",
+      "mode": "managed",
+      "type": "azurerm_network_security_group",
+      "name": "nsg1",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe",
+          "location": "antarctica",
+          "name": "snsg001eu99y-cpe",
+          "resource_group_name": "srgr001k8s",
+          "security_rule": [
+            {
+              "access": "Allow",
+              "description": "Allow traffic between pods/nodes",
+              "destination_address_prefix": "10.11.13.0/24",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "*",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "AllowInboundIntraSubnet",
+              "priority": 4086,
+              "protocol": "*",
+              "source_address_prefix": "10.11.13.0/24",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            },
+            {
+              "access": "Allow",
+              "description": "Allow traffic from internet to external load balancer (exlb)",
+              "destination_address_prefix": "10.11.12.0/25",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "443",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "AllowInboundExternalLB",
+              "priority": 4088,
+              "protocol": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            },
+            {
+              "access": "Allow",
+              "description": "Allow traffic from load balancer health probes to pods/nodes",
+              "destination_address_prefix": "10.11.13.0/24",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "*",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "AllowInboundAzureLBHealthProbe",
+              "priority": 4094,
+              "protocol": "*",
+              "source_address_prefix": "AzureLoadBalancer",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            },
+            {
+              "access": "Allow",
+              "description": "Allow traffic from on-prem to internal load balancer (inlb)",
+              "destination_address_prefix": "10.11.12.128/25",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "*",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "AllowInboundInternalLBOnprem",
+              "priority": 4090,
+              "protocol": "*",
+              "source_address_prefix": "10.0.0.0/8",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            },
+            {
+              "access": "Deny",
+              "description": "Deny all inbound traffic",
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "*",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "DenyIP",
+              "priority": 4096,
+              "protocol": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            }
+          ],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null
+        },
+        "after": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe",
+          "location": "antarctica",
+          "name": "snsg001eu99y-cpe",
+          "resource_group_name": "srgr001k8s",
+          "security_rule": [
+            {
+              "access": "Allow",
+              "description": "Allow traffic between pods/nodes",
+              "destination_address_prefix": "10.11.13.0/24",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "*",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "AllowInboundIntraSubnet",
+              "priority": 4086,
+              "protocol": "*",
+              "source_address_prefix": "10.11.13.0/24",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            },
+            {
+              "access": "Allow",
+              "description": "Allow traffic from internet to external load balancer (exlb)",
+              "destination_address_prefix": "10.11.12.0/25",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "443",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "AllowInboundExternalLB",
+              "priority": 4088,
+              "protocol": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            },
+            {
+              "access": "Allow",
+              "description": "Allow traffic from load balancer health probes to pods/nodes",
+              "destination_address_prefix": "10.11.13.0/24",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "*",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "AllowInboundAzureLBHealthProbe",
+              "priority": 4094,
+              "protocol": "*",
+              "source_address_prefix": "AzureLoadBalancer",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            },
+            {
+              "access": "Allow",
+              "description": "Allow traffic from on-prem to internal load balancer (inlb)",
+              "destination_address_prefix": "10.11.12.128/25",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "*",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "AllowInboundInternalLBOnprem",
+              "priority": 4090,
+              "protocol": "*",
+              "source_address_prefix": "10.0.0.0/8",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            },
+            {
+              "access": "Deny",
+              "description": "Deny all inbound traffic",
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "destination_application_security_group_ids": [],
+              "destination_port_range": "*",
+              "destination_port_ranges": [],
+              "direction": "Inbound",
+              "name": "DenyIP",
+              "priority": 4096,
+              "protocol": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "source_application_security_group_ids": [],
+              "source_port_range": "*",
+              "source_port_ranges": []
+            }
+          ],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_role_assignment.sa1",
+      "mode": "managed",
+      "type": "azurerm_role_assignment",
+      "name": "sa1",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabcxcpexfs/providers/Microsoft.Authorization/roleAssignments/3999999-8888-8888-8888-999999999905",
+          "name": "3999999-8888-8888-8888-999999999905",
+          "principal_id": "REDACTED",
+          "principal_type": "ServicePrincipal",
+          "role_definition_id": "/subscriptions/ea-xx-xx-xx-5/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+          "role_definition_name": "Owner",
+          "scope": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabcxcpexfs",
+          "skip_service_principal_aad_check": null,
+          "timeouts": null
+        },
+        "after": null,
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_route_table.env",
+      "mode": "managed",
+      "type": "azurerm_route_table",
+      "name": "env",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "disable_bgp_route_propagation": false,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+          "location": "antarctica",
+          "name": "sudr001eu99y",
+          "resource_group_name": "srgr001k8s",
+          "route": [
+            {
+              "address_prefix": "0.0.0.0/0",
+              "name": "default",
+              "next_hop_in_ip_address": "",
+              "next_hop_type": "Internet"
+            }
+          ],
+          "subnets": [
+            "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+            "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+            "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb"
+          ],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null
+        },
+        "after": {
+          "disable_bgp_route_propagation": false,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+          "location": "antarctica",
+          "name": "sudr001eu99y",
+          "resource_group_name": "srgr001k8s",
+          "route": [
+            {
+              "address_prefix": "0.0.0.0/0",
+              "name": "default",
+              "next_hop_in_ip_address": "",
+              "next_hop_type": "Internet"
+            }
+          ],
+          "subnets": [
+            "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+            "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+            "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb"
+          ],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_storage_account.env",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "env",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "access_tier": "Hot",
+          "account_kind": "BlobStorage",
+          "account_replication_type": "GRS",
+          "account_tier": "Standard",
+          "allow_blob_public_access": false,
+          "blob_properties": [
+            {
+              "cors_rule": [],
+              "delete_retention_policy": [
+                {
+                  "days": 90
+                }
+              ]
+            }
+          ],
+          "custom_domain": [],
+          "enable_https_traffic_only": true,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc",
+          "identity": [],
+          "is_hns_enabled": false,
+          "large_file_share_enabled": null,
+          "location": "antarctica",
+          "min_tls_version": "TLS1_0",
+          "name": "eu99yxabc",
+          "network_rules": [
+            {
+              "bypass": [
+                "AzureServices"
+              ],
+              "default_action": "Allow",
+              "ip_rules": [],
+              "virtual_network_subnet_ids": []
+            }
+          ],
+          "primary_access_key": "REDACTED",
+          "primary_blob_connection_string": "REDACTED",
+          "primary_blob_endpoint": "https://eu99yxabc.blob.core.windows.net/",
+          "primary_blob_host": "eu99yxabc.blob.core.windows.net",
+          "primary_connection_string": "REDACTED",
+          "primary_dfs_endpoint": "https://eu99yxabc.dfs.core.windows.net/",
+          "primary_dfs_host": "eu99yxabc.dfs.core.windows.net",
+          "primary_file_endpoint": "",
+          "primary_file_host": "",
+          "primary_location": "antarctica",
+          "primary_queue_endpoint": "",
+          "primary_queue_host": "",
+          "primary_table_endpoint": "https://eu99yxabc.table.core.windows.net/",
+          "primary_table_host": "eu99yxabc.table.core.windows.net",
+          "primary_web_endpoint": "",
+          "primary_web_host": "",
+          "queue_properties": [],
+          "resource_group_name": "srgr001k8s",
+          "secondary_access_key": "REDACTED",
+          "secondary_blob_connection_string": "REDACTED",
+          "secondary_blob_endpoint": null,
+          "secondary_blob_host": null,
+          "secondary_connection_string": "REDACTED",
+          "secondary_dfs_endpoint": null,
+          "secondary_dfs_host": null,
+          "secondary_file_endpoint": null,
+          "secondary_file_host": null,
+          "secondary_location": "northpool",
+          "secondary_queue_endpoint": null,
+          "secondary_queue_host": null,
+          "secondary_table_endpoint": null,
+          "secondary_table_host": null,
+          "secondary_web_endpoint": null,
+          "secondary_web_host": null,
+          "static_website": [],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null
+        },
+        "after": {
+          "access_tier": "Hot",
+          "account_kind": "BlobStorage",
+          "account_replication_type": "GRS",
+          "account_tier": "Standard",
+          "allow_blob_public_access": false,
+          "blob_properties": [
+            {
+              "cors_rule": [],
+              "delete_retention_policy": [
+                {
+                  "days": 90
+                }
+              ]
+            }
+          ],
+          "custom_domain": [],
+          "enable_https_traffic_only": true,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc",
+          "identity": [],
+          "is_hns_enabled": false,
+          "large_file_share_enabled": null,
+          "location": "antarctica",
+          "min_tls_version": "TLS1_0",
+          "name": "eu99yxabc",
+          "network_rules": [
+            {
+              "bypass": [
+                "AzureServices"
+              ],
+              "default_action": "Allow",
+              "ip_rules": [],
+              "virtual_network_subnet_ids": []
+            }
+          ],
+          "primary_access_key": "REDACTED",
+          "primary_blob_connection_string": "REDACTED",
+          "primary_blob_endpoint": "https://eu99yxabc.blob.core.windows.net/",
+          "primary_blob_host": "eu99yxabc.blob.core.windows.net",
+          "primary_connection_string": "REDACTED",
+          "primary_dfs_endpoint": "https://eu99yxabc.dfs.core.windows.net/",
+          "primary_dfs_host": "eu99yxabc.dfs.core.windows.net",
+          "primary_file_endpoint": "",
+          "primary_file_host": "",
+          "primary_location": "antarctica",
+          "primary_queue_endpoint": "",
+          "primary_queue_host": "",
+          "primary_table_endpoint": "https://eu99yxabc.table.core.windows.net/",
+          "primary_table_host": "eu99yxabc.table.core.windows.net",
+          "primary_web_endpoint": "",
+          "primary_web_host": "",
+          "queue_properties": [],
+          "resource_group_name": "srgr001k8s",
+          "secondary_access_key": "REDACTED",
+          "secondary_blob_connection_string": "REDACTED",
+          "secondary_blob_endpoint": null,
+          "secondary_blob_host": null,
+          "secondary_connection_string": "REDACTED",
+          "secondary_dfs_endpoint": null,
+          "secondary_dfs_host": null,
+          "secondary_file_endpoint": null,
+          "secondary_file_host": null,
+          "secondary_location": "northpool",
+          "secondary_queue_endpoint": null,
+          "secondary_queue_host": null,
+          "secondary_table_endpoint": null,
+          "secondary_table_host": null,
+          "secondary_web_endpoint": null,
+          "secondary_web_host": null,
+          "static_website": [],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_storage_account.sa1",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "sa1",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "access_tier": "Hot",
+          "account_kind": "StorageV2",
+          "account_replication_type": "ZRS",
+          "account_tier": "Standard",
+          "allow_blob_public_access": false,
+          "blob_properties": [],
+          "custom_domain": [],
+          "enable_https_traffic_only": true,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabcxcpexfs",
+          "identity": [],
+          "is_hns_enabled": false,
+          "large_file_share_enabled": null,
+          "location": "antarctica",
+          "min_tls_version": "TLS1_0",
+          "name": "eu99yxabcxcpexfs",
+          "network_rules": [
+            {
+              "bypass": [
+                "AzureServices"
+              ],
+              "default_action": "Allow",
+              "ip_rules": [],
+              "virtual_network_subnet_ids": []
+            }
+          ],
+          "primary_access_key": "REDACTED",
+          "primary_blob_connection_string": "REDACTED",
+          "primary_blob_endpoint": "https://eu99yxabcxcpexfs.blob.core.windows.net/",
+          "primary_blob_host": "eu99yxabcxcpexfs.blob.core.windows.net",
+          "primary_connection_string": "REDACTED",
+          "primary_dfs_endpoint": "https://eu99yxabcxcpexfs.dfs.core.windows.net/",
+          "primary_dfs_host": "eu99yxabcxcpexfs.dfs.core.windows.net",
+          "primary_file_endpoint": "https://eu99yxabcxcpexfs.file.core.windows.net/",
+          "primary_file_host": "eu99yxabcxcpexfs.file.core.windows.net",
+          "primary_location": "antarctica",
+          "primary_queue_endpoint": "https://eu99yxabcxcpexfs.queue.core.windows.net/",
+          "primary_queue_host": "eu99yxabcxcpexfs.queue.core.windows.net",
+          "primary_table_endpoint": "https://eu99yxabcxcpexfs.table.core.windows.net/",
+          "primary_table_host": "eu99yxabcxcpexfs.table.core.windows.net",
+          "primary_web_endpoint": "https://eu99yxabcxcpexfs.z6.web.core.windows.net/",
+          "primary_web_host": "eu99yxabcxcpexfs.z6.web.core.windows.net",
+          "queue_properties": [
+            {
+              "cors_rule": [],
+              "hour_metrics": [
+                {
+                  "enabled": true,
+                  "include_apis": true,
+                  "retention_policy_days": 7,
+                  "version": "1.0"
+                }
+              ],
+              "logging": [
+                {
+                  "delete": false,
+                  "read": false,
+                  "retention_policy_days": 0,
+                  "version": "1.0",
+                  "write": false
+                }
+              ],
+              "minute_metrics": [
+                {
+                  "enabled": false,
+                  "include_apis": false,
+                  "retention_policy_days": 0,
+                  "version": "1.0"
+                }
+              ]
+            }
+          ],
+          "resource_group_name": "srgr001k8s",
+          "secondary_access_key": "REDACTED",
+          "secondary_blob_connection_string": "REDACTED",
+          "secondary_blob_endpoint": null,
+          "secondary_blob_host": null,
+          "secondary_connection_string": "REDACTED",
+          "secondary_dfs_endpoint": null,
+          "secondary_dfs_host": null,
+          "secondary_file_endpoint": null,
+          "secondary_file_host": null,
+          "secondary_location": "",
+          "secondary_queue_endpoint": null,
+          "secondary_queue_host": null,
+          "secondary_table_endpoint": null,
+          "secondary_table_host": null,
+          "secondary_web_endpoint": null,
+          "secondary_web_host": null,
+          "static_website": [],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null
+        },
+        "after": null,
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_storage_container.velero1",
+      "mode": "managed",
+      "type": "azurerm_storage_container",
+      "name": "velero1",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "container_access_type": "private",
+          "has_immutability_policy": false,
+          "has_legal_hold": false,
+          "id": "https://eu99yxabc.blob.core.windows.net/cpe-velero",
+          "metadata": {},
+          "name": "cpe-velero",
+          "resource_manager_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc/blobServices/default/containers/cpe-velero",
+          "storage_account_name": "eu99yxabc",
+          "timeouts": null
+        },
+        "after": null,
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_subnet.exlb",
+      "mode": "managed",
+      "type": "azurerm_subnet",
+      "name": "exlb",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "address_prefix": "10.11.12.0/25",
+          "address_prefixes": [
+            "10.11.12.0/25"
+          ],
+          "delegation": [],
+          "enforce_private_link_endpoint_network_policies": false,
+          "enforce_private_link_service_network_policies": false,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+          "name": "exlb",
+          "resource_group_name": "srgr001k8s",
+          "service_endpoint_policy_ids": [],
+          "service_endpoints": [],
+          "timeouts": null,
+          "virtual_network_name": "svne001eu99y"
+        },
+        "after": {
+          "address_prefix": "10.11.12.0/25",
+          "address_prefixes": [
+            "10.11.12.0/25"
+          ],
+          "delegation": [],
+          "enforce_private_link_endpoint_network_policies": false,
+          "enforce_private_link_service_network_policies": false,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+          "name": "exlb",
+          "resource_group_name": "srgr001k8s",
+          "service_endpoint_policy_ids": [],
+          "service_endpoints": [],
+          "timeouts": null,
+          "virtual_network_name": "svne001eu99y"
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_subnet.inlb",
+      "mode": "managed",
+      "type": "azurerm_subnet",
+      "name": "inlb",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "address_prefix": "10.11.12.128/25",
+          "address_prefixes": [
+            "10.11.12.128/25"
+          ],
+          "delegation": [],
+          "enforce_private_link_endpoint_network_policies": false,
+          "enforce_private_link_service_network_policies": false,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+          "name": "inlb",
+          "resource_group_name": "srgr001k8s",
+          "service_endpoint_policy_ids": [],
+          "service_endpoints": [],
+          "timeouts": null,
+          "virtual_network_name": "svne001eu99y"
+        },
+        "after": {
+          "address_prefix": "10.11.12.128/25",
+          "address_prefixes": [
+            "10.11.12.128/25"
+          ],
+          "delegation": [],
+          "enforce_private_link_endpoint_network_policies": false,
+          "enforce_private_link_service_network_policies": false,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+          "name": "inlb",
+          "resource_group_name": "srgr001k8s",
+          "service_endpoint_policy_ids": [],
+          "service_endpoints": [],
+          "timeouts": null,
+          "virtual_network_name": "svne001eu99y"
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_subnet_network_security_group_association.nsg1",
+      "mode": "managed",
+      "type": "azurerm_subnet_network_security_group_association",
+      "name": "nsg1",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "network_security_group_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe",
+          "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "timeouts": null
+        },
+        "after": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "network_security_group_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe",
+          "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "timeouts": null
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_subnet_route_table_association.env-exlb",
+      "mode": "managed",
+      "type": "azurerm_subnet_route_table_association",
+      "name": "env-exlb",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+          "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+          "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+          "timeouts": null
+        },
+        "after": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+          "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+          "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+          "timeouts": null
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_subnet_route_table_association.env-inlb",
+      "mode": "managed",
+      "type": "azurerm_subnet_route_table_association",
+      "name": "env-inlb",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+          "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+          "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+          "timeouts": null
+        },
+        "after": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+          "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+          "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+          "timeouts": null
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "azurerm_virtual_network.env",
+      "mode": "managed",
+      "type": "azurerm_virtual_network",
+      "name": "env",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "address_space": [
+            "10.11.12.0/20"
+          ],
+          "bgp_community": "",
+          "ddos_protection_plan": [],
+          "dns_servers": [],
+          "guid": "b2999999-9999-9999-9999-99999999964",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y",
+          "location": "antarctica",
+          "name": "svne001eu99y",
+          "resource_group_name": "srgr001k8s",
+          "subnet": [
+            {
+              "address_prefix": "10.11.12.0/25",
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+              "name": "exlb",
+              "security_group": ""
+            },
+            {
+              "address_prefix": "10.11.12.128/25",
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+              "name": "inlb",
+              "security_group": ""
+            },
+            {
+              "address_prefix": "10.11.13.0/24",
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+              "name": "cpe",
+              "security_group": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe"
+            }
+          ],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null,
+          "vm_protection_enabled": false
+        },
+        "after": {
+          "address_space": [
+            "10.11.12.0/20"
+          ],
+          "bgp_community": "",
+          "ddos_protection_plan": [],
+          "dns_servers": [],
+          "guid": "b2999999-9999-9999-9999-99999999964",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y",
+          "location": "antarctica",
+          "name": "svne001eu99y",
+          "resource_group_name": "srgr001k8s",
+          "subnet": [
+            {
+              "address_prefix": "10.11.12.0/25",
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+              "name": "exlb",
+              "security_group": ""
+            },
+            {
+              "address_prefix": "10.11.12.128/25",
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+              "name": "inlb",
+              "security_group": ""
+            },
+            {
+              "address_prefix": "10.11.13.0/24",
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+              "name": "cpe",
+              "security_group": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe"
+            }
+          ],
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null,
+          "vm_protection_enabled": false
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "module.aks1.azurerm_kubernetes_cluster.this",
+      "module_address": "module.aks1",
+      "mode": "managed",
+      "type": "azurerm_kubernetes_cluster",
+      "name": "this",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "addon_profile": [
+            {
+              "aci_connector_linux": [],
+              "azure_policy": [],
+              "http_application_routing": [],
+              "kube_dashboard": [
+                {
+                  "enabled": false
+                }
+              ],
+              "oms_agent": []
+            }
+          ],
+          "api_server_authorized_ip_ranges": [],
+          "auto_scaler_profile": [
+            {
+              "balance_similar_node_groups": false,
+              "max_graceful_termination_sec": "600",
+              "new_pod_scale_up_delay": "0s",
+              "scale_down_delay_after_add": "10m",
+              "scale_down_delay_after_delete": "10s",
+              "scale_down_delay_after_failure": "3m",
+              "scale_down_unneeded": "10m",
+              "scale_down_unready": "20m",
+              "scale_down_utilization_threshold": "0.5",
+              "scan_interval": "10s",
+              "skip_nodes_with_local_storage": false,
+              "skip_nodes_with_system_pods": true
+            }
+          ],
+          "automatic_channel_upgrade": "",
+          "default_node_pool": [
+            {
+              "availability_zones": [
+                "1",
+                "2",
+                "3"
+              ],
+              "enable_auto_scaling": false,
+              "enable_host_encryption": false,
+              "enable_node_public_ip": false,
+              "max_count": 0,
+              "max_pods": 30,
+              "min_count": 0,
+              "name": "default",
+              "node_count": 1,
+              "node_labels": {},
+              "node_taints": [],
+              "only_critical_addons_enabled": false,
+              "orchestrator_version": "1.2.3",
+              "os_disk_size_gb": 128,
+              "os_disk_type": "Managed",
+              "proximity_placement_group_id": "",
+              "tags": {},
+              "type": "VirtualMachineScaleSets",
+              "upgrade_settings": [],
+              "vm_size": "Standard_DS2_v2",
+              "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+            }
+          ],
+          "disk_encryption_set_id": "",
+          "dns_prefix": "eu99y-cpe",
+          "enable_pod_security_policy": false,
+          "fqdn": "eu99y-cpe-abcd.hcp.antarctica.azmk8s.io",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+          "identity": [
+            {
+              "principal_id": "REDACTED",
+              "tenant_id": "REDACTED",
+              "type": "SystemAssigned",
+              "user_assigned_identity_id": ""
+            }
+          ],
+          "kube_admin_config": [
+            {
+              "client_certificate": "REDACTED",
+              "client_key": "REDACTED",
+              "cluster_ca_certificate": "REDACTED",
+              "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+              "password": "REDACTED",
+              "username": "clusterAdmin_srgr001k8s_saks001eu99y-cpe"
+            }
+          ],
+          "kube_admin_config_raw": "REDACTED",
+          "kube_config": [
+            {
+              "client_certificate": "",
+              "client_key": "",
+              "cluster_ca_certificate": "REDACTED",
+              "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+              "password": "REDACTED",
+              "username": "clusterUser_srgr001k8s_saks001eu99y-cpe"
+            }
+          ],
+          "kube_config_raw": "REDACTED",
+          "kubelet_identity": [
+            {
+              "client_id": "REDACTED",
+              "object_id": "REDACTED",
+              "user_assigned_identity_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/MC_srgr001k8s_saks001eu99y-cpe_antarctica/providers/Microsoft.ManagedIdentity/userAssignedIdentities/saks001eu99y-cpe-agentpool"
+            }
+          ],
+          "kubernetes_version": "1.2.3",
+          "linux_profile": [],
+          "location": "antarctica",
+          "name": "saks001eu99y-cpe",
+          "network_profile": [
+            {
+              "dns_service_ip": "172.18.0.10",
+              "docker_bridge_cidr": "172.17.0.1/16",
+              "load_balancer_profile": [
+                {
+                  "effective_outbound_ips": [
+                    "/subscriptions/ea-xx-xx-xx-5/resourceGroups/MC_srgr001k8s_saks001eu99y-cpe_antarctica/providers/Microsoft.Network/publicIPAddresses/40999999-9999-9999-9999-999999999999"
+                  ],
+                  "idle_timeout_in_minutes": 0,
+                  "managed_outbound_ip_count": 1,
+                  "outbound_ip_address_ids": [],
+                  "outbound_ip_prefix_ids": [],
+                  "outbound_ports_allocated": 0
+                }
+              ],
+              "load_balancer_sku": "Standard",
+              "network_mode": "",
+              "network_plugin": "azure",
+              "network_policy": "calico",
+              "outbound_type": "loadBalancer",
+              "pod_cidr": "",
+              "service_cidr": "172.18.0.0/16"
+            }
+          ],
+          "node_resource_group": "MC_srgr001k8s_saks001eu99y-cpe_antarctica",
+          "private_cluster_enabled": true,
+          "private_dns_zone_id": "",
+          "private_fqdn": "",
+          "private_link_enabled": false,
+          "resource_group_name": "srgr001k8s",
+          "role_based_access_control": [
+            {
+              "azure_active_directory": [
+                {
+                  "admin_group_object_ids": [],
+                  "client_app_id": "REDACTED",
+                  "managed": false,
+                  "server_app_id": "REDACTED",
+                  "server_app_secret": "REDACTED",
+                  "tenant_id": "REDACTED"
+                }
+              ],
+              "enabled": true
+            }
+          ],
+          "service_principal": [],
+          "sku_tier": "Free",
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null,
+          "windows_profile": [
+            {
+              "admin_password": "",
+              "admin_username": "azureuser"
+            }
+          ]
+        },
+        "after": {
+          "addon_profile": [
+            {
+              "aci_connector_linux": [],
+              "azure_policy": [],
+              "http_application_routing": [],
+              "kube_dashboard": [
+                {
+                  "enabled": false
+                }
+              ],
+              "oms_agent": []
+            }
+          ],
+          "api_server_authorized_ip_ranges": [],
+          "auto_scaler_profile": [
+            {
+              "balance_similar_node_groups": false,
+              "max_graceful_termination_sec": "600",
+              "new_pod_scale_up_delay": "0s",
+              "scale_down_delay_after_add": "10m",
+              "scale_down_delay_after_delete": "10s",
+              "scale_down_delay_after_failure": "3m",
+              "scale_down_unneeded": "10m",
+              "scale_down_unready": "20m",
+              "scale_down_utilization_threshold": "0.5",
+              "scan_interval": "10s",
+              "skip_nodes_with_local_storage": false,
+              "skip_nodes_with_system_pods": true
+            }
+          ],
+          "automatic_channel_upgrade": "",
+          "default_node_pool": [
+            {
+              "availability_zones": [
+                "1",
+                "2",
+                "3"
+              ],
+              "enable_auto_scaling": false,
+              "enable_host_encryption": false,
+              "enable_node_public_ip": false,
+              "max_count": 0,
+              "max_pods": 30,
+              "min_count": 0,
+              "name": "default",
+              "node_count": 1,
+              "node_labels": {},
+              "node_taints": [],
+              "only_critical_addons_enabled": false,
+              "orchestrator_version": "1.2.3",
+              "os_disk_size_gb": 128,
+              "os_disk_type": "Managed",
+              "proximity_placement_group_id": "",
+              "tags": {},
+              "type": "VirtualMachineScaleSets",
+              "upgrade_settings": [],
+              "vm_size": "Standard_DS2_v2",
+              "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+            }
+          ],
+          "disk_encryption_set_id": "",
+          "dns_prefix": "eu99y-cpe",
+          "enable_pod_security_policy": false,
+          "fqdn": "eu99y-cpe-abcd.hcp.antarctica.azmk8s.io",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+          "identity": [
+            {
+              "principal_id": "REDACTED",
+              "tenant_id": "REDACTED",
+              "type": "SystemAssigned",
+              "user_assigned_identity_id": ""
+            }
+          ],
+          "kube_admin_config": [
+            {
+              "client_certificate": "REDACTED",
+              "client_key": "REDACTED",
+              "cluster_ca_certificate": "REDACTED",
+              "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+              "password": "REDACTED",
+              "username": "clusterAdmin_srgr001k8s_saks001eu99y-cpe"
+            }
+          ],
+          "kube_admin_config_raw": "REDACTED",
+          "kube_config": [
+            {
+              "client_certificate": "",
+              "client_key": "",
+              "cluster_ca_certificate": "REDACTED",
+              "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+              "password": "REDACTED",
+              "username": "clusterUser_srgr001k8s_saks001eu99y-cpe"
+            }
+          ],
+          "kube_config_raw": "REDACTED",
+          "kubelet_identity": [
+            {
+              "client_id": "REDACTED",
+              "object_id": "REDACTED",
+              "user_assigned_identity_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/MC_srgr001k8s_saks001eu99y-cpe_antarctica/providers/Microsoft.ManagedIdentity/userAssignedIdentities/saks001eu99y-cpe-agentpool"
+            }
+          ],
+          "kubernetes_version": "1.2.3",
+          "linux_profile": [],
+          "location": "antarctica",
+          "name": "saks001eu99y-cpe",
+          "network_profile": [
+            {
+              "dns_service_ip": "172.18.0.10",
+              "docker_bridge_cidr": "172.17.0.1/16",
+              "load_balancer_profile": [
+                {
+                  "effective_outbound_ips": [
+                    "/subscriptions/ea-xx-xx-xx-5/resourceGroups/MC_srgr001k8s_saks001eu99y-cpe_antarctica/providers/Microsoft.Network/publicIPAddresses/40999999-9999-9999-9999-999999999999"
+                  ],
+                  "idle_timeout_in_minutes": 0,
+                  "managed_outbound_ip_count": 1,
+                  "outbound_ip_address_ids": [],
+                  "outbound_ip_prefix_ids": [],
+                  "outbound_ports_allocated": 0
+                }
+              ],
+              "load_balancer_sku": "Standard",
+              "network_mode": "",
+              "network_plugin": "azure",
+              "network_policy": "calico",
+              "outbound_type": "loadBalancer",
+              "pod_cidr": "",
+              "service_cidr": "172.18.0.0/16"
+            }
+          ],
+          "node_resource_group": "MC_srgr001k8s_saks001eu99y-cpe_antarctica",
+          "private_cluster_enabled": true,
+          "private_dns_zone_id": "",
+          "private_fqdn": "",
+          "private_link_enabled": false,
+          "resource_group_name": "srgr001k8s",
+          "role_based_access_control": [
+            {
+              "azure_active_directory": [
+                {
+                  "admin_group_object_ids": [],
+                  "client_app_id": "REDACTED",
+                  "managed": false,
+                  "server_app_id": "REDACTED",
+                  "server_app_secret": "REDACTED",
+                  "tenant_id": "REDACTED"
+                }
+              ],
+              "enabled": true
+            }
+          ],
+          "service_principal": [],
+          "sku_tier": "Free",
+          "tags": {
+            "AvailabilityHours": "1",
+            "CIName": "KUBERNETES",
+            "Criticality": "Low",
+            "EnvironmentType": "s",
+            "FWPI": "BAR",
+            "Owner": "FOO",
+            "Project and Release Definition Id": "/releasedefinitions/48",
+            "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+            "SI": "XX"
+          },
+          "timeouts": null,
+          "windows_profile": [
+            {
+              "admin_password": "",
+              "admin_username": "azureuser"
+            }
+          ]
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra\"]",
+      "module_address": "module.aks1",
+      "mode": "managed",
+      "type": "azurerm_kubernetes_cluster_node_pool",
+      "name": "this",
+      "index": "extra",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "availability_zones": [
+            "1",
+            "2",
+            "3"
+          ],
+          "enable_auto_scaling": true,
+          "enable_host_encryption": false,
+          "enable_node_public_ip": false,
+          "eviction_policy": "",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra",
+          "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+          "max_count": 10,
+          "max_pods": 30,
+          "min_count": 1,
+          "mode": "User",
+          "name": "extra",
+          "node_count": 1,
+          "node_labels": {},
+          "node_taints": [],
+          "orchestrator_version": "1.2.3",
+          "os_disk_size_gb": 128,
+          "os_disk_type": "Managed",
+          "os_type": "Linux",
+          "priority": "Regular",
+          "proximity_placement_group_id": "",
+          "spot_max_price": -1,
+          "tags": {},
+          "timeouts": null,
+          "upgrade_settings": [],
+          "vm_size": "Standard_DS2_v2",
+          "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+        },
+        "after": {
+          "availability_zones": [
+            "1",
+            "2",
+            "3"
+          ],
+          "enable_auto_scaling": true,
+          "enable_host_encryption": false,
+          "enable_node_public_ip": false,
+          "eviction_policy": "",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra",
+          "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+          "max_count": 10,
+          "max_pods": 30,
+          "min_count": 3,
+          "mode": "User",
+          "name": "extra",
+          "node_count": 1,
+          "node_labels": {},
+          "node_taints": [],
+          "orchestrator_version": "1.2.3",
+          "os_disk_size_gb": 128,
+          "os_disk_type": "Managed",
+          "os_type": "Linux",
+          "priority": "Regular",
+          "proximity_placement_group_id": "",
+          "spot_max_price": -1,
+          "tags": {},
+          "timeouts": null,
+          "upgrade_settings": [],
+          "vm_size": "Standard_DS2_v2",
+          "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra1\"]",
+      "module_address": "module.aks1",
+      "mode": "managed",
+      "type": "azurerm_kubernetes_cluster_node_pool",
+      "name": "this",
+      "index": "extra1",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "availability_zones": [
+            "1"
+          ],
+          "enable_auto_scaling": true,
+          "enable_host_encryption": false,
+          "enable_node_public_ip": false,
+          "eviction_policy": "",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra1",
+          "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+          "max_count": 10,
+          "max_pods": 30,
+          "min_count": 1,
+          "mode": "User",
+          "name": "extra1",
+          "node_count": 1,
+          "node_labels": {
+            "label1": "value1",
+            "label2": "value2"
+          },
+          "node_taints": [
+            "Key1=Taint1:PreferNoSchedule",
+            "Key2=Taint2:PreferNoSchedule"
+          ],
+          "orchestrator_version": "1.2.3",
+          "os_disk_size_gb": 128,
+          "os_disk_type": "Managed",
+          "os_type": "Linux",
+          "priority": "Regular",
+          "proximity_placement_group_id": "",
+          "spot_max_price": -1,
+          "tags": {},
+          "timeouts": null,
+          "upgrade_settings": [],
+          "vm_size": "Standard_DS2_v2",
+          "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+        },
+        "after": null,
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra2\"]",
+      "module_address": "module.aks1",
+      "mode": "managed",
+      "type": "azurerm_kubernetes_cluster_node_pool",
+      "name": "this",
+      "index": "extra2",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "availability_zones": [
+            "2"
+          ],
+          "enable_auto_scaling": true,
+          "enable_host_encryption": false,
+          "enable_node_public_ip": false,
+          "eviction_policy": "",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra2",
+          "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+          "max_count": 10,
+          "max_pods": 30,
+          "min_count": 1,
+          "mode": "User",
+          "name": "extra2",
+          "node_count": 1,
+          "node_labels": {
+            "label1": "value1",
+            "label2": "value2"
+          },
+          "node_taints": [
+            "Key1=Taint1:PreferNoSchedule",
+            "Key2=Taint2:PreferNoSchedule"
+          ],
+          "orchestrator_version": "1.2.3",
+          "os_disk_size_gb": 128,
+          "os_disk_type": "Managed",
+          "os_type": "Linux",
+          "priority": "Regular",
+          "proximity_placement_group_id": "",
+          "spot_max_price": -1,
+          "tags": {},
+          "timeouts": null,
+          "upgrade_settings": [],
+          "vm_size": "Standard_DS2_v2",
+          "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+        },
+        "after": null,
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra3\"]",
+      "module_address": "module.aks1",
+      "mode": "managed",
+      "type": "azurerm_kubernetes_cluster_node_pool",
+      "name": "this",
+      "index": "extra3",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "availability_zones": [
+            "3"
+          ],
+          "enable_auto_scaling": true,
+          "enable_host_encryption": false,
+          "enable_node_public_ip": false,
+          "eviction_policy": "",
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra3",
+          "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+          "max_count": 10,
+          "max_pods": 30,
+          "min_count": 1,
+          "mode": "User",
+          "name": "extra3",
+          "node_count": 1,
+          "node_labels": {
+            "label1": "value1",
+            "label2": "value2"
+          },
+          "node_taints": [
+            "Key1=Taint1:PreferNoSchedule",
+            "Key2=Taint2:PreferNoSchedule"
+          ],
+          "orchestrator_version": "1.2.3",
+          "os_disk_size_gb": 128,
+          "os_disk_type": "Managed",
+          "os_type": "Linux",
+          "priority": "Regular",
+          "proximity_placement_group_id": "",
+          "spot_max_price": -1,
+          "tags": {},
+          "timeouts": null,
+          "upgrade_settings": [],
+          "vm_size": "Standard_DS2_v2",
+          "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+        },
+        "after": null,
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "module.aks1.azurerm_role_assignment.this",
+      "module_address": "module.aks1",
+      "mode": "managed",
+      "type": "azurerm_role_assignment",
+      "name": "this",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/providers/Microsoft.Authorization/roleAssignments/79999999-8888-8888-888-99999999999e",
+          "name": "79999999-8888-8888-888-99999999999e",
+          "principal_id": "REDACTED",
+          "principal_type": "ServicePrincipal",
+          "role_definition_id": "/subscriptions/ea-xx-xx-xx-5/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7",
+          "role_definition_name": "Network Contributor",
+          "scope": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y",
+          "skip_service_principal_aad_check": null,
+          "timeouts": null
+        },
+        "after": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/providers/Microsoft.Authorization/roleAssignments/79999999-8888-8888-888-99999999999e",
+          "name": "79999999-8888-8888-888-99999999999e",
+          "principal_id": "REDACTED",
+          "principal_type": "ServicePrincipal",
+          "role_definition_id": "/subscriptions/ea-xx-xx-xx-5/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7",
+          "role_definition_name": "Network Contributor",
+          "scope": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y",
+          "skip_service_principal_aad_check": null,
+          "timeouts": null
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "module.aks1.azurerm_subnet.this",
+      "module_address": "module.aks1",
+      "mode": "managed",
+      "type": "azurerm_subnet",
+      "name": "this",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "address_prefix": "10.11.13.0/24",
+          "address_prefixes": [
+            "10.11.13.0/24"
+          ],
+          "delegation": [],
+          "enforce_private_link_endpoint_network_policies": false,
+          "enforce_private_link_service_network_policies": false,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "name": "cpe",
+          "resource_group_name": "srgr001k8s",
+          "service_endpoint_policy_ids": [],
+          "service_endpoints": [],
+          "timeouts": null,
+          "virtual_network_name": "svne001eu99y"
+        },
+        "after": {
+          "address_prefix": "10.11.13.0/24",
+          "address_prefixes": [
+            "10.11.13.0/24"
+          ],
+          "delegation": [],
+          "enforce_private_link_endpoint_network_policies": false,
+          "enforce_private_link_service_network_policies": false,
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "name": "cpe",
+          "resource_group_name": "srgr001k8s",
+          "service_endpoint_policy_ids": [],
+          "service_endpoints": [],
+          "timeouts": null,
+          "virtual_network_name": "svne001eu99y"
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "module.aks1.azurerm_subnet_route_table_association.this",
+      "module_address": "module.aks1",
+      "mode": "managed",
+      "type": "azurerm_subnet_route_table_association",
+      "name": "this",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+          "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "timeouts": null
+        },
+        "after": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+          "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+          "timeouts": null
+        },
+        "after_unknown": {}
+      }
+    }
+  ],
+  "output_changes": {
+    "clusters": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": {
+        "cpe": {
+          "kube_admin_config": {
+            "client_certificate": "REDACTED",
+            "client_key": "REDACTED",
+            "cluster_ca_certificate": "REDACTED",
+            "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+            "password": "REDACTED",
+            "username": "clusterAdmin_srgr001k8s_saks001eu99y-cpe"
+          }
+        }
+      },
+      "after_unknown": false
+    }
+  },
+  "prior_state": {
+    "format_version": "0.1",
+    "terraform_version": "0.13.5",
+    "values": {
+      "outputs": {
+        "clusters": {
+          "sensitive": false,
+          "value": {
+            "cpe": {
+              "kube_admin_config": {
+                "client_certificate": "REDACTED",
+                "client_key": "REDACTED",
+                "cluster_ca_certificate": "REDACTED",
+                "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+                "password": "REDACTED",
+                "username": "clusterAdmin_srgr001k8s_saks001eu99y-cpe"
+              }
+            }
+          }
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "azurerm_management_lock.env-sa",
+            "mode": "managed",
+            "type": "azurerm_management_lock",
+            "name": "env-sa",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc/providers/Microsoft.Authorization/locks/CanNotDelete",
+              "lock_level": "CanNotDelete",
+              "name": "CanNotDelete",
+              "notes": "",
+              "scope": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc",
+              "timeouts": null
+            },
+            "depends_on": [
+              "azurerm_storage_account.env",
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_monitor_diagnostic_setting.aks1",
+            "mode": "managed",
+            "type": "azurerm_monitor_diagnostic_setting",
+            "name": "aks1",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "eventhub_authorization_rule_id": "",
+              "eventhub_name": "",
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe|Autoset - D11 Security Control enforcement- Log Analytics",
+              "log": [
+                {
+                  "category": "cluster-autoscaler",
+                  "enabled": true,
+                  "retention_policy": [
+                    {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  ]
+                },
+                {
+                  "category": "guard",
+                  "enabled": true,
+                  "retention_policy": [
+                    {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  ]
+                },
+                {
+                  "category": "kube-apiserver",
+                  "enabled": true,
+                  "retention_policy": [
+                    {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  ]
+                },
+                {
+                  "category": "kube-audit",
+                  "enabled": true,
+                  "retention_policy": [
+                    {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  ]
+                },
+                {
+                  "category": "kube-audit-admin",
+                  "enabled": true,
+                  "retention_policy": [
+                    {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  ]
+                },
+                {
+                  "category": "kube-controller-manager",
+                  "enabled": true,
+                  "retention_policy": [
+                    {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  ]
+                },
+                {
+                  "category": "kube-scheduler",
+                  "enabled": true,
+                  "retention_policy": [
+                    {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  ]
+                }
+              ],
+              "log_analytics_destination_type": "",
+              "log_analytics_workspace_id": "/subscriptions/31b58fee-11c2-4a37-b828-640732a3d604/resourceGroups/prgr001asclogsplayground/providers/Microsoft.OperationalInsights/workspaces/plan001asclogsplayground",
+              "metric": [
+                {
+                  "category": "AllMetrics",
+                  "enabled": false,
+                  "retention_policy": [
+                    {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  ]
+                }
+              ],
+              "name": "Autoset - D11 Security Control enforcement- Log Analytics",
+              "storage_account_id": "",
+              "target_resource_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+              "timeouts": null
+            },
+            "depends_on": [
+              "azurerm_subnet.exlb",
+              "azurerm_subnet.inlb",
+              "data.azurerm_log_analytics_workspace.law1",
+              "module.aks1.azurerm_kubernetes_cluster.this"
+            ]
+          },
+          {
+            "address": "azurerm_network_security_group.nsg1",
+            "mode": "managed",
+            "type": "azurerm_network_security_group",
+            "name": "nsg1",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe",
+              "location": "antarctica",
+              "name": "snsg001eu99y-cpe",
+              "resource_group_name": "srgr001k8s",
+              "security_rule": [
+                {
+                  "access": "Allow",
+                  "description": "Allow traffic between pods/nodes",
+                  "destination_address_prefix": "10.11.13.0/24",
+                  "destination_address_prefixes": [],
+                  "destination_application_security_group_ids": [],
+                  "destination_port_range": "*",
+                  "destination_port_ranges": [],
+                  "direction": "Inbound",
+                  "name": "AllowInboundIntraSubnet",
+                  "priority": 4086,
+                  "protocol": "*",
+                  "source_address_prefix": "10.11.13.0/24",
+                  "source_address_prefixes": [],
+                  "source_application_security_group_ids": [],
+                  "source_port_range": "*",
+                  "source_port_ranges": []
+                },
+                {
+                  "access": "Allow",
+                  "description": "Allow traffic from internet to external load balancer (exlb)",
+                  "destination_address_prefix": "10.11.12.0/25",
+                  "destination_address_prefixes": [],
+                  "destination_application_security_group_ids": [],
+                  "destination_port_range": "443",
+                  "destination_port_ranges": [],
+                  "direction": "Inbound",
+                  "name": "AllowInboundExternalLB",
+                  "priority": 4088,
+                  "protocol": "*",
+                  "source_address_prefix": "*",
+                  "source_address_prefixes": [],
+                  "source_application_security_group_ids": [],
+                  "source_port_range": "*",
+                  "source_port_ranges": []
+                },
+                {
+                  "access": "Allow",
+                  "description": "Allow traffic from load balancer health probes to pods/nodes",
+                  "destination_address_prefix": "10.11.13.0/24",
+                  "destination_address_prefixes": [],
+                  "destination_application_security_group_ids": [],
+                  "destination_port_range": "*",
+                  "destination_port_ranges": [],
+                  "direction": "Inbound",
+                  "name": "AllowInboundAzureLBHealthProbe",
+                  "priority": 4094,
+                  "protocol": "*",
+                  "source_address_prefix": "AzureLoadBalancer",
+                  "source_address_prefixes": [],
+                  "source_application_security_group_ids": [],
+                  "source_port_range": "*",
+                  "source_port_ranges": []
+                },
+                {
+                  "access": "Allow",
+                  "description": "Allow traffic from on-prem to internal load balancer (inlb)",
+                  "destination_address_prefix": "10.11.12.128/25",
+                  "destination_address_prefixes": [],
+                  "destination_application_security_group_ids": [],
+                  "destination_port_range": "*",
+                  "destination_port_ranges": [],
+                  "direction": "Inbound",
+                  "name": "AllowInboundInternalLBOnprem",
+                  "priority": 4090,
+                  "protocol": "*",
+                  "source_address_prefix": "10.0.0.0/8",
+                  "source_address_prefixes": [],
+                  "source_application_security_group_ids": [],
+                  "source_port_range": "*",
+                  "source_port_ranges": []
+                },
+                {
+                  "access": "Deny",
+                  "description": "Deny all inbound traffic",
+                  "destination_address_prefix": "*",
+                  "destination_address_prefixes": [],
+                  "destination_application_security_group_ids": [],
+                  "destination_port_range": "*",
+                  "destination_port_ranges": [],
+                  "direction": "Inbound",
+                  "name": "DenyIP",
+                  "priority": 4096,
+                  "protocol": "*",
+                  "source_address_prefix": "*",
+                  "source_address_prefixes": [],
+                  "source_application_security_group_ids": [],
+                  "source_port_range": "*",
+                  "source_port_ranges": []
+                }
+              ],
+              "tags": {
+                "AvailabilityHours": "1",
+                "CIName": "KUBERNETES",
+                "Criticality": "Low",
+                "EnvironmentType": "s",
+                "FWPI": "BAR",
+                "Owner": "FOO",
+                "Project and Release Definition Id": "/releasedefinitions/48",
+                "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+                "SI": "XX"
+              },
+              "timeouts": null
+            },
+            "depends_on": [
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_role_assignment.sa1",
+            "mode": "managed",
+            "type": "azurerm_role_assignment",
+            "name": "sa1",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabcxcpexfs/providers/Microsoft.Authorization/roleAssignments/3999999-8888-8888-8888-999999999905",
+              "name": "3999999-8888-8888-8888-999999999905",
+              "principal_id": "REDACTED",
+              "principal_type": "ServicePrincipal",
+              "role_definition_id": "/subscriptions/ea-xx-xx-xx-5/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+              "role_definition_name": "Owner",
+              "scope": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabcxcpexfs",
+              "skip_service_principal_aad_check": null,
+              "timeouts": null
+            },
+            "depends_on": [
+              "azurerm_storage_account.sa1",
+              "azurerm_subnet.exlb",
+              "azurerm_subnet.inlb",
+              "data.azurerm_resource_group.env",
+              "module.aks1.azurerm_kubernetes_cluster.this"
+            ]
+          },
+          {
+            "address": "azurerm_route_table.env",
+            "mode": "managed",
+            "type": "azurerm_route_table",
+            "name": "env",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "disable_bgp_route_propagation": false,
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+              "location": "antarctica",
+              "name": "sudr001eu99y",
+              "resource_group_name": "srgr001k8s",
+              "route": [
+                {
+                  "address_prefix": "0.0.0.0/0",
+                  "name": "default",
+                  "next_hop_in_ip_address": "",
+                  "next_hop_type": "Internet"
+                }
+              ],
+              "subnets": [
+                "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+                "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb"
+              ],
+              "tags": {
+                "AvailabilityHours": "1",
+                "CIName": "KUBERNETES",
+                "Criticality": "Low",
+                "EnvironmentType": "s",
+                "FWPI": "BAR",
+                "Owner": "FOO",
+                "Project and Release Definition Id": "/releasedefinitions/48",
+                "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+                "SI": "XX"
+              },
+              "timeouts": null
+            },
+            "depends_on": [
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_storage_account.env",
+            "mode": "managed",
+            "type": "azurerm_storage_account",
+            "name": "env",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 2,
+            "values": {
+              "access_tier": "Hot",
+              "account_kind": "BlobStorage",
+              "account_replication_type": "GRS",
+              "account_tier": "Standard",
+              "allow_blob_public_access": false,
+              "blob_properties": [
+                {
+                  "cors_rule": [],
+                  "delete_retention_policy": [
+                    {
+                      "days": 90
+                    }
+                  ]
+                }
+              ],
+              "custom_domain": [],
+              "enable_https_traffic_only": true,
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc",
+              "identity": [],
+              "is_hns_enabled": false,
+              "large_file_share_enabled": null,
+              "location": "antarctica",
+              "min_tls_version": "TLS1_0",
+              "name": "eu99yxabc",
+              "network_rules": [
+                {
+                  "bypass": [
+                    "AzureServices"
+                  ],
+                  "default_action": "Allow",
+                  "ip_rules": [],
+                  "virtual_network_subnet_ids": []
+                }
+              ],
+              "primary_access_key": "REDACTED",
+              "primary_blob_connection_string": "REDACTED",
+              "primary_blob_endpoint": "https://eu99yxabc.blob.core.windows.net/",
+              "primary_blob_host": "eu99yxabc.blob.core.windows.net",
+              "primary_connection_string": "REDACTED",
+              "primary_dfs_endpoint": "https://eu99yxabc.dfs.core.windows.net/",
+              "primary_dfs_host": "eu99yxabc.dfs.core.windows.net",
+              "primary_file_endpoint": "",
+              "primary_file_host": "",
+              "primary_location": "antarctica",
+              "primary_queue_endpoint": "",
+              "primary_queue_host": "",
+              "primary_table_endpoint": "https://eu99yxabc.table.core.windows.net/",
+              "primary_table_host": "eu99yxabc.table.core.windows.net",
+              "primary_web_endpoint": "",
+              "primary_web_host": "",
+              "queue_properties": [],
+              "resource_group_name": "srgr001k8s",
+              "secondary_access_key": "REDACTED",
+              "secondary_blob_connection_string": "REDACTED",
+              "secondary_blob_endpoint": null,
+              "secondary_blob_host": null,
+              "secondary_connection_string": "REDACTED",
+              "secondary_dfs_endpoint": null,
+              "secondary_dfs_host": null,
+              "secondary_file_endpoint": null,
+              "secondary_file_host": null,
+              "secondary_location": "northpool",
+              "secondary_queue_endpoint": null,
+              "secondary_queue_host": null,
+              "secondary_table_endpoint": null,
+              "secondary_table_host": null,
+              "secondary_web_endpoint": null,
+              "secondary_web_host": null,
+              "static_website": [],
+              "tags": {
+                "AvailabilityHours": "1",
+                "CIName": "KUBERNETES",
+                "Criticality": "Low",
+                "EnvironmentType": "s",
+                "FWPI": "BAR",
+                "Owner": "FOO",
+                "Project and Release Definition Id": "/releasedefinitions/48",
+                "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+                "SI": "XX"
+              },
+              "timeouts": null
+            },
+            "depends_on": [
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_storage_account.sa1",
+            "mode": "managed",
+            "type": "azurerm_storage_account",
+            "name": "sa1",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 2,
+            "values": {
+              "access_tier": "Hot",
+              "account_kind": "StorageV2",
+              "account_replication_type": "ZRS",
+              "account_tier": "Standard",
+              "allow_blob_public_access": false,
+              "blob_properties": [],
+              "custom_domain": [],
+              "enable_https_traffic_only": true,
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabcxcpexfs",
+              "identity": [],
+              "is_hns_enabled": false,
+              "large_file_share_enabled": null,
+              "location": "antarctica",
+              "min_tls_version": "TLS1_0",
+              "name": "eu99yxabcxcpexfs",
+              "network_rules": [
+                {
+                  "bypass": [
+                    "AzureServices"
+                  ],
+                  "default_action": "Allow",
+                  "ip_rules": [],
+                  "virtual_network_subnet_ids": []
+                }
+              ],
+              "primary_access_key": "REDACTED",
+              "primary_blob_connection_string": "REDACTED",
+              "primary_blob_endpoint": "https://eu99yxabcxcpexfs.blob.core.windows.net/",
+              "primary_blob_host": "eu99yxabcxcpexfs.blob.core.windows.net",
+              "primary_connection_string": "REDACTED",
+              "primary_dfs_endpoint": "https://eu99yxabcxcpexfs.dfs.core.windows.net/",
+              "primary_dfs_host": "eu99yxabcxcpexfs.dfs.core.windows.net",
+              "primary_file_endpoint": "https://eu99yxabcxcpexfs.file.core.windows.net/",
+              "primary_file_host": "eu99yxabcxcpexfs.file.core.windows.net",
+              "primary_location": "antarctica",
+              "primary_queue_endpoint": "https://eu99yxabcxcpexfs.queue.core.windows.net/",
+              "primary_queue_host": "eu99yxabcxcpexfs.queue.core.windows.net",
+              "primary_table_endpoint": "https://eu99yxabcxcpexfs.table.core.windows.net/",
+              "primary_table_host": "eu99yxabcxcpexfs.table.core.windows.net",
+              "primary_web_endpoint": "https://eu99yxabcxcpexfs.z6.web.core.windows.net/",
+              "primary_web_host": "eu99yxabcxcpexfs.z6.web.core.windows.net",
+              "queue_properties": [
+                {
+                  "cors_rule": [],
+                  "hour_metrics": [
+                    {
+                      "enabled": true,
+                      "include_apis": true,
+                      "retention_policy_days": 7,
+                      "version": "1.0"
+                    }
+                  ],
+                  "logging": [
+                    {
+                      "delete": false,
+                      "read": false,
+                      "retention_policy_days": 0,
+                      "version": "1.0",
+                      "write": false
+                    }
+                  ],
+                  "minute_metrics": [
+                    {
+                      "enabled": false,
+                      "include_apis": false,
+                      "retention_policy_days": 0,
+                      "version": "1.0"
+                    }
+                  ]
+                }
+              ],
+              "resource_group_name": "srgr001k8s",
+              "secondary_access_key": "REDACTED",
+              "secondary_blob_connection_string": "REDACTED",
+              "secondary_blob_endpoint": null,
+              "secondary_blob_host": null,
+              "secondary_connection_string": "REDACTED",
+              "secondary_dfs_endpoint": null,
+              "secondary_dfs_host": null,
+              "secondary_file_endpoint": null,
+              "secondary_file_host": null,
+              "secondary_location": "",
+              "secondary_queue_endpoint": null,
+              "secondary_queue_host": null,
+              "secondary_table_endpoint": null,
+              "secondary_table_host": null,
+              "secondary_web_endpoint": null,
+              "secondary_web_host": null,
+              "static_website": [],
+              "tags": {
+                "AvailabilityHours": "1",
+                "CIName": "KUBERNETES",
+                "Criticality": "Low",
+                "EnvironmentType": "s",
+                "FWPI": "BAR",
+                "Owner": "FOO",
+                "Project and Release Definition Id": "/releasedefinitions/48",
+                "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+                "SI": "XX"
+              },
+              "timeouts": null
+            },
+            "depends_on": [
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_storage_container.velero1",
+            "mode": "managed",
+            "type": "azurerm_storage_container",
+            "name": "velero1",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 1,
+            "values": {
+              "container_access_type": "private",
+              "has_immutability_policy": false,
+              "has_legal_hold": false,
+              "id": "https://eu99yxabc.blob.core.windows.net/cpe-velero",
+              "metadata": {},
+              "name": "cpe-velero",
+              "resource_manager_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Storage/storageAccounts/eu99yxabc/blobServices/default/containers/cpe-velero",
+              "storage_account_name": "eu99yxabc",
+              "timeouts": null
+            },
+            "depends_on": [
+              "azurerm_storage_account.env"
+            ]
+          },
+          {
+            "address": "azurerm_subnet.exlb",
+            "mode": "managed",
+            "type": "azurerm_subnet",
+            "name": "exlb",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "address_prefix": "10.11.12.0/25",
+              "address_prefixes": [
+                "10.11.12.0/25"
+              ],
+              "delegation": [],
+              "enforce_private_link_endpoint_network_policies": false,
+              "enforce_private_link_service_network_policies": false,
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+              "name": "exlb",
+              "resource_group_name": "srgr001k8s",
+              "service_endpoint_policy_ids": [],
+              "service_endpoints": [],
+              "timeouts": null,
+              "virtual_network_name": "svne001eu99y"
+            },
+            "depends_on": [
+              "azurerm_virtual_network.env",
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_subnet.inlb",
+            "mode": "managed",
+            "type": "azurerm_subnet",
+            "name": "inlb",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "address_prefix": "10.11.12.128/25",
+              "address_prefixes": [
+                "10.11.12.128/25"
+              ],
+              "delegation": [],
+              "enforce_private_link_endpoint_network_policies": false,
+              "enforce_private_link_service_network_policies": false,
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+              "name": "inlb",
+              "resource_group_name": "srgr001k8s",
+              "service_endpoint_policy_ids": [],
+              "service_endpoints": [],
+              "timeouts": null,
+              "virtual_network_name": "svne001eu99y"
+            },
+            "depends_on": [
+              "azurerm_virtual_network.env",
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_subnet_network_security_group_association.nsg1",
+            "mode": "managed",
+            "type": "azurerm_subnet_network_security_group_association",
+            "name": "nsg1",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+              "network_security_group_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe",
+              "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+              "timeouts": null
+            },
+            "depends_on": [
+              "azurerm_network_security_group.nsg1",
+              "azurerm_subnet.exlb",
+              "azurerm_subnet.inlb",
+              "azurerm_virtual_network.env",
+              "data.azurerm_resource_group.env",
+              "module.aks1.azurerm_subnet.this"
+            ]
+          },
+          {
+            "address": "azurerm_subnet_route_table_association.env-exlb",
+            "mode": "managed",
+            "type": "azurerm_subnet_route_table_association",
+            "name": "env-exlb",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+              "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+              "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+              "timeouts": null
+            },
+            "depends_on": [
+              "azurerm_route_table.env",
+              "azurerm_subnet.exlb",
+              "azurerm_virtual_network.env",
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_subnet_route_table_association.env-inlb",
+            "mode": "managed",
+            "type": "azurerm_subnet_route_table_association",
+            "name": "env-inlb",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+              "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+              "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+              "timeouts": null
+            },
+            "depends_on": [
+              "azurerm_route_table.env",
+              "azurerm_subnet.inlb",
+              "azurerm_virtual_network.env",
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "azurerm_virtual_network.env",
+            "mode": "managed",
+            "type": "azurerm_virtual_network",
+            "name": "env",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "address_space": [
+                "10.11.12.0/20"
+              ],
+              "bgp_community": "",
+              "ddos_protection_plan": [],
+              "dns_servers": [],
+              "guid": "b2999999-9999-9999-9999-99999999964",
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y",
+              "location": "antarctica",
+              "name": "svne001eu99y",
+              "resource_group_name": "srgr001k8s",
+              "subnet": [
+                {
+                  "address_prefix": "10.11.12.0/25",
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/exlb",
+                  "name": "exlb",
+                  "security_group": ""
+                },
+                {
+                  "address_prefix": "10.11.12.128/25",
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/inlb",
+                  "name": "inlb",
+                  "security_group": ""
+                },
+                {
+                  "address_prefix": "10.11.13.0/24",
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                  "name": "cpe",
+                  "security_group": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/networkSecurityGroups/snsg001eu99y-cpe"
+                }
+              ],
+              "tags": {
+                "AvailabilityHours": "1",
+                "CIName": "KUBERNETES",
+                "Criticality": "Low",
+                "EnvironmentType": "s",
+                "FWPI": "BAR",
+                "Owner": "FOO",
+                "Project and Release Definition Id": "/releasedefinitions/48",
+                "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+                "SI": "XX"
+              },
+              "timeouts": null,
+              "vm_protection_enabled": false
+            },
+            "depends_on": [
+              "data.azurerm_resource_group.env"
+            ]
+          },
+          {
+            "address": "data.azurerm_resource_group.env",
+            "mode": "data",
+            "type": "azurerm_resource_group",
+            "name": "env",
+            "provider_name": "registry.terraform.io/hashicorp/azurerm",
+            "schema_version": 0,
+            "values": {
+              "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s",
+              "location": "antarctica",
+              "name": "srgr001k8s",
+              "tags": {
+                "AvailabilityHours": "1",
+                "CIName": "KUBERNETES",
+                "Criticality": "Low",
+                "EnvironmentType": "s",
+                "FWPI": "BAR",
+                "Owner": "FOO",
+                "Project and Release Definition Id": "/releasedefinitions/48",
+                "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+                "SI": "XX"
+              },
+              "timeouts": null
+            }
+          }
+        ],
+        "child_modules": [
+          {
+            "resources": [
+              {
+                "address": "module.aks1.azurerm_kubernetes_cluster.this",
+                "mode": "managed",
+                "type": "azurerm_kubernetes_cluster",
+                "name": "this",
+                "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                "schema_version": 0,
+                "values": {
+                  "addon_profile": [
+                    {
+                      "aci_connector_linux": [],
+                      "azure_policy": [],
+                      "http_application_routing": [],
+                      "kube_dashboard": [
+                        {
+                          "enabled": false
+                        }
+                      ],
+                      "oms_agent": []
+                    }
+                  ],
+                  "api_server_authorized_ip_ranges": [],
+                  "auto_scaler_profile": [
+                    {
+                      "balance_similar_node_groups": false,
+                      "max_graceful_termination_sec": "600",
+                      "new_pod_scale_up_delay": "0s",
+                      "scale_down_delay_after_add": "10m",
+                      "scale_down_delay_after_delete": "10s",
+                      "scale_down_delay_after_failure": "3m",
+                      "scale_down_unneeded": "10m",
+                      "scale_down_unready": "20m",
+                      "scale_down_utilization_threshold": "0.5",
+                      "scan_interval": "10s",
+                      "skip_nodes_with_local_storage": false,
+                      "skip_nodes_with_system_pods": true
+                    }
+                  ],
+                  "automatic_channel_upgrade": "",
+                  "default_node_pool": [
+                    {
+                      "availability_zones": [
+                        "1",
+                        "2",
+                        "3"
+                      ],
+                      "enable_auto_scaling": false,
+                      "enable_host_encryption": false,
+                      "enable_node_public_ip": false,
+                      "max_count": 0,
+                      "max_pods": 30,
+                      "min_count": 0,
+                      "name": "default",
+                      "node_count": 1,
+                      "node_labels": {},
+                      "node_taints": [],
+                      "only_critical_addons_enabled": false,
+                      "orchestrator_version": "1.2.3",
+                      "os_disk_size_gb": 128,
+                      "os_disk_type": "Managed",
+                      "proximity_placement_group_id": "",
+                      "tags": {},
+                      "type": "VirtualMachineScaleSets",
+                      "upgrade_settings": [],
+                      "vm_size": "Standard_DS2_v2",
+                      "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+                    }
+                  ],
+                  "disk_encryption_set_id": "",
+                  "dns_prefix": "eu99y-cpe",
+                  "enable_pod_security_policy": false,
+                  "fqdn": "eu99y-cpe-abcd.hcp.antarctica.azmk8s.io",
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+                  "identity": [
+                    {
+                      "principal_id": "REDACTED",
+                      "tenant_id": "REDACTED",
+                      "type": "SystemAssigned",
+                      "user_assigned_identity_id": ""
+                    }
+                  ],
+                  "kube_admin_config": [
+                    {
+                      "client_certificate": "REDACTED",
+                      "client_key": "REDACTED",
+                      "cluster_ca_certificate": "REDACTED",
+                      "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+                      "password": "REDACTED",
+                      "username": "clusterAdmin_srgr001k8s_saks001eu99y-cpe"
+                    }
+                  ],
+                  "kube_admin_config_raw": "REDACTED",
+                  "kube_config": [
+                    {
+                      "client_certificate": "",
+                      "client_key": "",
+                      "cluster_ca_certificate": "REDACTED",
+                      "host": "https://eu99y-cpe-abcd.hcp.antarctica.azmk8s.io:443",
+                      "password": "REDACTED",
+                      "username": "clusterUser_srgr001k8s_saks001eu99y-cpe"
+                    }
+                  ],
+                  "kube_config_raw": "REDACTED",
+                  "kubelet_identity": [
+                    {
+                      "client_id": "REDACTED",
+                      "object_id": "REDACTED",
+                      "user_assigned_identity_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/MC_srgr001k8s_saks001eu99y-cpe_antarctica/providers/Microsoft.ManagedIdentity/userAssignedIdentities/saks001eu99y-cpe-agentpool"
+                    }
+                  ],
+                  "kubernetes_version": "1.2.3",
+                  "linux_profile": [],
+                  "location": "antarctica",
+                  "name": "saks001eu99y-cpe",
+                  "network_profile": [
+                    {
+                      "dns_service_ip": "172.18.0.10",
+                      "docker_bridge_cidr": "172.17.0.1/16",
+                      "load_balancer_profile": [
+                        {
+                          "effective_outbound_ips": [
+                            "/subscriptions/ea-xx-xx-xx-5/resourceGroups/MC_srgr001k8s_saks001eu99y-cpe_antarctica/providers/Microsoft.Network/publicIPAddresses/40999999-9999-9999-9999-999999999999"
+                          ],
+                          "idle_timeout_in_minutes": 0,
+                          "managed_outbound_ip_count": 1,
+                          "outbound_ip_address_ids": [],
+                          "outbound_ip_prefix_ids": [],
+                          "outbound_ports_allocated": 0
+                        }
+                      ],
+                      "load_balancer_sku": "Standard",
+                      "network_mode": "",
+                      "network_plugin": "azure",
+                      "network_policy": "calico",
+                      "outbound_type": "loadBalancer",
+                      "pod_cidr": "",
+                      "service_cidr": "172.18.0.0/16"
+                    }
+                  ],
+                  "node_resource_group": "MC_srgr001k8s_saks001eu99y-cpe_antarctica",
+                  "private_cluster_enabled": true,
+                  "private_dns_zone_id": "",
+                  "private_fqdn": "",
+                  "private_link_enabled": false,
+                  "resource_group_name": "srgr001k8s",
+                  "role_based_access_control": [
+                    {
+                      "azure_active_directory": [
+                        {
+                          "admin_group_object_ids": [],
+                          "client_app_id": "REDACTED",
+                          "managed": false,
+                          "server_app_id": "REDACTED",
+                          "server_app_secret": "REDACTED",
+                          "tenant_id": "REDACTED"
+                        }
+                      ],
+                      "enabled": true
+                    }
+                  ],
+                  "service_principal": [],
+                  "sku_tier": "Free",
+                  "tags": {
+                    "AvailabilityHours": "1",
+                    "CIName": "KUBERNETES",
+                    "Criticality": "Low",
+                    "EnvironmentType": "s",
+                    "FWPI": "BAR",
+                    "Owner": "FOO",
+                    "Project and Release Definition Id": "/releasedefinitions/48",
+                    "Release Information": "K8s Resource Group Deployment/Release-11/foo@example.com",
+                    "SI": "XX"
+                  },
+                  "timeouts": null,
+                  "windows_profile": [
+                    {
+                      "admin_password": "",
+                      "admin_username": "azureuser"
+                    }
+                  ]
+                },
+                "depends_on": [
+                  "azurerm_subnet.exlb",
+                  "azurerm_subnet.inlb",
+                  "data.azurerm_resource_group.env",
+                  "module.aks1.azurerm_subnet.this",
+                  "module.aks1.azurerm_subnet_route_table_association.this"
+                ]
+              },
+              {
+                "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra\"]",
+                "mode": "managed",
+                "type": "azurerm_kubernetes_cluster_node_pool",
+                "name": "this",
+                "index": "extra",
+                "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                "schema_version": 0,
+                "values": {
+                  "availability_zones": [
+                    "1",
+                    "2",
+                    "3"
+                  ],
+                  "enable_auto_scaling": true,
+                  "enable_host_encryption": false,
+                  "enable_node_public_ip": false,
+                  "eviction_policy": "",
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra",
+                  "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+                  "max_count": 10,
+                  "max_pods": 30,
+                  "min_count": 1,
+                  "mode": "User",
+                  "name": "extra",
+                  "node_count": 1,
+                  "node_labels": {},
+                  "node_taints": [],
+                  "orchestrator_version": "1.2.3",
+                  "os_disk_size_gb": 128,
+                  "os_disk_type": "Managed",
+                  "os_type": "Linux",
+                  "priority": "Regular",
+                  "proximity_placement_group_id": "",
+                  "spot_max_price": -1,
+                  "tags": {},
+                  "timeouts": null,
+                  "upgrade_settings": [],
+                  "vm_size": "Standard_DS2_v2",
+                  "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+                },
+                "depends_on": [
+                  "azurerm_subnet.exlb",
+                  "azurerm_subnet.inlb",
+                  "module.aks1.azurerm_kubernetes_cluster.this",
+                  "module.aks1.azurerm_subnet.this"
+                ]
+              },
+              {
+                "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra1\"]",
+                "mode": "managed",
+                "type": "azurerm_kubernetes_cluster_node_pool",
+                "name": "this",
+                "index": "extra1",
+                "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                "schema_version": 0,
+                "values": {
+                  "availability_zones": [
+                    "1"
+                  ],
+                  "enable_auto_scaling": true,
+                  "enable_host_encryption": false,
+                  "enable_node_public_ip": false,
+                  "eviction_policy": "",
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra1",
+                  "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+                  "max_count": 10,
+                  "max_pods": 30,
+                  "min_count": 1,
+                  "mode": "User",
+                  "name": "extra1",
+                  "node_count": 1,
+                  "node_labels": {
+                    "label1": "value1",
+                    "label2": "value2"
+                  },
+                  "node_taints": [
+                    "Key1=Taint1:PreferNoSchedule",
+                    "Key2=Taint2:PreferNoSchedule"
+                  ],
+                  "orchestrator_version": "1.2.3",
+                  "os_disk_size_gb": 128,
+                  "os_disk_type": "Managed",
+                  "os_type": "Linux",
+                  "priority": "Regular",
+                  "proximity_placement_group_id": "",
+                  "spot_max_price": -1,
+                  "tags": {},
+                  "timeouts": null,
+                  "upgrade_settings": [],
+                  "vm_size": "Standard_DS2_v2",
+                  "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+                },
+                "depends_on": [
+                  "azurerm_subnet.exlb",
+                  "azurerm_subnet.inlb",
+                  "module.aks1.azurerm_kubernetes_cluster.this",
+                  "module.aks1.azurerm_subnet.this"
+                ]
+              },
+              {
+                "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra2\"]",
+                "mode": "managed",
+                "type": "azurerm_kubernetes_cluster_node_pool",
+                "name": "this",
+                "index": "extra2",
+                "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                "schema_version": 0,
+                "values": {
+                  "availability_zones": [
+                    "2"
+                  ],
+                  "enable_auto_scaling": true,
+                  "enable_host_encryption": false,
+                  "enable_node_public_ip": false,
+                  "eviction_policy": "",
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra2",
+                  "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+                  "max_count": 10,
+                  "max_pods": 30,
+                  "min_count": 1,
+                  "mode": "User",
+                  "name": "extra2",
+                  "node_count": 1,
+                  "node_labels": {
+                    "label1": "value1",
+                    "label2": "value2"
+                  },
+                  "node_taints": [
+                    "Key1=Taint1:PreferNoSchedule",
+                    "Key2=Taint2:PreferNoSchedule"
+                  ],
+                  "orchestrator_version": "1.2.3",
+                  "os_disk_size_gb": 128,
+                  "os_disk_type": "Managed",
+                  "os_type": "Linux",
+                  "priority": "Regular",
+                  "proximity_placement_group_id": "",
+                  "spot_max_price": -1,
+                  "tags": {},
+                  "timeouts": null,
+                  "upgrade_settings": [],
+                  "vm_size": "Standard_DS2_v2",
+                  "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+                },
+                "depends_on": [
+                  "azurerm_subnet.exlb",
+                  "azurerm_subnet.inlb",
+                  "module.aks1.azurerm_kubernetes_cluster.this",
+                  "module.aks1.azurerm_subnet.this"
+                ]
+              },
+              {
+                "address": "module.aks1.azurerm_kubernetes_cluster_node_pool.this[\"extra3\"]",
+                "mode": "managed",
+                "type": "azurerm_kubernetes_cluster_node_pool",
+                "name": "this",
+                "index": "extra3",
+                "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                "schema_version": 0,
+                "values": {
+                  "availability_zones": [
+                    "3"
+                  ],
+                  "enable_auto_scaling": true,
+                  "enable_host_encryption": false,
+                  "enable_node_public_ip": false,
+                  "eviction_policy": "",
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe/agentPools/extra3",
+                  "kubernetes_cluster_id": "/subscriptions/ea-xx-xx-xx-5/resourcegroups/srgr001k8s/providers/Microsoft.ContainerService/managedClusters/saks001eu99y-cpe",
+                  "max_count": 10,
+                  "max_pods": 30,
+                  "min_count": 1,
+                  "mode": "User",
+                  "name": "extra3",
+                  "node_count": 1,
+                  "node_labels": {
+                    "label1": "value1",
+                    "label2": "value2"
+                  },
+                  "node_taints": [
+                    "Key1=Taint1:PreferNoSchedule",
+                    "Key2=Taint2:PreferNoSchedule"
+                  ],
+                  "orchestrator_version": "1.2.3",
+                  "os_disk_size_gb": 128,
+                  "os_disk_type": "Managed",
+                  "os_type": "Linux",
+                  "priority": "Regular",
+                  "proximity_placement_group_id": "",
+                  "spot_max_price": -1,
+                  "tags": {},
+                  "timeouts": null,
+                  "upgrade_settings": [],
+                  "vm_size": "Standard_DS2_v2",
+                  "vnet_subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe"
+                },
+                "depends_on": [
+                  "azurerm_subnet.exlb",
+                  "azurerm_subnet.inlb",
+                  "module.aks1.azurerm_kubernetes_cluster.this",
+                  "module.aks1.azurerm_subnet.this"
+                ]
+              },
+              {
+                "address": "module.aks1.azurerm_role_assignment.this",
+                "mode": "managed",
+                "type": "azurerm_role_assignment",
+                "name": "this",
+                "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                "schema_version": 0,
+                "values": {
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/providers/Microsoft.Authorization/roleAssignments/79999999-8888-8888-888-99999999999e",
+                  "name": "79999999-8888-8888-888-99999999999e",
+                  "principal_id": "REDACTED",
+                  "principal_type": "ServicePrincipal",
+                  "role_definition_id": "/subscriptions/ea-xx-xx-xx-5/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7",
+                  "role_definition_name": "Network Contributor",
+                  "scope": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y",
+                  "skip_service_principal_aad_check": null,
+                  "timeouts": null
+                },
+                "depends_on": [
+                  "azurerm_route_table.env",
+                  "azurerm_subnet.exlb",
+                  "azurerm_subnet.inlb",
+                  "azurerm_virtual_network.env",
+                  "data.azurerm_resource_group.env",
+                  "module.aks1.azurerm_kubernetes_cluster.this",
+                  "module.aks1.azurerm_subnet.this",
+                  "module.aks1.azurerm_subnet_route_table_association.this"
+                ]
+              },
+              {
+                "address": "module.aks1.azurerm_subnet.this",
+                "mode": "managed",
+                "type": "azurerm_subnet",
+                "name": "this",
+                "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                "schema_version": 0,
+                "values": {
+                  "address_prefix": "10.11.13.0/24",
+                  "address_prefixes": [
+                    "10.11.13.0/24"
+                  ],
+                  "delegation": [],
+                  "enforce_private_link_endpoint_network_policies": false,
+                  "enforce_private_link_service_network_policies": false,
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                  "name": "cpe",
+                  "resource_group_name": "srgr001k8s",
+                  "service_endpoint_policy_ids": [],
+                  "service_endpoints": [],
+                  "timeouts": null,
+                  "virtual_network_name": "svne001eu99y"
+                },
+                "depends_on": [
+                  "azurerm_subnet.exlb",
+                  "azurerm_subnet.inlb",
+                  "azurerm_virtual_network.env",
+                  "data.azurerm_resource_group.env"
+                ]
+              },
+              {
+                "address": "module.aks1.azurerm_subnet_route_table_association.this",
+                "mode": "managed",
+                "type": "azurerm_subnet_route_table_association",
+                "name": "this",
+                "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                "schema_version": 0,
+                "values": {
+                  "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                  "route_table_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/routeTables/sudr001eu99y",
+                  "subnet_id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr001k8s/providers/Microsoft.Network/virtualNetworks/svne001eu99y/subnets/cpe",
+                  "timeouts": null
+                },
+                "depends_on": [
+                  "azurerm_route_table.env",
+                  "azurerm_subnet.exlb",
+                  "azurerm_subnet.inlb",
+                  "azurerm_virtual_network.env",
+                  "data.azurerm_resource_group.env",
+                  "module.aks1.azurerm_subnet.this"
+                ]
+              }
+            ],
+            "address": "module.aks1"
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "azuread": {
+        "name": "azuread",
+        "version_constraint": "=0.3.1"
+      },
+      "azurerm": {
+        "name": "azurerm",
+        "version_constraint": "=2.49.0",
+        "expressions": {
+          "features": [
+            {}
+          ],
+          "subscription_id": {
+            "constant_value": "ea-xx-xx-xx-5"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "clusters": {
+          "expression": {
+            "references": [
+              "module.aks1.kube_admin_config"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "azurerm_network_security_group.nsg1",
+          "mode": "managed",
+          "type": "azurerm_network_security_group",
+          "name": "nsg1",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "location": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            },
+            "name": {
+              "constant_value": "snsg001eu99y-cpe"
+            },
+            "resource_group_name": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_route_table.env",
+          "mode": "managed",
+          "type": "azurerm_route_table",
+          "name": "env",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "disable_bgp_route_propagation": {
+              "constant_value": false
+            },
+            "location": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            },
+            "name": {
+              "constant_value": "sudr001eu99y"
+            },
+            "resource_group_name": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_storage_account.env",
+          "mode": "managed",
+          "type": "azurerm_storage_account",
+          "name": "env",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "access_tier": {
+              "constant_value": "Hot"
+            },
+            "account_kind": {
+              "constant_value": "BlobStorage"
+            },
+            "account_replication_type": {
+              "constant_value": "GRS"
+            },
+            "account_tier": {
+              "constant_value": "Standard"
+            },
+            "enable_https_traffic_only": {
+              "constant_value": true
+            },
+            "location": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            },
+            "name": {
+              "constant_value": "eu99yxabc"
+            },
+            "resource_group_name": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            }
+          },
+          "schema_version": 2
+        },
+        {
+          "address": "azurerm_subnet.exlb",
+          "mode": "managed",
+          "type": "azurerm_subnet",
+          "name": "exlb",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "address_prefixes": {},
+            "name": {
+              "constant_value": "exlb"
+            },
+            "resource_group_name": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            },
+            "virtual_network_name": {
+              "references": [
+                "azurerm_virtual_network.env"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_subnet.inlb",
+          "mode": "managed",
+          "type": "azurerm_subnet",
+          "name": "inlb",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "address_prefixes": {},
+            "name": {
+              "constant_value": "inlb"
+            },
+            "resource_group_name": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            },
+            "virtual_network_name": {
+              "references": [
+                "azurerm_virtual_network.env"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_subnet_network_security_group_association.nsg1",
+          "mode": "managed",
+          "type": "azurerm_subnet_network_security_group_association",
+          "name": "nsg1",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "network_security_group_id": {
+              "references": [
+                "azurerm_network_security_group.nsg1"
+              ]
+            },
+            "subnet_id": {
+              "references": [
+                "module.aks1.subnet_id"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_subnet_route_table_association.env-exlb",
+          "mode": "managed",
+          "type": "azurerm_subnet_route_table_association",
+          "name": "env-exlb",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "route_table_id": {
+              "references": [
+                "azurerm_route_table.env"
+              ]
+            },
+            "subnet_id": {
+              "references": [
+                "azurerm_subnet.exlb"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_subnet_route_table_association.env-inlb",
+          "mode": "managed",
+          "type": "azurerm_subnet_route_table_association",
+          "name": "env-inlb",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "route_table_id": {
+              "references": [
+                "azurerm_route_table.env"
+              ]
+            },
+            "subnet_id": {
+              "references": [
+                "azurerm_subnet.inlb"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_virtual_network.env",
+          "mode": "managed",
+          "type": "azurerm_virtual_network",
+          "name": "env",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "address_space": {
+              "constant_value": [
+                "10.11.12.0/20"
+              ]
+            },
+            "location": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            },
+            "name": {
+              "constant_value": "svne001eu99y"
+            },
+            "resource_group_name": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "data.azurerm_resource_group.env",
+          "mode": "data",
+          "type": "azurerm_resource_group",
+          "name": "env",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "name": {
+              "constant_value": "srgr001k8s"
+            }
+          },
+          "schema_version": 0
+        }
+      ],
+      "module_calls": {
+        "aks1": {
+          "source": "./modules/aks",
+          "expressions": {
+            "aad": {
+              "constant_value": {
+                "client_app_id": "REDACTED",
+                "server_app_id": "REDACTED",
+                "server_app_secret": "REDACTED",
+                "tenant_id": "REDACTED"
+              }
+            },
+            "aks_prefix": {
+              "constant_value": "saks001"
+            },
+            "availability_zones": {
+              "constant_value": [
+                1,
+                2,
+                3
+              ]
+            },
+            "defaultpool_max_pods": {
+              "constant_value": 30
+            },
+            "defaultpool_scale": {
+              "constant_value": 1
+            },
+            "defaultpool_vm_size": {
+              "constant_value": "Standard_DS2_v2"
+            },
+            "docker_bridge_cidr": {
+              "constant_value": "172.17.0.1/16"
+            },
+            "env_name": {
+              "constant_value": "eu99y"
+            },
+            "k8s_version": {
+              "constant_value": "1.2.3"
+            },
+            "name": {
+              "constant_value": "cpe"
+            },
+            "node_pools": {
+              "constant_value": {
+                "extra": {
+                  "max_pods": 30,
+                  "max_scale": 10,
+                  "scale": 3,
+                  "vm_size": "Standard_DS2_v2"
+                }
+              }
+            },
+            "outbound_type": {
+              "constant_value": "loadBalancer"
+            },
+            "resource_group": {
+              "references": [
+                "data.azurerm_resource_group.env"
+              ]
+            },
+            "route_table_id": {
+              "references": [
+                "azurerm_route_table.env"
+              ]
+            },
+            "service_cidr": {
+              "constant_value": "172.18.0.0/16"
+            },
+            "subnet_newbits": {
+              "constant_value": 4
+            },
+            "subnet_num": {
+              "constant_value": 1
+            },
+            "tags": {
+              "references": [
+                "data.azurerm_resource_group.env",
+                "data.azurerm_resource_group.env",
+                "data.azurerm_resource_group.env",
+                "data.azurerm_resource_group.env"
+              ]
+            },
+            "vnet": {
+              "references": [
+                "azurerm_virtual_network.env"
+              ]
+            }
+          },
+          "module": {
+            "outputs": {
+              "id": {
+                "expression": {
+                  "references": [
+                    "azurerm_kubernetes_cluster.this"
+                  ]
+                }
+              },
+              "kube_admin_config": {
+                "expression": {
+                  "references": [
+                    "azurerm_kubernetes_cluster.this"
+                  ]
+                }
+              },
+              "name": {
+                "expression": {
+                  "references": [
+                    "azurerm_kubernetes_cluster.this"
+                  ]
+                }
+              },
+              "subnet_id": {
+                "expression": {
+                  "references": [
+                    "azurerm_subnet.this"
+                  ]
+                }
+              }
+            },
+            "resources": [
+              {
+                "address": "azurerm_kubernetes_cluster.this",
+                "mode": "managed",
+                "type": "azurerm_kubernetes_cluster",
+                "name": "this",
+                "provider_config_key": "aks1:azurerm",
+                "expressions": {
+                  "addon_profile": [
+                    {
+                      "kube_dashboard": [
+                        {
+                          "enabled": {
+                            "constant_value": false
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "default_node_pool": [
+                    {
+                      "availability_zones": {
+                        "references": [
+                          "var.availability_zones"
+                        ]
+                      },
+                      "max_pods": {
+                        "references": [
+                          "var.defaultpool_max_pods",
+                          "var.defaultpool_max_pods"
+                        ]
+                      },
+                      "name": {
+                        "constant_value": "default"
+                      },
+                      "node_count": {
+                        "references": [
+                          "var.defaultpool_scale"
+                        ]
+                      },
+                      "type": {
+                        "constant_value": "VirtualMachineScaleSets"
+                      },
+                      "vm_size": {
+                        "references": [
+                          "var.defaultpool_vm_size"
+                        ]
+                      },
+                      "vnet_subnet_id": {
+                        "references": [
+                          "azurerm_subnet.this"
+                        ]
+                      }
+                    }
+                  ],
+                  "dns_prefix": {
+                    "references": [
+                      "var.env_name",
+                      "var.name"
+                    ]
+                  },
+                  "identity": [
+                    {
+                      "type": {
+                        "constant_value": "SystemAssigned"
+                      }
+                    }
+                  ],
+                  "kubernetes_version": {
+                    "references": [
+                      "var.k8s_version"
+                    ]
+                  },
+                  "location": {
+                    "references": [
+                      "var.resource_group"
+                    ]
+                  },
+                  "name": {
+                    "references": [
+                      "var.aks_prefix",
+                      "var.env_name",
+                      "var.name"
+                    ]
+                  },
+                  "network_profile": [
+                    {
+                      "dns_service_ip": {
+                        "references": [
+                          "var.service_cidr"
+                        ]
+                      },
+                      "docker_bridge_cidr": {
+                        "references": [
+                          "var.docker_bridge_cidr"
+                        ]
+                      },
+                      "network_plugin": {
+                        "constant_value": "azure"
+                      },
+                      "network_policy": {
+                        "constant_value": "calico"
+                      },
+                      "outbound_type": {
+                        "references": [
+                          "var.outbound_type"
+                        ]
+                      },
+                      "service_cidr": {
+                        "references": [
+                          "var.service_cidr"
+                        ]
+                      }
+                    }
+                  ],
+                  "resource_group_name": {
+                    "references": [
+                      "var.resource_group"
+                    ]
+                  },
+                  "role_based_access_control": [
+                    {
+                      "azure_active_directory": [
+                        {
+                          "client_app_id": {
+                            "references": [
+                              "var.aad"
+                            ]
+                          },
+                          "server_app_id": {
+                            "references": [
+                              "var.aad"
+                            ]
+                          },
+                          "server_app_secret": {
+                            "references": [
+                              "var.aad"
+                            ]
+                          },
+                          "tenant_id": {
+                            "references": [
+                              "var.aad"
+                            ]
+                          }
+                        }
+                      ],
+                      "enabled": {
+                        "constant_value": true
+                      }
+                    }
+                  ],
+                  "sku_tier": {
+                    "references": [
+                      "var.sku"
+                    ]
+                  },
+                  "tags": {
+                    "references": [
+                      "var.tags"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "depends_on": [
+                  "azurerm_subnet_route_table_association.this"
+                ]
+              },
+              {
+                "address": "azurerm_kubernetes_cluster_node_pool.this",
+                "mode": "managed",
+                "type": "azurerm_kubernetes_cluster_node_pool",
+                "name": "this",
+                "provider_config_key": "aks1:azurerm",
+                "expressions": {
+                  "availability_zones": {
+                    "references": [
+                      "var.availability_zones"
+                    ]
+                  },
+                  "enable_auto_scaling": {
+                    "references": [
+                      "each.value",
+                      "each.value"
+                    ]
+                  },
+                  "kubernetes_cluster_id": {
+                    "references": [
+                      "azurerm_kubernetes_cluster.this"
+                    ]
+                  },
+                  "max_count": {
+                    "references": [
+                      "each.value",
+                      "each.value",
+                      "each.value"
+                    ]
+                  },
+                  "max_pods": {
+                    "references": [
+                      "each.value",
+                      "each.value"
+                    ]
+                  },
+                  "min_count": {
+                    "references": [
+                      "each.value",
+                      "each.value",
+                      "each.value"
+                    ]
+                  },
+                  "name": {
+                    "references": [
+                      "each.key"
+                    ]
+                  },
+                  "node_count": {
+                    "references": [
+                      "each.value",
+                      "each.value",
+                      "each.value"
+                    ]
+                  },
+                  "vm_size": {
+                    "references": [
+                      "each.value"
+                    ]
+                  },
+                  "vnet_subnet_id": {
+                    "references": [
+                      "azurerm_subnet.this"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "for_each_expression": {
+                  "references": [
+                    "var.node_pools"
+                  ]
+                }
+              },
+              {
+                "address": "azurerm_role_assignment.this",
+                "mode": "managed",
+                "type": "azurerm_role_assignment",
+                "name": "this",
+                "provider_config_key": "aks1:azurerm",
+                "expressions": {
+                  "principal_id": {
+                    "references": [
+                      "azurerm_kubernetes_cluster.this"
+                    ]
+                  },
+                  "role_definition_name": {
+                    "constant_value": "Network Contributor"
+                  },
+                  "scope": {
+                    "references": [
+                      "var.vnet"
+                    ]
+                  }
+                },
+                "schema_version": 0
+              },
+              {
+                "address": "azurerm_subnet.this",
+                "mode": "managed",
+                "type": "azurerm_subnet",
+                "name": "this",
+                "provider_config_key": "aks1:azurerm",
+                "expressions": {
+                  "address_prefixes": {
+                    "references": [
+                      "var.vnet",
+                      "var.subnet_newbits",
+                      "var.subnet_num"
+                    ]
+                  },
+                  "name": {
+                    "references": [
+                      "var.name"
+                    ]
+                  },
+                  "resource_group_name": {
+                    "references": [
+                      "var.resource_group"
+                    ]
+                  },
+                  "service_endpoints": {
+                    "references": [
+                      "var.service_endpoints"
+                    ]
+                  },
+                  "virtual_network_name": {
+                    "references": [
+                      "var.vnet"
+                    ]
+                  }
+                },
+                "schema_version": 0
+              },
+              {
+                "address": "azurerm_subnet_route_table_association.this",
+                "mode": "managed",
+                "type": "azurerm_subnet_route_table_association",
+                "name": "this",
+                "provider_config_key": "aks1:azurerm",
+                "expressions": {
+                  "route_table_id": {
+                    "references": [
+                      "var.route_table_id"
+                    ]
+                  },
+                  "subnet_id": {
+                    "references": [
+                      "azurerm_subnet.this"
+                    ]
+                  }
+                },
+                "schema_version": 0
+              }
+            ],
+            "variables": {
+              "aad": {
+                "description": "AzureAD app's used by clusters for RBAC of users."
+              },
+              "aks_prefix": {
+                "description": "AKS resource prefix as dictated by naming convention."
+              },
+              "availability_zones": {
+                "default": null,
+                "description": "Availability zones for node pools, for example [1,2]"
+              },
+              "defaultpool_max_pods": {
+                "description": "Max pods per node in default pool."
+              },
+              "defaultpool_scale": {
+                "description": "Number of worker nodes in default pool."
+              },
+              "defaultpool_vm_size": {
+                "description": "VM type of worker nodes in default pool."
+              },
+              "docker_bridge_cidr": {
+                "description": "Docker bridge CIDR"
+              },
+              "env_name": {
+                "description": "Environment name is used a prefix for resources and as part of the domain name of services running in the clusters.\nFor example for name=cpe, env_name=k8ss the domain becomes: app.namespace.cpe.k8ss.example.com\nTypically \"k8s{data.azurerm_resource_group.env.tags[EnvironmentType]}\"\n"
+              },
+              "k8s_version": {
+                "description": "Kubernetes version."
+              },
+              "name": {
+                "description": "Name of cluster, also used in domain name; app.namespace.\u003cname\u003e.env.subdomain."
+              },
+              "node_pools": {
+                "description": "List of additional node pools.\nWhen max_scale \u003e scale autoscaling is enabled.\nValid values for scale and max_scale are 1..100.\n"
+              },
+              "outbound_type": {
+                "default": null,
+                "description": "Network egress path. Valid values are 'userDefinedRouting' (default) or 'loadBalancer'"
+              },
+              "resource_group": {
+                "description": "The Resource Group that is used for creating resources."
+              },
+              "route_table_id": {
+                "description": "Routing for all subnets containing Pods."
+              },
+              "service_cidr": {
+                "description": "VIP CIDR"
+              },
+              "service_endpoints": {
+                "default": null,
+                "description": "Service endpoints provide direct connectivity to Azure services, for example [Microsoft.Sql]"
+              },
+              "sku": {
+                "default": null,
+                "description": "Support tier. Valid values are 'Free' (default) or 'Paid'."
+              },
+              "subnet_newbits": {
+                "default": 4,
+                "description": "Subnet newbits is the number of bits to add to the VNet address mask to produce the subnet mask.\nFor example given a /16 VNet and subnet_newbits=4 would result in /20 subnets.\nNote: this values must be the same for all subnets in the vnet.\n"
+              },
+              "subnet_num": {
+                "description": "Subnet index of vnet that is used by this cluster. Valid from 1 to (2^subnet_newbits)-1"
+              },
+              "tags": {
+                "description": "Azure resource tags to comply with organisation policy."
+              },
+              "vnet": {
+                "description": "VNet in which AKS clusters get a subnet."
+              }
+            }
+          },
+          "depends_on": [
+            "azurerm_subnet.exlb",
+            "azurerm_subnet.inlb"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -9,9 +9,9 @@ import (
 	"strings"
 )
 
-// GetPlanPools reads an existing plan and returns AKSPools that are going to be updated or deleted.
-func (t *Terraform) GetPlanPools(ctx context.Context, env []string, dir string) ([]AKSPool, error) {
-	log := logr.FromContext(ctx).WithName("GetPlanPools")
+// GetPlan reads an existing plan and returns a json structure.
+func (t *Terraform) GetPlan(ctx context.Context, env []string, dir string) (*gabs.Container, error) {
+	log := logr.FromContext(ctx).WithName("GetPlan")
 
 	o, _, err := exe.Run(log, &exe.Opt{Dir: dir, Env: env}, "", "terraform", "show",
 		"-json", planName)
@@ -19,19 +19,68 @@ func (t *Terraform) GetPlanPools(ctx context.Context, env []string, dir string) 
 		return nil, err
 	}
 
-	return parseShowResponsePools(o)
+	return gabs.ParseJSON([]byte(o))
 }
 
-// ParseShowResponsePools returns AKSPools that are going to be created, updated or deleted.
-// The input string is json formatted conform https://www.terraform.io/docs/internals/json-format.html
-func parseShowResponsePools(js string) ([]AKSPool, error) {
-	obj, err := gabs.ParseJSON([]byte(js))
-	if err != nil {
-		return nil, err
+// ClustersFromPlan parses a plan and returns AKSClusters that are going to be created, updated or deleted.
+// The plan json conforms to https://www.terraform.io/docs/internals/json-format.html
+func ClustersFromPlan(plan *gabs.Container) ([]AKSCluster, error) {
+	var r []AKSCluster
+	for _, chg := range plan.Path("resource_changes").Children() {
+		if chg.Path("type").Data().(string) != "azurerm_kubernetes_cluster" {
+			// not a cluster.
+			continue
+		}
+
+		act := stringsToAction(chg.Path("change.actions").Children())
+		if act == 0 {
+			// no change
+			continue
+		}
+
+		chgBefore := chg.Path("change.before")
+		if chgBefore.Data() == nil {
+			// no change before
+			continue
+		}
+
+		id := chgBefore.Path("id").Data().(string)
+		m, err := pathToMap(id)
+		if err != nil {
+			return nil, err
+		}
+
+		r = append(r, AKSCluster{
+			ResourceGroup: m["resourcegroups"],
+			Cluster:       m["managedclusters"],
+			Action:        act,
+		})
 	}
 
+	return r, nil
+}
+
+// AKSCluster represents an AKS Cluster change.
+type AKSCluster struct {
+	ResourceGroup string
+	Cluster       string
+	Action        Action
+}
+
+// Action is the terraform plan action.
+type Action int
+
+const (
+	ActionCreate Action = 1 << iota
+	ActionUpdate
+	ActionDelete
+)
+
+// PoolsFromPlan parses a plan and returns AKS Pools that are going to be created, updated or deleted.
+// The plan json conforms to https://www.terraform.io/docs/internals/json-format.html
+func PoolsFromPlan(plan *gabs.Container) ([]AKSPool, error) {
 	var r []AKSPool
-	for _, chg := range obj.Path("resource_changes").Children() {
+	for _, chg := range plan.Path("resource_changes").Children() {
 		if chg.Path("type").Data().(string) != "azurerm_kubernetes_cluster_node_pool" {
 			// not a pool.
 			continue
@@ -70,15 +119,25 @@ func parseShowResponsePools(js string) ([]AKSPool, error) {
 
 		r = append(r, AKSPool{
 			ResourceGroup: m["resourcegroups"],
-			Cluster:       m["managedClusters"],
-			Pool:          m["agentPools"],
+			Cluster:       m["managedclusters"],
+			Pool:          m["agentpools"],
 			MinCount:      minCount,
 			MaxCount:      maxCount,
 			Action:        act,
 		})
 	}
 
-	return r, err
+	return r, nil
+}
+
+// AKSPool represents an AKS Node pool change.
+type AKSPool struct {
+	ResourceGroup string
+	Cluster       string
+	Pool          string
+	MinCount      int
+	MaxCount      int
+	Action        Action
 }
 
 // StringsToAction maps a slice of action strings to an Action bitmap.
@@ -92,6 +151,7 @@ func stringsToAction(in []*gabs.Container) (act Action) {
 			act |= ActionUpdate
 		case "delete":
 			act |= ActionDelete
+			//case "no-op", "read": not used.
 		}
 	}
 	return
@@ -113,26 +173,7 @@ func pathToMap(p string) (map[string]string, error) {
 
 	r := make(map[string]string)
 	for i := 0; i < len(ss)-1; i += 2 {
-		r[ss[i]] = ss[i+1]
+		r[strings.ToLower(ss[i])] = ss[i+1]
 	}
 	return r, nil
 }
-
-// AKSPool represents an AKS Node pool change.
-type AKSPool struct {
-	ResourceGroup string
-	Cluster       string
-	Pool          string
-	MinCount      int
-	MaxCount      int
-	Action        Action
-}
-
-// Action is the terraform plan action.
-type Action int
-
-const (
-	ActionCreate Action = 1 << iota
-	ActionUpdate
-	ActionDelete
-)

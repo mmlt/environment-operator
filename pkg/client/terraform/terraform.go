@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/go-logr/logr"
 	"github.com/mmlt/environment-operator/pkg/util/exe"
 	"io"
@@ -29,8 +30,8 @@ type Terraformer interface {
 	// Output gets terraform output values an returns them as a map of types and values.
 	// When outputs.tf contains output "xyz" { value = 7 } the returned map contains ["yxz"]["value"] == 7
 	Output(ctx context.Context, env []string, dir string) (map[string]interface{}, error)
-	// GetPlanPools reads an existing plan and returns AKSPools that are going to be updated or deleted.
-	GetPlanPools(ctx context.Context, env []string, dir string) ([]AKSPool, error)
+	// GetPlan reads an existing plan and returns a json structure.
+	GetPlan(ctx context.Context, env []string, dir string) (*gabs.Container, error)
 }
 
 // TFResults is the output of a terraform command.

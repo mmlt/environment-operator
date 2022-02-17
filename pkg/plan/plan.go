@@ -143,6 +143,7 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 			Azure:      p.Azure,
 			Terraform:  p.Terraform,
 			Client:     client,
+			Kubectl:    p.Kubectl,
 			KubeconfigPathFn: func(n string) (string, error) {
 				cw, ok := src.Workspace(nsn, n)
 				if !ok {
@@ -171,20 +172,6 @@ func (p *Planner) buildCreatePlan(nsn types.NamespacedName, src Sourcer, ispec v
 				Version:       cl.Infra.Version,
 				Azure:         az,
 			},
-			//TODO remove
-			//&step.KubeconfigStep{
-			//	Metaa:       stepMeta(nsn, cl.Name, step.TypeKubeconfig, p.hash(tfw.Hash)),
-			//	TFPath:      tfPath,
-			//	ClusterName: cl.Name,
-			//	KCPath:      kcPath,
-			//	Access:      ispec.State.Access,
-			//	Cloud:       p.Cloud,
-			//	Terraform:   p.Terraform,
-			//	Kubectl:     p.Kubectl,
-			//	//TODO remove
-			//	//Values:      cl.Addons.X,
-			//	//Client:      client,
-			//},
 			&step.AKSAddonPreflightStep{
 				Metaa:   stepMeta(nsn, cl.Name, step.TypeAKSAddonPreflight, h),
 				KCPath:  kcPath,
