@@ -287,11 +287,6 @@ func getStepAndSyncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step
 		status.Steps[shortName] = stStp
 	}
 
-	// TODO remove stStp that are not in plan anymore.
-	// Use case: envop has updated status.steps of a cr and then envop is reconfigured with --allowed-steps allowing
-	// less steps. This results in updateStatusConditions to take steps that are not relevant anymore into account
-	// when setting Condition 'Ready'
-
 	// status consistency checks
 	if r == nil {
 		// if no step is selected to be run all steps must be Ready
@@ -307,6 +302,15 @@ func getStepAndSyncStatusWithPlan(status *v1.EnvironmentStatus, plan []step.Step
 
 // SaveStatus writes the status to the API server.
 func (r *EnvironmentReconciler) saveStatus2(ctx context.Context, cr *v1.Environment) error {
+	// clean-up steps (consider moving to getStepAndSyncStatusWithPlan)
+	p := r.Planner.PossibleSteps(cr.Spec.Clusters)
+	for n := range cr.Status.Steps {
+		if _, ok := p[n]; ok {
+			continue
+		}
+		delete(cr.Status.Steps, n)
+	}
+
 	updateStatusConditions(&cr.Status)
 
 	log := logr.FromContext(ctx)

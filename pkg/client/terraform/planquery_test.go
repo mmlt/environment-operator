@@ -18,7 +18,7 @@ func Test_ClustersFromPlan(t *testing.T) {
 
 	// cat pkg/client/terraform/testdata/plan.json | jq '.resource_changes[] | select(.type == "azurerm_kubernetes_cluster")' | more
 	want := []AKSCluster{
-		{ResourceGroup: "srgr001k8s", Cluster: "saks001eu99y-cpe", Action: ActionDelete},
+		{ResourceGroup: "srgr001k8s", Cluster: "saks001eu99y-cpe", Action: ActionDelete, KubeconfigRaw: "REDACTED"},
 	}
 
 	got, err := ClustersFromPlan(json)

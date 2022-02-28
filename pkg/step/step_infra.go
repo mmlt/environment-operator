@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Jeffail/gabs/v2"
 	"github.com/go-logr/logr"
 	v1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/pkg/client/azure"
@@ -132,29 +133,10 @@ func (st *InfraStep) Execute(ctx context.Context, env []string) {
 		return
 	}
 
-	// Prevent the node drain error on cluster delete.
-	// https://github.com/hashicorp/terraform-provider-azurerm/issues/10411
-	cs, _ := terraform.ClustersFromPlan(plan)
+	err = st.wipeDeletedClusters(plan)
 	if err != nil {
-		st.error2(err, "clusters from terraform plan")
+		st.error2(err, "wipe deleted cluster(s)")
 		return
-	}
-	for _, c := range cs {
-		if c.Action&terraform.ActionDelete == 0 {
-			continue
-		}
-
-		kc, err := st.KubeconfigPathFn(c.Cluster)
-		if err != nil {
-			st.error2(err, "get kubeconfig")
-			return
-		}
-
-		err = st.Kubectl.WipeCluster(kc)
-		if err != nil {
-			st.error2(err, "wipe cluster")
-			return
-		}
 	}
 
 	// Prevent the node autoscaler from fighting a node pool update or delete.
@@ -258,6 +240,38 @@ func (st *InfraStep) Execute(ctx context.Context, env []string) {
 
 	st.update(v1.StateReady, fmt.Sprintf("terraform apply errors=0 added=%d changed=%d deleted=%d",
 		last.TotalAdded, last.TotalChanged, last.TotalDestroyed))
+}
+
+// WipeDeletedClusters prevents node drain errors on cluster delete.
+// https://github.com/hashicorp/terraform-provider-azurerm/issues/10411
+func (st *InfraStep) wipeDeletedClusters(plan *gabs.Container) error {
+	cs, err := terraform.ClustersFromPlan(plan)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range cs {
+		if c.Action&terraform.ActionDelete == 0 {
+			continue
+		}
+
+		file, err := os.CreateTemp("", "kc")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(file.Name())
+
+		_, err = file.WriteString(c.KubeconfigRaw)
+		if err != nil {
+			return err
+		}
+
+		err = st.Kubectl.WipeCluster(file.Name())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SyncClusterSecrets creates/updates/deletes cluster Secrets to match desired state.

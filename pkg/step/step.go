@@ -154,13 +154,18 @@ const (
 	TypeInfra             Type = "Infra"
 	TypeDestroy           Type = "Destroy"
 	TypeAKSPool           Type = "AKSPool"
-	TypeKubeconfig        Type = "Kubeconfig"
 	TypeAKSAddonPreflight Type = "AKSAddonPreflight"
 	TypeAddons            Type = "Addons"
 )
 
+// InfraTypes is an enumeration of types that apply to all clusters.
+var InfraTypes = []Type{TypeInfra, TypeDestroy}
+
+// ClusterTypes is an enumeration of cluster specific types.
+var ClusterTypes = []Type{TypeAKSPool, TypeAKSAddonPreflight, TypeAddons}
+
 // Types is an enumeration of all types.
-var Types = []Type{TypeInfra, TypeDestroy, TypeAKSPool, TypeKubeconfig, TypeAKSAddonPreflight, TypeAddons}
+var Types = append(InfraTypes, ClusterTypes...)
 
 // IsStateFinal returns true is state is a final state.
 // A step in final state has stopped executing.
@@ -191,13 +196,13 @@ type Updater interface {
 }
 
 // TypeFromString converts a comma separated list of type names to a set of Type.
-// On empty input an empty set is returned.
+// On empty input an nil set is returned.
 func TypesFromString(s string) (map[Type]struct{}, error) {
-	r := make(map[Type]struct{})
-
 	if s == "" {
-		return r, nil
+		return nil, nil
 	}
+
+	r := make(map[Type]struct{})
 
 	valid := make(map[string]struct{}, len(Types))
 	for _, v := range Types {
@@ -216,7 +221,12 @@ func TypesFromString(s string) (map[Type]struct{}, error) {
 	var err error
 	if len(e) > 0 {
 		err = fmt.Errorf("unknown step type(s): %v", e)
+		return nil, err
 	}
 
-	return r, err
+	if len(r) == 0 {
+		return nil, nil
+	}
+
+	return r, nil
 }

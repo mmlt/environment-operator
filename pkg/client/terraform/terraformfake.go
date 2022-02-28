@@ -22,8 +22,8 @@ type TerraformFake struct {
 	// OutputResult is the parsed JSON output of terraform output.
 	OutputResult map[string]interface{}
 
-	// GetPlanResult is the result of GetPlan().
-	GetPlanResult string
+	// ShowPlanResult is the result of terraform show plan.
+	ShowPlanResult string
 
 	// Log
 	Log logr.Logger
@@ -94,10 +94,10 @@ func (t *TerraformFake) Output(ctx context.Context, env []string, dir string) (m
 // GetPlanPools reads an existing plan and returns AKSPools that are going to be updated or deleted.
 func (t *TerraformFake) GetPlan(ctx context.Context, env []string, dir string) (*gabs.Container, error) {
 	t.GetPlanTally++
-	return gabs.ParseJSON([]byte(t.GetPlanResult))
+	return gabs.ParseJSON([]byte(t.ShowPlanResult))
 }
 
-// SetupFakeResults sets-up the receiver with data that is returned during testing.
+// SetupFakeResultsForCreate makes the fake replay a successful create.
 // If clusters == nil it defaults to:
 //	map[string]interface{}{
 //		"mycluster": map[string]interface{}{
@@ -111,29 +111,7 @@ func (t *TerraformFake) GetPlan(ctx context.Context, env []string, dir string) (
 //			},
 //		},
 //	},
-func (t *TerraformFake) SetupFakeResults(clusters map[string]interface{}) {
-	if clusters == nil {
-		clusters = map[string]interface{}{
-			"mycluster": map[string]interface{}{
-				"kube_admin_config": map[string]interface{}{
-					"client_certificate":     "Y2xpZW50X2NlcnRpZmljYXRl",
-					"client_key":             "Y2xpZW50X2tleQ==",
-					"cluster_ca_certificate": "Y2x1c3Rlcl9jYV9jZXJ0aWZpY2F0ZQ==",
-					"host":                   "https://api.kubernetes.example.com:443",
-					"password":               "4ee5bb2",
-					"username":               "someadmin",
-				},
-			},
-		}
-	}
-	t.OutputResult = map[string]interface{}{
-		"clusters": map[string]interface{}{
-			"value": clusters,
-		},
-	}
-
-	t.GetPlanResult = "{}"
-
+func (t *TerraformFake) SetupFakeResultsForCreate(clusters map[string]interface{}) {
 	t.InitResult = TFResult{
 		Info: 1,
 	}
@@ -168,16 +146,81 @@ func (t *TerraformFake) SetupFakeResults(clusters map[string]interface{}) {
 		{Creating: 1, Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "creation", Elapsed: "6m22s"},
 		{Creating: 1, Modifying: 2, Destroying: 1, TotalAdded: 1, TotalChanged: 2, TotalDestroyed: 1, Object: "", Action: "", Elapsed: ""}}
 
-	t.DestroyMustSucceed()
+	t.ShowPlanResult = "{}"
+
+	t.OutputResult = map[string]interface{}{
+		"clusters": map[string]interface{}{
+			"value": clusters,
+		},
+	}
 }
 
-// DestroyMustSucceed makes the fake replay failed destroy.
-func (t *TerraformFake) DestroyMustFail() {
+// SetupFakeResultsForNothingToDo makes the fake replay a situation where terraform plan reports nothing to do.
+func (t *TerraformFake) SetupFakeResultsForNothingToDo() {
+	t.InitResult = TFResult{}
+
+	t.PlanResult = TFResult{}
+
+	t.ApplyResult = []TFApplyResult{}
+}
+
+// SetupFakeResultsForDeleteCluster makes the fake replay a situation where a cluster is being removed.
+func (t *TerraformFake) SetupFakeResultsForDeleteCluster() {
+	t.InitResult = TFResult{
+		Info: 1,
+	}
+
+	t.PlanResult = TFResult{
+		Info:        1,
+		PlanDeleted: 1,
+	}
+
+	t.ApplyResult = []TFApplyResult{
+		{Modifying: 1, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: ""},
+		{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "30s"},
+		{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "1m0s"},
+		{Modifying: 2, Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destruction", Elapsed: "1m8s"},
+		{Destroying: 1, TotalDestroyed: 1, Object: "", Action: "", Elapsed: ""}}
+
+	// note that the following is only a fragment of a 'terraform plan' result,
+	// see pkg/client/terraform/testdata for complete examples"
+	t.ShowPlanResult = `{
+  "resource_changes": [
+    {
+      "address": "module.aks2.azurerm_kubernetes_cluster.this",
+      "module_address": "module.aks2",
+      "mode": "managed",
+      "type": "azurerm_kubernetes_cluster",
+      "name": "this",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "id": "/subscriptions/ea-xx-xx-xx-5/resourceGroups/srgr002k8s/providers/Microsoft.ContainerService/managedClusters/xyz",
+          "kube_admin_config_raw": "apiVersion: v1\nclusters:\n- cluster:\n    certificate-authority-data: LS0tL==\n    server: https://k8s.example.com:443\n  name: xyz\ncontexts:\n- context:\n    cluster: xyz\n    user: clusterAdmin_xyz\n  name: xyz\ncurrent-context: xyz\nkind: Config\npreferences: {}\nusers:\n- name: clusterAdmin_xyz\n  user:\n    client-certificate-data: LS0t==\n    client-key-data: LS0K\n    token: 1c8\n"
+        }
+      },
+      "action_reason": "delete_because_no_resource_config"
+    }
+  ]
+}`
+
+	t.OutputResult = map[string]interface{}{
+		"clusters": map[string]interface{}{
+			"value": map[string]interface{}{},
+		},
+	}
+}
+
+// SetupFakeResultsForFailedDestroy makes the fake replay failed destroy.
+func (t *TerraformFake) SetupFakeResultsForFailedDestroy() {
 	t.DestroyResult = nil
 }
 
-// DestroyMustSucceed makes the fake replay a successful destroy.
-func (t *TerraformFake) DestroyMustSucceed() {
+// SetupFakeResultsForSuccessfulDestroy makes the fake replay a successful destroy.
+func (t *TerraformFake) SetupFakeResultsForSuccessfulDestroy() {
 	t.DestroyResult = []TFApplyResult{
 		{Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "40s"},
 		{Destroying: 1, Object: "module.aks1.azurerm_kubernetes_cluster.this", Action: "destroying", Elapsed: "50s"},

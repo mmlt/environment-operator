@@ -36,7 +36,7 @@ func (a *AddonFake) Start(ctx context.Context, env []string, dir, jobPath, value
 	return nil, out, nil
 }
 
-// SetupFakeResults sets-up the receiver with data that is returned during testing.
+// SetupFakeResultsForCreate sets-up the receiver with data that is returned during testing.
 func (a *AddonFake) SetupFakeResult() {
 	a.StartResult = []KTResult{
 		{Added: 0, Changed: 1, Deleted: 0, Errors: []string(nil), Object: "namespace/kube-system unchanged", ObjectID: "1", Action: "apply"},

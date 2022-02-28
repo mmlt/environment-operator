@@ -1,7 +1,6 @@
 package kubectl
 
 import (
-	"fmt"
 	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
 	"github.com/mmlt/environment-operator/pkg/util/exe"
@@ -104,7 +103,25 @@ func (k Kubectl) StorageClasses(kubeconfigPath string) ([]storagev1.StorageClass
 	return r.Items, nil
 }
 
+// Namespaces returns all the Namespaces matching labelSelector in the cluster addressed by kubeconfigPath.
+func (k Kubectl) Namespaces(kubeconfigPath, labelSelector string) ([]v1.Namespace, error) {
+	args := []string{"--kubeconfig", kubeconfigPath, "get", "ns", "-l", labelSelector, "-o", "yaml"}
+	o, _, err := exe.Run(k.Log, nil, "", "kubectl", args...)
+	if err != nil {
+		return nil, err
+	}
+
+	var r v1.NamespaceList
+	err = yaml.Unmarshal([]byte(o), &r)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.Items, nil
+}
+
 // WipeCluster removes resources so all cluster nodes can be drained without errors.
+// Arg kubeconfigRaw contains the kubeconfig file contents.
 func (k Kubectl) WipeCluster(kubeconfigPath string) error {
 	var err error
 	var args []string
@@ -112,19 +129,31 @@ func (k Kubectl) WipeCluster(kubeconfigPath string) error {
 	args = []string{"--kubeconfig", kubeconfigPath, "delete", "validatingwebhookconfiguration", "--all", "--ignore-not-found=true"}
 	_, _, err = exe.Run(k.Log, nil, "", "kubectl", args...)
 	if err != nil {
-		return fmt.Errorf("delete all validatingwebhookconfiguration: %w", err)
+		return err
 	}
 
 	args = []string{"--kubeconfig", kubeconfigPath, "delete", "mutatingwebhookconfiguration", "--all", "--ignore-not-found=true"}
 	_, _, err = exe.Run(k.Log, nil, "", "kubectl", args...)
 	if err != nil {
-		return fmt.Errorf("delete all mutatingwebhookconfiguration: %w", err)
+		return err
 	}
 
-	args = []string{"--kubeconfig", kubeconfigPath, "delete", "namespace", "-l", "control-plane!=true"}
-	_, _, err = exe.Run(k.Log, nil, "", "kubectl", args...)
+	// delete namespace except those containing control-plane components
+	nss, err := k.Namespaces(kubeconfigPath, "control-plane!=true")
 	if err != nil {
-		return fmt.Errorf("delete namespaces: %w", err)
+		return err
+	}
+
+	for _, ns := range nss {
+		if ns.Name == "default" || ns.Name == "kube-public" {
+			continue
+		}
+
+		args = []string{"--kubeconfig", kubeconfigPath, "delete", "namespace", ns.Name}
+		_, _, err = exe.Run(k.Log, nil, "", "kubectl", args...)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

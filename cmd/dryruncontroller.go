@@ -102,7 +102,7 @@ Because the dryruncontroller works with fake data the processed environment(yaml
 			tf := &terraform.TerraformFake{
 				Log: l,
 			}
-			tf.SetupFakeResults(nil)
+			tf.SetupFakeResultsForCreate(nil)
 			kc := &kubectl.KubectlFake{}
 			ao := &addon.AddonFake{}
 			ao.SetupFakeResult()

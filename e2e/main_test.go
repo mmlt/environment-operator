@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"encoding/base64"
 	"github.com/go-logr/stdr"
 	clusteropsv1 "github.com/mmlt/environment-operator/api/v1"
 	"github.com/mmlt/environment-operator/controllers"
@@ -142,18 +141,6 @@ func testManagerWithFakeClients(t *testing.T, ctx context.Context, labelSet labe
 	tf := &terraform.TerraformFake{
 		Log: ctrl.Log.WithName("tffake"),
 	}
-	tf.SetupFakeResults(map[string]interface{}{
-		"xyz": map[string]interface{}{
-			"kube_admin_config": map[string]interface{}{
-				"client_certificate":     base64.StdEncoding.EncodeToString(cfg.CertData),
-				"client_key":             base64.StdEncoding.EncodeToString(cfg.KeyData),
-				"cluster_ca_certificate": base64.StdEncoding.EncodeToString(cfg.CAData),
-				"host":                   cfg.Host,
-				"password":               cfg.Password,
-				"username":               cfg.Username,
-			},
-		},
-	})
 	kc := &kubectl.KubectlFake{}
 	clc := cluster.Client{
 		Client: testReconciler.Client,

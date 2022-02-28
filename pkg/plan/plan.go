@@ -67,6 +67,35 @@ func (p *Planner) Plan(nsn types.NamespacedName, src Sourcer, destroy bool, ispe
 	return pl, nil
 }
 
+// PossibleSteps returns a set of possible step names.
+func (p *Planner) PossibleSteps(cspec []v1.ClusterSpec) map[string]struct{} {
+	r := make(map[string]struct{})
+
+	for _, t := range step.InfraTypes {
+		if p.AllowedStepTypes != nil {
+			if _, ok := p.AllowedStepTypes[t]; !ok {
+				continue
+			}
+		}
+
+		r[string(t)] = struct{}{}
+	}
+
+	for _, t := range step.ClusterTypes {
+		if p.AllowedStepTypes != nil {
+			if _, ok := p.AllowedStepTypes[t]; !ok {
+				continue
+			}
+		}
+
+		for _, c := range cspec {
+			r[string(t)+c.Name] = struct{}{}
+		}
+	}
+
+	return r
+}
+
 // BuildPlan builds a plan containing the steps to create/update/delete a target environment.
 // An environment is identified by nsn.
 // Returns false if not all prerequisites are fulfilled.

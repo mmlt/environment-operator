@@ -2,7 +2,9 @@ package e2e
 
 import (
 	"context"
+	"encoding/base64"
 	v1 "github.com/mmlt/environment-operator/api/v1"
+	"github.com/mmlt/environment-operator/pkg/client/kubectl"
 	"github.com/mmlt/environment-operator/pkg/client/terraform"
 	"github.com/mmlt/testr"
 	"github.com/stretchr/testify/assert"
@@ -18,9 +20,23 @@ func TestGoodRun(t *testing.T) {
 	logf.SetLogger(testr.New(t))
 
 	wg := testManagerWithFakeClients(t, ctx, testLabels)
+	tf := testReconciler.Planner.Terraform.(*terraform.TerraformFake)
+	kc := testReconciler.Planner.Kubectl.(*kubectl.KubectlFake)
 
-	t.Run("should_run_all_steps", func(t *testing.T) {
-		testCreateCR(t, testEnvironmentCR(testNSN, testLabels, testSpecLocal()))
+	t.Run("should_run_all_steps_to_create_or_update_a_cluster", func(t *testing.T) {
+		tf.SetupFakeResultsForCreate(map[string]interface{}{
+			"xyz": map[string]interface{}{
+				"kube_admin_config": map[string]interface{}{
+					"client_certificate":     base64.StdEncoding.EncodeToString(cfg.CertData),
+					"client_key":             base64.StdEncoding.EncodeToString(cfg.KeyData),
+					"cluster_ca_certificate": base64.StdEncoding.EncodeToString(cfg.CAData),
+					"host":                   cfg.Host,
+					"password":               cfg.Password,
+					"username":               cfg.Username,
+				},
+			},
+		})
+		testCreateCR(t, testEnvironmentCR(testNSN, testLabels, testSpecLocal(1)))
 
 		got := testGetCRWhenConditionReady(t, testNSN)
 
@@ -55,6 +71,32 @@ func TestGoodRun(t *testing.T) {
 		}
 	})
 
+	t.Run("should_be_able_to_remove_a_cluster", func(t *testing.T) {
+		tf.SetupFakeResultsForDeleteCluster()
+		testCreateCR(t, testEnvironmentCR(testNSN, testLabels, testSpecLocal(0)))
+
+		got := testGetCRWhenConditionReady(t, testNSN)
+
+		// Condition
+		assert.Equal(t, 1, len(got.Status.Conditions), "number of Status.Conditions")
+		assert.Equal(t, v1.ReasonReady, got.Status.Conditions[0].Reason)
+
+		assert.Equal(t, 1, kc.WipeClusterTally)
+	})
+
+	t.Run("should_handle_nothing_to_do", func(t *testing.T) {
+		tf.SetupFakeResultsForNothingToDo()
+		testCreateCR(t, testEnvironmentCR(testNSN, testLabels, testSpecLocal(1)))
+
+		got := testGetCRWhenConditionReady(t, testNSN)
+
+		// Condition
+		assert.Equal(t, 1, len(got.Status.Conditions), "number of Status.Conditions")
+		assert.Equal(t, v1.ReasonReady, got.Status.Conditions[0].Reason)
+
+		assert.Equal(t, 4, len(got.Status.Steps), "expected 4 Status.Steps of state Ready")
+	})
+
 	// teardown manager
 	cancel()
 	wg.Wait()
@@ -66,12 +108,11 @@ func TestErrorRun(t *testing.T) {
 	logf.SetLogger(testr.New(t))
 
 	wg := testManagerWithFakeClients(t, ctx, testLabels)
+	tf := testReconciler.Planner.Terraform.(*terraform.TerraformFake)
 
 	t.Run("should_be_able_to_reset_step", func(t *testing.T) {
-		tf := testReconciler.Planner.Terraform.(*terraform.TerraformFake)
-
 		// Run step that will fail.
-		tf.DestroyMustFail()
+		tf.SetupFakeResultsForFailedDestroy()
 		testCreateCR(t, testEnvironmentCR(testNSN, testLabels, testSpecLocalDestroy()))
 
 		got := testGetCRWhenConditionReady(t, testNSN)
@@ -86,7 +127,7 @@ func TestErrorRun(t *testing.T) {
 		assert.Equal(t, "did not receive response from terraform destroy", got.Status.Steps["Destroy"].Message)
 
 		// Fix error and reset step.
-		tf.DestroyMustSucceed()
+		tf.SetupFakeResultsForSuccessfulDestroy()
 		testResetStep(t, testNSN, "Destroy")
 		time.Sleep(5 * time.Second) // it will take some time for the condition to reflect the new status (should ResetStep also remove Condition?)
 

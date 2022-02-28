@@ -8,7 +8,9 @@ import (
 
 // KubectlFake provides a Kubectler for testing.
 type KubectlFake struct {
-	// probePodState is the state of an fake 'probe' pod.
+	PodRunTally, PodDeleteTally, WipeClusterTally int
+
+	// probePodState is the state of a fake 'probe' pod.
 	// It mimics a Pod that is run like this:
 	// 	kubectl -n kube-system
 	//		run --generator=run-pod/v1 --restart OnFailure --image docker.io/curlimages/curl:7.72.0 probe
@@ -44,6 +46,8 @@ func (k *KubectlFake) PodState(kubeconfigPath, namespace, name string) (string, 
 }
 
 func (k *KubectlFake) PodRun(kubeconfigPath, namespace, name, image, cmd string) error {
+	k.PodRunTally++
+
 	switch k.probePodState {
 	case FakePodRunning, FakePodCompleted, FakePodError:
 		return fmt.Errorf("pod already present")
@@ -71,6 +75,8 @@ Retry 2020-09-08T07:01:06+0000
 }
 
 func (k *KubectlFake) PodDelete(kubeconfigPath, namespace, name string) error {
+	k.PodDeleteTally++
+
 	switch k.probePodState {
 	case FakePodRunning, FakePodCompleted, FakePodError:
 		k.probePodState = FakePodUnknown
@@ -97,5 +103,7 @@ func (k KubectlFake) StorageClasses(kubeconfigPath string) ([]storagev1.StorageC
 
 // WipeCluster removes resources before cluster delete.
 func (k *KubectlFake) WipeCluster(kubeconfigPath string) error {
+	k.WipeClusterTally++
+
 	return nil
 }

@@ -17,9 +17,9 @@ func TestTypesFromString(t *testing.T) {
 		err  error
 	}{
 		{
-			it:   "should return an empty set on empty input",
+			it:   "should return an nil set on empty input",
 			args: args{s: ""},
-			want: map[Type]struct{}{},
+			want: nil,
 			err:  nil,
 		},
 		{
@@ -34,10 +34,8 @@ func TestTypesFromString(t *testing.T) {
 		{
 			it:   "should return an error for unknown step types",
 			args: args{s: "Infra,XXXX"},
-			want: map[Type]struct{}{
-				TypeInfra: struct{}{},
-			},
-			err: errors.New("unknown step type(s): [XXXX]"),
+			want: nil,
+			err:  errors.New("unknown step type(s): [XXXX]"),
 		},
 	}
 	for _, tt := range tests {

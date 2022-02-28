@@ -201,14 +201,6 @@ func (ss *Sources) fetch(spec v1.SourceSpec) error {
 		ss.repos = make(map[v1.SourceSpec]repo)
 	}
 
-	// rate limit
-	//const rate = 5 * time.Minute
-	//if r, ok := ss.repos[spec]; ok {
-	//	if timeNow().Before(r.lastFetched.Add(rate)) {
-	//		return nil
-	//	}
-	//}
-
 	// fetch
 	var err error
 	var h string

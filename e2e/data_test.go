@@ -5,6 +5,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"strconv"
 )
 
 // This file contains data used by multiple tests.
@@ -20,10 +21,10 @@ func testEnvironmentCR(nn types.NamespacedName, labelSet labels.Set, spec *v1.En
 	}
 }
 
-// TestSpecLocal for all steps ICW with local k8s cluster.
-func testSpecLocal() *v1.EnvironmentSpec {
-	return &v1.EnvironmentSpec{
-
+// TestSpecLocal returns a spec to run all steps ICW with local k8s cluster.
+// ClusterCnt defines how many clusters are in the spec.
+func testSpecLocal(clusterCnt int) *v1.EnvironmentSpec {
+	spec := &v1.EnvironmentSpec{
 		Infra: v1.InfraSpec{
 			EnvName:   "local",
 			EnvDomain: "example.com",
@@ -76,9 +77,19 @@ func testSpecLocal() *v1.EnvironmentSpec {
 				},
 			},
 		},
-		Clusters: []v1.ClusterSpec{
-			{
-				Name: "xyz",
+	}
+
+	name := func(i int) string {
+		if i > 1 {
+			return "xyz" + strconv.Itoa(i)
+		}
+		return "xyz"
+	}
+
+	for i := 0; i < clusterCnt; i++ {
+		spec.Clusters = append(spec.Clusters,
+			v1.ClusterSpec{
+				Name: name(i),
 
 				Infra: v1.ClusterInfraSpec{
 					SubnetNum: 1,
@@ -86,22 +97,23 @@ func testSpecLocal() *v1.EnvironmentSpec {
 						"default": {Scale: 2, VMSize: "Standard_DS2_v2"},
 					},
 					X: map[string]string{
-						"overridden": "xyz-cluster",
+						"overridden": name(i) + "-cluster",
 					},
 				},
 				Addons: v1.ClusterAddonSpec{
 					X: map[string]string{
-						"k8sCluster": "xyz",
+						"k8sCluster": name(i),
 					},
 				},
-			},
-		},
+			})
 	}
+
+	return spec
 }
 
 // TestSpecLocalDestroy for Destroy ICW with local k8s cluster.
 func testSpecLocalDestroy() *v1.EnvironmentSpec {
-	cr := testSpecLocal()
+	cr := testSpecLocal(1)
 	cr.Destroy = true
 	x := int32(99)
 	cr.Infra.Budget.DeleteLimit = &x

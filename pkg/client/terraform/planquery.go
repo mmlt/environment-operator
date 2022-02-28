@@ -50,10 +50,16 @@ func ClustersFromPlan(plan *gabs.Container) ([]AKSCluster, error) {
 			return nil, err
 		}
 
+		var kc string
+		if o := chgBefore.Path("kube_admin_config_raw").Data(); o != nil {
+			kc = o.(string)
+		}
+
 		r = append(r, AKSCluster{
 			ResourceGroup: m["resourcegroups"],
 			Cluster:       m["managedclusters"],
 			Action:        act,
+			KubeconfigRaw: kc,
 		})
 	}
 
@@ -65,6 +71,8 @@ type AKSCluster struct {
 	ResourceGroup string
 	Cluster       string
 	Action        Action
+	// KubeconfigRaw contains the kubeconfig of a (to be) deleted cluster.
+	KubeconfigRaw string
 }
 
 // Action is the terraform plan action.
